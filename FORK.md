@@ -2,7 +2,7 @@
 
 SpecKit is a hard fork of [github/spec-kit](https://github.com/github/spec-kit) (via `markmals/speckit`). It rewrites the executable CLI in Go, adopts the Workbench spec data model as core law (dotted stable IDs, kind taxonomy, scenario sub-IDs, reverse pointers, deviation markers), and adds the Mocha runtime engine (`scan`/`verify`/`drift`/`cover`/`parity`/`gate`/`lock`/`ledger`). **No upstream contribution is intended; divergence is the point.**
 
-Never rebase on upstream. Cherry-pick _prompt-level_ improvements (command markdown, template language) opportunistically — those are data, cheap to take — and nothing else. The authoritative design document is `speckit-fork-plan.md` (decisions D1–D13, phases, executable exit criteria).
+Never rebase on upstream. Cherry-pick _prompt-level_ improvements (command markdown, template language) opportunistically — those are data, cheap to take — and nothing else. The authoritative design document is [`FORK-PLAN.md`](FORK-PLAN.md) (decisions D1–D15, phases, executable exit criteria).
 
 ## Provenance
 
@@ -49,7 +49,7 @@ Status: **rewrite** (port behavior to Go) · **replace** (new design supersedes 
 
 ## Divergence log
 
-Decisions that intentionally break from upstream (full rationale in `speckit-fork-plan.md` §2):
+Decisions that intentionally break from upstream (full rationale in [`FORK-PLAN.md`](FORK-PLAN.md) §2):
 
 - **D2** — runtime is a present Go binary, not an init-time script installer; all `scripts/` logic moves into `specify` subcommands.
 - **D3** — curated stacks are first-party bundled extensions; `init --platforms` installs them (replaces Workbench's superset-then-prune `/setup`).
