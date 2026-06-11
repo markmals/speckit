@@ -154,6 +154,14 @@ When a platform must diverge — constraint, idiom, or deliberate UX choice — 
 
 `(deviates: <reason>)` keeps drift detection flagging spec changes. Per **D11** a deviation is a **human attestation the engine cannot verify**: `specify parity` surfaces every marker in a stale-deviation audit and treats a deviation cell as "needs sign-off," never as green. `// SPEC: manual` opts out entirely, used sparingly.
 
+**Scenario-scoped deviations.** Parity is computed per scenario, so a story-level marker is too coarse when only one scenario diverges. Target the scenario sub-ID directly:
+
+```swift
+// SPEC: scenario.items.list.empty (deviates: iOS shows a system empty view)
+```
+
+The engine crosses deviation-presence with the joined test outcome on **independent axes** (spike 0001): a marker over a _failing_ test is classified `suspect`, never `declared-deviation` — a marker can never suppress a red test.
+
 ## Drift detection (D7 — acknowledgment lock, not mtime)
 
 A spec and its implementation on a platform are **in sync** when:

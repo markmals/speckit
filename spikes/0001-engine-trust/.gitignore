@@ -1,0 +1,5 @@
+# Throwaway spike — ignore heavy regenerable build artifacts; keep the small
+# report files (junit/xunit/ndjson) as reproducible evidence.
+web/node_modules/
+apple/.build/
+join/join

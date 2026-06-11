@@ -1,6 +1,6 @@
 # FORK.md
 
-SpecKit is a hard fork of [github/spec-kit](https://github.com/github/spec-kit) (via `markmals/spec-kit`). It rewrites the executable CLI in Go, adopts the Workbench spec data model as core law (dotted stable IDs, kind taxonomy, scenario sub-IDs, reverse pointers, deviation markers), and adds the Mocha runtime engine (`scan`/`verify`/`drift`/`cover`/`parity`/`gate`/`lock`/`ledger`). **No upstream contribution is intended; divergence is the point.**
+SpecKit is a hard fork of [github/spec-kit](https://github.com/github/spec-kit) (via `markmals/speckit`). It rewrites the executable CLI in Go, adopts the Workbench spec data model as core law (dotted stable IDs, kind taxonomy, scenario sub-IDs, reverse pointers, deviation markers), and adds the Mocha runtime engine (`scan`/`verify`/`drift`/`cover`/`parity`/`gate`/`lock`/`ledger`). **No upstream contribution is intended; divergence is the point.**
 
 Never rebase on upstream. Cherry-pick _prompt-level_ improvements (command markdown, template language) opportunistically — those are data, cheap to take — and nothing else. The authoritative design document is `speckit-fork-plan.md` (decisions D1–D13, phases, executable exit criteria).
 
