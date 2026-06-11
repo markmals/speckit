@@ -1,3 +1,3 @@
-module github.com/markmals/spec-kit
+module github.com/markmals/speckit
 
 go 1.26

@@ -9,7 +9,7 @@ Never rebase on upstream. Cherry-pick _prompt-level_ improvements (command markd
 | | |
 | --- | --- |
 | Upstream | github/spec-kit |
-| Fork base | markmals/spec-kit |
+| Fork base | markmals/speckit (renamed from `spec-kit` at fork time, per D1) |
 | Pin commit | `1b0556c711b633a6d50b2e2f5f8db0e6717489d3` (2026-06-11 — "Update Linear Integration extension to v0.4.0 (#2942)") |
 | Pin tag | `fork-base` — preserves the pinned Python CLI as the **Phase-2 oracle** even as `main` diverges |
 | Upstream license | MIT (notice retained in `LICENSE`; fork copyright added) |

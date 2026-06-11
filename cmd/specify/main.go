@@ -16,7 +16,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/markmals/spec-kit/internal/specmodel"
+	"github.com/markmals/speckit/internal/specmodel"
 )
 
 // version is overridden at release time via -ldflags "-X main.version=...".

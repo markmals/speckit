@@ -34,6 +34,6 @@ checksum:
 release:
   github:
     owner: markmals
-    name: spec-kit
+    name: speckit
   draft: true
   prerelease: auto
