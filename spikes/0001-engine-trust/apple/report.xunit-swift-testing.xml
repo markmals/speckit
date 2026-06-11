@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="TestResults" errors="0" tests="3" failures="1" skipped="0" time="0.000450834">
-    <testcase classname="TodoTests" name="complete()" time="0.000162791" />
-    <testcase classname="TodoTests" name="reactivate()" time="0.000163208" />
-    <testcase classname="TodoTests" name="guardEmpty()" time="0.000264208" >
-      <failure message="Expectation failed: an error was expected but none was thrown (error): // Expects a throw; the impl never throws (intentional bug) -&gt; this FAILS,&#10;// while a (deviates:) marker in Todo.swift claims it is intentional." />
+  <testsuite name="TestResults" errors="0" tests="3" failures="1" skipped="0" time="0.000719542">
+    <testcase classname="TodoTests.TodoToggleTests" name="`toggling an empty-label todo is rejected`()" time="0.000297416" >
+      <failure message="Expectation failed: an error was expected but none was thrown (error): // Impl never throws (intentional bug) -&gt; FAILS, under a lying (deviates:) marker." />
     </testcase>
+    <testcase classname="TodoTests.TodoToggleTests" name="`toggling a completed todo reactivates it`()" time="0.000104125" />
+    <testcase classname="TodoTests.TodoToggleTests" name="`toggling an active todo completes it`()" time="0.000112458" />
   </testsuite>
 </testsuites>

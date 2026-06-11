@@ -40,19 +40,20 @@ So that "green" provably means "the right scenarios were proven," and the result
 - Then the command exits non-zero
 - And it reports the dangling reference rather than silently ignoring the test
 
-## Scenario 4: Reports normalize across runners
+## Scenario 4: Outcomes join by test identity; the binding comes from source
 
-<!-- id: scenario.engine.verify.normalizes-reports -->
+<!-- id: scenario.engine.verify.source-bound-join -->
 
-- Given a platform that emits a supported test report (v1: Vitest junit for web; Swift Testing's `--event-stream-output-path` NDJSON for apple — **not** `swift test --xunit-output`, which drops the scenario tag; spike 0001)
+- Given a platform whose report identifies each test by suite/class + name (v1: Vitest junit for web; Swift Testing's `--event-stream-output-path` NDJSON for apple) but does **not** carry the scenario ID (spike 0001)
 - When the user runs `specify verify <platform>`
-- Then per-scenario pass/fail results are produced from that report regardless of which runner emitted it
+- Then the engine reads each test's scenario binding from source (the `.scenario(…)` trait / `// [scenario.<id>]` comment) and joins it to the report outcome by test identity
+- And per-scenario pass/fail is produced regardless of which runner emitted the report
 
-## Scenario 5: A report that cannot carry the scenario tag is rejected
+## Scenario 5: A test with no source binding is a hard error
 
-<!-- id: scenario.engine.verify.report-format-adequacy -->
+<!-- id: scenario.engine.verify.unbound-test -->
 
-- Given a report format that does not preserve the scenario tag (e.g. Swift Testing xunit, which emits only function names)
-- When the verify adapter is configured to use it
-- Then the engine refuses that source rather than silently reporting zero matched scenarios (D12)
-- And it directs the adapter to a format that preserves the tag (the event stream)
+- Given a test that runs but carries no scenario binding in source
+- When the user runs `specify verify <platform>`
+- Then the engine reports it as a hard error rather than silently dropping it (D12)
+- And likewise a binding that points at a scenario the spec does not declare is a hard error

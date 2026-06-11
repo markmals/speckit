@@ -31,7 +31,11 @@ Real reports from real toolchains (Node 24 / Vitest, Swift 6.4 / Swift Testing),
 2. **Swift Testing xunit is lossy — do NOT use it.** `swift test --xunit-output` (a) silently *rewrites the path* to `<base>-swift-testing.xml`, and (b) emits **function names** (`guardEmpty()`) in `name`, dropping the `@Test` display name — so the scenario tag is **gone**. A naive xunit join finds zero Apple scenarios and would report "no coverage" instead of failing.
 3. **The native event stream is the Apple source of truth.** `swift test --event-stream-output-path <ndjson>` carries `test` records with `displayName` (scenario tag intact, hyphens and all) and `event`/`issueRecorded` records for outcomes. The join is clean off this.
 4. **Dangling refs are caught.** A test tagged to a renamed/typo'd scenario (`complete-typo`) is detected as a hard JOIN ERROR — exactly the D12 "fail loudly, never silently zero-match" requirement.
-5. **Function-name mangling is ambiguous** (the alternative to the event stream). Mangling `scenario.todo.toggle.guard-empty` → `scenario_todo_toggle_guard_empty` collapses `.` and `-` to the same `_`, so it can't be demangled unambiguously. Another reason to prefer the event stream over name-mangling for Swift.
+5. **Function-name mangling is ambiguous** (the alternative to the event stream). Mangling `scenario.todo.toggle.guard-empty` → `scenario_todo_toggle_guard_empty` collapses `.` and `-` to the same `_`, so it can't be demangled unambiguously.
+
+### Update — source-binding supersedes report-carried tags (verified)
+
+Re-running the apple side with the project's real conventions — custom `.spec`/`.scenario` traits + raw-identifier function names (per `Reactivity/…/SpecTraits.swift`) — showed the scenario ID appears in **no** report output: xunit `name` is the raw identifier (`` `…`() ``), event-stream `displayName` is the human description, and `tags` is `[]` (custom traits don't surface). So the robust model is **source-binds-the-ID, report-gives-the-outcome**: scan the test source for the `.scenario(…)` trait, run tests, and join outcomes by test identity (suite + raw-identifier name). The join tool was reworked to this and produces the identical parity matrix. This **supersedes** finding 3 (don't depend on a report carrying the tag) and retires finding 5 (no name-mangling needed). It generalizes: every language binds the scenario in source and joins outcomes by identity, so no report format ever needs to carry the semantic ID.
 
 ## D11 — parity / deviation findings
 
@@ -41,7 +45,7 @@ Real reports from real toolchains (Node 24 / Vitest, Swift 6.4 / Swift Testing),
 
 ## Recommendations for Phase 3
 
-- **Apple verify adapter consumes the `--event-stream-output-path` NDJSON**, not `--xunit-output`. xunit is XCTest-era and lossy for Swift Testing. (Revisit once `xcodebuild`/xcresult is in play for UI tests, but for `swift test` the event stream wins.)
+- **Apple verify adapter: outcomes from the `--event-stream-output-path` NDJSON (keyed by test identity); scenario binding read from source (the `.scenario(…)` trait).** Not `--xunit-output` — xunit is XCTest-era and lossy for Swift Testing. (Revisit once `xcodebuild`/xcresult is in play for UI tests; for `swift test` the event stream wins.)
 - **Web adapter parses Vitest junit `name` attributes** — sufficient as-is.
 - **`specify parity` ships five states** (conforming / declared-deviation / drifted / missing / **suspect**); deviation cells are gated for sign-off and never auto-green.
 - **CONVENTIONS allows scenario-scoped deviation markers** (applied this pass).

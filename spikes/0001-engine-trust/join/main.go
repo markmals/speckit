@@ -1,8 +1,13 @@
-// Throwaway spike: join real Vitest junit + Swift Testing event-stream output
-// to spec scenarios, then compute the four-cell parity matrix. Demonstrates the
-// D12 join (and its failure modes) and the D11 lying-deviation case.
+// Throwaway spike: join real Vitest junit + Swift Testing output to spec
+// scenarios, then compute the parity matrix. Demonstrates the D12 join (two
+// strategies) and the D11 lying-deviation case.
 //
-// Run from the join/ dir: `go run . ..`  (arg = spike root; default "..").
+//   - web   (Vitest): the report CARRIES the scenario id in the testcase name.
+//   - apple (Swift Testing + custom traits + raw identifiers): the report does
+//     NOT carry the id; it is read from the `.scenario("…")` trait in SOURCE and
+//     joined to the report outcome by test identity (suite + raw-identifier name).
+//
+// Run from join/: `go run . ..`  (arg = spike root; default "..").
 package main
 
 import (
@@ -21,6 +26,8 @@ var (
 	scenarioRe = regexp.MustCompile(`scenario\.todo\.toggle\.[a-z\-]+`)
 	declRe     = regexp.MustCompile(`<!--\s*id:\s*(scenario\.[a-z.\-]+)\s*-->`)
 	deviateRe  = regexp.MustCompile(`// SPEC: (scenario\.[a-z.\-]+) \(deviates: ([^)]*)\)`)
+	// Source-binding: a `.scenario("id")` trait immediately above a raw-identifier func.
+	bindRe = regexp.MustCompile("@Test\\(\\.scenario\\(\"(scenario\\.[a-z.\\-]+)\"\\)\\)\\s*func `([^`]+)`")
 )
 
 func main() {
@@ -31,7 +38,7 @@ func main() {
 
 	declared := parseSpec(filepath.Join(root, "spec/todo.toggle.md"))
 	web, webErrs := parseWebJUnit(filepath.Join(root, "web/report.junit.xml"), declared)
-	apple := parseAppleEvents(filepath.Join(root, "apple/events.ndjson"))
+	apple, appleErrs := parseAppleSourceBound(root, declared)
 	deviations := parseDeviations(filepath.Join(root, "apple/Sources/Todo/Todo.swift"))
 
 	scenarios := make([]string, 0, len(declared))
@@ -40,20 +47,22 @@ func main() {
 	}
 	sort.Strings(scenarios)
 
-	// --- D12: join errors ---
 	fmt.Println("== D12 — scenario↔test join ==")
 	joinFail := false
 	for _, e := range webErrs {
-		fmt.Printf("  ✗ JOIN ERROR (web): %s\n", e)
+		fmt.Printf("  ✗ JOIN ERROR (web, report-carried id): %s\n", e)
+		joinFail = true
+	}
+	for _, e := range appleErrs {
+		fmt.Printf("  ✗ JOIN ERROR (apple, source-bound): %s\n", e)
 		joinFail = true
 	}
 	if !joinFail {
 		fmt.Println("  (no join errors)")
 	}
 
-	// --- parity matrix ---
 	fmt.Println("\n== Parity matrix ==")
-	fmt.Printf("  %-28s  %-22s  %-22s\n", "scenario", "web", "apple")
+	fmt.Printf("  %-26s  %-22s  %-22s\n", "scenario", "web", "apple")
 	suspect := false
 	for _, s := range scenarios {
 		wc := webCell(web, s)
@@ -61,17 +70,16 @@ func main() {
 		if ac.state == "SUSPECT" {
 			suspect = true
 		}
-		fmt.Printf("  %-28s  %-22s  %-22s\n", strings.TrimPrefix(s, "scenario.todo.toggle."), render(wc), render(ac))
+		fmt.Printf("  %-26s  %-22s  %-22s\n", strings.TrimPrefix(s, "scenario.todo.toggle."), render(wc), render(ac))
 		if ac.detail != "" {
-			fmt.Printf("  %-28s  %-22s  └─ %s\n", "", "", ac.detail)
+			fmt.Printf("  %-26s  %-22s  └─ %s\n", "", "", ac.detail)
 		}
 	}
 
-	// --- verdict ---
 	fmt.Println("\n== Gate verdict ==")
 	gate := !joinFail && !suspect
 	if joinFail {
-		fmt.Println("  ✗ a dangling test→scenario reference means the join is dishonest (D12).")
+		fmt.Println("  ✗ a dangling / unbound test reference means the join is dishonest (D12).")
 	}
 	if suspect {
 		fmt.Println("  ✗ a (deviates:) marker is shadowing a FAILING test — the engine cannot")
@@ -97,11 +105,12 @@ func parseSpec(path string) map[string]bool {
 
 type junit struct {
 	Cases []struct {
-		Name    string `xml:"name,attr"`
+		Name    string    `xml:"name,attr"`
 		Failure *struct{} `xml:"failure"`
 	} `xml:"testsuite>testcase"`
 }
 
+// web: the scenario id is carried in the junit testcase name.
 func parseWebJUnit(path string, declared map[string]bool) (map[string]bool, []string) {
 	b, err := os.ReadFile(path)
 	must(err)
@@ -124,11 +133,48 @@ func parseWebJUnit(path string, declared map[string]bool) (map[string]bool, []st
 	return pass, errs
 }
 
-func parseAppleEvents(path string) map[string]bool {
+// apple: scenario id read from the `.scenario` trait in SOURCE, joined to the
+// event-stream outcome by the test's raw-identifier name (its displayName).
+func parseAppleSourceBound(root string, declared map[string]bool) (map[string]bool, []string) {
+	bindings := parseSwiftBindings(filepath.Join(root, "apple/Tests")) // raw-id desc -> scenario id
+	outcomes := parseAppleOutcomes(filepath.Join(root, "apple/events.ndjson")) // raw-id desc -> pass
+	pass := map[string]bool{}
+	var errs []string
+	for desc, ok := range outcomes {
+		s, bound := bindings[desc]
+		if !bound {
+			errs = append(errs, "test \""+desc+"\" has no .scenario(...) trait binding it to a scenario")
+			continue
+		}
+		if !declared[s] {
+			errs = append(errs, "test \""+desc+"\" binds to undeclared scenario "+s)
+			continue
+		}
+		pass[s] = ok
+	}
+	return pass, errs
+}
+
+func parseSwiftBindings(dir string) map[string]string {
+	out := map[string]string{}
+	_ = filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".swift") {
+			return nil
+		}
+		b, _ := os.ReadFile(p)
+		for _, m := range bindRe.FindAllStringSubmatch(string(b), -1) {
+			out[m[2]] = m[1] // desc -> scenario id
+		}
+		return nil
+	})
+	return out
+}
+
+func parseAppleOutcomes(path string) map[string]bool {
 	f, err := os.Open(path)
 	must(err)
 	defer f.Close()
-	idToScenario := map[string]string{}
+	idToDesc := map[string]string{}
 	failed := map[string]bool{}
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
@@ -147,8 +193,8 @@ func parseAppleEvents(path string) map[string]bool {
 		}
 		switch r.Kind {
 		case "test":
-			if s := scenarioRe.FindString(r.Payload.DisplayName); s != "" {
-				idToScenario[r.Payload.ID] = s
+			if r.Payload.DisplayName != "" {
+				idToDesc[r.Payload.ID] = r.Payload.DisplayName
 			}
 		case "event":
 			if r.Payload.Kind == "issueRecorded" {
@@ -157,8 +203,8 @@ func parseAppleEvents(path string) map[string]bool {
 		}
 	}
 	pass := map[string]bool{}
-	for id, s := range idToScenario {
-		pass[s] = !failed[id]
+	for id, desc := range idToDesc {
+		pass[desc] = !failed[id]
 	}
 	return pass
 }

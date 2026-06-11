@@ -112,13 +112,17 @@ export const itemsListQueryOptions = queryOptions({ /* ... */ })
 
 ### Tests carry the same IDs — the scenario join (D12)
 
-Every behavioral test is tagged with the spec **and scenario** IDs it verifies. The mechanism is per-language but the discipline is uniform, and the engine's `verify` join (D12) is built on it — a scenario with no joinable test, or a test whose scenario ref is dangling, is a **hard error**, never a silent zero-match.
+The engine joins a scenario to the test that proves it. The binding is **declared in source**; the **outcome is read from the report and matched by test identity** (suite/class + test name). The report does _not_ need to carry the scenario ID — verified in spike 0001, where Swift Testing's xunit and event-stream output drop custom traits and display names entirely. A scenario with no bound test, or a bound test the spec doesn't declare, is a **hard error** (`scan`/`verify`), never a silent zero-match.
 
-- **Go (the engine's own tests):** the test file carries `// SPEC: <id>`, and each scenario has a `// [scenario.<id>] …` comment above its `t.Run` / test func (Go test names can't hold dots or brackets, so the sub-ID lives in the comment the scanner greps).
-- **Vitest:** `describe("vm.items.list")` + `it("[scenario.items.list.empty] …")`.
-- **Swift Testing:** `@Test(.tags(.spec("vm.items.list"), .scenario("items.list.empty")))`.
-- **kotlin.test (JUnit5):** `@Tag("spec:vm.items.list")` + `@DisplayName("[scenario.items.list.empty] …")`.
-- **cargo-nextest (Rust):** a `mod` with `// SPEC: <id>` and a test fn named `scenario_items_list_empty` (mangled sub-ID; the scanner demangles).
+Per-language _source_ binding (the scanner reads these; the runner only has to identify the test):
+
+- **Go (the engine's own tests):** `// SPEC: <id>` on the test file/func, and a `// [scenario.<id>]` comment above each `t.Run` / test func.
+- **Vitest (web):** `it("[scenario.<id>] …")`. Vitest's junit happens to preserve this in the `name` attribute, so web _can_ also join report-side; the source remains canonical.
+- **Swift Testing (apple):** custom traits — `@Suite(.spec("<id>"))` on the suite and `@Test(.scenario("<sub-id>"))` on each test, with **raw-identifier** function names carrying the human description (`` func `toggling an active todo completes it`() ``). The dotted ID lives verbatim in the trait (source); outcomes join by suite + raw-identifier name. The `.spec` / `.scenario` trait definitions ship as `SpecTraits.swift` in the `platform-apple` pack.
+- **kotlin.test (android):** `@Test` from `kotlin.test` (not raw JUnit), with the scenario id in a `// [scenario.<id>]` source binding above the test; outcomes join from the Gradle test report by class + method.
+- **cargo-nextest (Rust):** a `mod` with `// SPEC: <id>` and a `// [scenario.<id>]` comment above each `#[test]` fn.
+
+The runner's report (Vitest junit, Swift Testing event stream, Gradle XML, …) supplies only pass/fail keyed by test identity; the per-format verify adapter normalizes that, and the join overlays the source-declared scenario binding. Because the binding is source-side, encoding the scenario into test _names_ (and the fragile mangling that needs) is never required.
 
 ## Stories and scenarios
 
