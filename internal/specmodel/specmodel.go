@@ -67,6 +67,18 @@ func (k Kind) Valid() bool {
 	return false
 }
 
+// Singular reports whether the kind is a singular cross-cutting file (one per
+// product or feature, with a special uppercase filename like CONVENTIONS.md or
+// NARRATIVE.md) rather than one-per-file in a directory — so it is exempt from
+// the filename↔id rule (I1).
+func (k Kind) Singular() bool {
+	switch k {
+	case KindNarrative, KindArchitecture, KindDesignSystem, KindConventions:
+		return true
+	}
+	return false
+}
+
 // SpecID is a dotted, lowercase, hierarchical, stable identifier — e.g.
 // domain.item, vm.items.list, story.item.create. IDs are immutable once an
 // implementation references them; they do not encode platform.
