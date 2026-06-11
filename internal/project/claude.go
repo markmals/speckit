@@ -24,7 +24,7 @@ func (claudeAdapter) Project(root string, commands []Command) ([]string, error) 
 			return nil, err
 		}
 		p := filepath.Join(dir, "SKILL.md")
-		if err := os.WriteFile(p, []byte(claudeSkill(c)), 0o644); err != nil {
+		if err := os.WriteFile(p, []byte(skillDoc(c)), 0o644); err != nil {
 			return nil, err
 		}
 		written = append(written, p)
@@ -36,7 +36,7 @@ func (claudeAdapter) Project(root string, commands []Command) ([]string, error) 
 	return append(written, orient), nil
 }
 
-func claudeSkill(c Command) string {
+func skillDoc(c Command) string {
 	return fmt.Sprintf("---\nname: \"speckit-%s\"\ndescription: %q\nuser-invocable: true\n---\n\n%s",
 		c.Name, c.Description, c.Body)
 }
