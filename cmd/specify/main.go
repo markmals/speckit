@@ -29,8 +29,8 @@ var version = "0.0.0-dev"
 // plannedCommands is the command surface from the fork plan (D5); these are
 // stubbed until implemented.
 var plannedCommands = []string{
-	"verify", "drift", "cover", "parity",
-	"gate", "lock", "ledger", "apply", "reconcile",
+	"verify", "cover", "parity",
+	"gate", "ledger", "apply", "reconcile",
 	"extension", "preset", "work", "bench", "issues",
 }
 
@@ -59,6 +59,10 @@ func run(args []string) error {
 		return cmdInit(rest)
 	case "scan":
 		return cmdScan(rest)
+	case "lock":
+		return cmdLock(rest)
+	case "drift":
+		return cmdDrift(rest)
 	default:
 		if slices.Contains(plannedCommands, cmd) {
 			return fmt.Errorf("%q is not implemented yet (planned)", cmd)
@@ -159,6 +163,58 @@ func cmdScan(args []string) error {
 	return nil
 }
 
+// cmdLock acknowledges a spec as green on a platform. SPEC: story.engine.lock
+func cmdLock(args []string) error {
+	fs := flag.NewFlagSet("lock", flag.ExitOnError)
+	_ = fs.Parse(args)
+	platform, id := fs.Arg(0), fs.Arg(1)
+	if platform == "" || id == "" {
+		return fmt.Errorf("usage: specify lock <platform> <spec-id>")
+	}
+	if err := engine.Lock(".", platform, specmodel.SpecID(id)); err != nil {
+		return err
+	}
+	fmt.Printf("locked %s on %s\n", id, platform)
+	return nil
+}
+
+// cmdDrift reports specs whose content drifted from their locked-green hash.
+// SPEC: story.engine.drift
+func cmdDrift(args []string) error {
+	fs, jsonOut := jsonFlagSet("drift")
+	_ = fs.Parse(args)
+	platform := fs.Arg(0)
+	if platform == "" {
+		return fmt.Errorf("usage: specify drift <platform> [path]")
+	}
+	root := fs.Arg(1)
+	if root == "" {
+		root = "."
+	}
+	report, err := engine.Drift(root, platform)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		if err := writeJSON(os.Stdout, report); err != nil {
+			return err
+		}
+	} else {
+		for _, id := range report.Drifted {
+			fmt.Printf("drifted  %s\n", id)
+		}
+		for _, id := range report.Missing {
+			fmt.Printf("missing  %s\n", id)
+		}
+		fmt.Printf("drift(%s): %d drifted, %d missing, %d clean\n",
+			platform, len(report.Drifted), len(report.Missing), len(report.Clean))
+	}
+	if report.HasDrift() {
+		os.Exit(1) // SPEC: scenario.engine.drift.edited-spec-red — drift exits non-zero
+	}
+	return nil
+}
+
 func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
@@ -171,6 +227,8 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "\nCommands:")
 	fmt.Fprintln(w, "  init --integration <agent> [name]   scaffold a project")
 	fmt.Fprintln(w, "  scan [path]                         lint the spec library")
+	fmt.Fprintln(w, "  lock <platform> <spec-id>           acknowledge a spec green on a platform")
+	fmt.Fprintln(w, "  drift <platform> [path]             report specs that drifted from the lock")
 	fmt.Fprintln(w, "  version | kinds                     (add --json for structured output)")
 	fmt.Fprintln(w, "\nPlanned (stubbed):")
 	fmt.Fprintln(w, "  "+strings.Join(plannedCommands, ", "))

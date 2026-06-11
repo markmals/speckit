@@ -54,3 +54,4 @@ docs/dev
 # Go (fork rewrite)
 /specify
 /dist/
+.speckit/
