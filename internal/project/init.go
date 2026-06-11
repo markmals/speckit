@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 )
 
 // Options controls Init.
@@ -44,11 +43,10 @@ func Init(root string, assets fs.FS, opts Options) ([]string, error) {
 
 	// SPEC: story.init.projection (scenario.init.projection.fork-divergence)
 	// The runtime dir is .speckit/, never .specify/; no scripts on disk (D2/D6).
-	speckitDir := filepath.Join(root, ".speckit")
-	if err := os.MkdirAll(speckitDir, 0o755); err != nil {
+	written, err := writeRuntime(root, assets)
+	if err != nil {
 		return nil, err
 	}
-	written := []string{speckitDir}
 
 	projected, err := adapter.Project(root, commands)
 	if err != nil {
