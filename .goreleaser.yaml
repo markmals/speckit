@@ -1,0 +1,39 @@
+# goreleaser config for the SpecKit CLI (D2: single Go binary `specify`).
+# Phase-0 baseline — release wiring is exercised for real in Phase 6, gated on
+# the example repo earning trust (it ships only the ledger until then).
+version: 2
+
+project_name: speckit
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: specify
+    main: ./cmd/specify
+    binary: specify
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: specify
+    formats: [tar.gz]
+    name_template: "specify_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  github:
+    owner: markmals
+    name: spec-kit
+  draft: true
+  prerelease: auto
