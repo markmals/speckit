@@ -19,7 +19,7 @@ type Finding struct {
 //
 // SPEC: story.engine.scan
 func Lint(specs []Spec) []Finding {
-	var findings []Finding
+	findings := []Finding{} // non-nil so a clean library marshals to [], not null
 
 	byID := map[SpecID][]string{}
 	for _, s := range specs {
