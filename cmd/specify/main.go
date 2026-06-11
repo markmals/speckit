@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/markmals/speckit/internal/coreassets"
+	"github.com/markmals/speckit/internal/engine"
 	"github.com/markmals/speckit/internal/project"
 	"github.com/markmals/speckit/internal/specmodel"
 )
@@ -28,7 +29,7 @@ var version = "0.0.0-dev"
 // plannedCommands is the command surface from the fork plan (D5); these are
 // stubbed until implemented.
 var plannedCommands = []string{
-	"scan", "verify", "drift", "cover", "parity",
+	"verify", "drift", "cover", "parity",
 	"gate", "lock", "ledger", "apply", "reconcile",
 	"extension", "preset", "work", "bench", "issues",
 }
@@ -56,6 +57,8 @@ func run(args []string) error {
 		return cmdKinds(rest)
 	case "init":
 		return cmdInit(rest)
+	case "scan":
+		return cmdScan(rest)
 	default:
 		if slices.Contains(plannedCommands, cmd) {
 			return fmt.Errorf("%q is not implemented yet (planned)", cmd)
@@ -125,6 +128,37 @@ func cmdInit(args []string) error {
 	return nil
 }
 
+// cmdScan lints the spec library and exits non-zero if there are findings.
+// SPEC: story.engine.scan
+func cmdScan(args []string) error {
+	fs, jsonOut := jsonFlagSet("scan")
+	_ = fs.Parse(args)
+	root := fs.Arg(0)
+	if root == "" {
+		root = "."
+	}
+	findings, err := engine.Scan(os.DirFS(root))
+	if err != nil {
+		return err
+	}
+	switch {
+	case *jsonOut:
+		if err := writeJSON(os.Stdout, findings); err != nil {
+			return err
+		}
+	case len(findings) == 0:
+		fmt.Println("scan: clean")
+	default:
+		for _, f := range findings {
+			fmt.Printf("%s  %s  %s\n", f.Invariant, f.Path, f.Message)
+		}
+	}
+	if len(findings) > 0 {
+		os.Exit(1) // SPEC: scenario.engine.scan.* — a library with findings exits non-zero
+	}
+	return nil
+}
+
 func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
@@ -136,6 +170,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "Usage: specify <command> [flags]")
 	fmt.Fprintln(w, "\nCommands:")
 	fmt.Fprintln(w, "  init --integration <agent> [name]   scaffold a project")
+	fmt.Fprintln(w, "  scan [path]                         lint the spec library")
 	fmt.Fprintln(w, "  version | kinds                     (add --json for structured output)")
 	fmt.Fprintln(w, "\nPlanned (stubbed):")
 	fmt.Fprintln(w, "  "+strings.Join(plannedCommands, ", "))
