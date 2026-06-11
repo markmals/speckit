@@ -16,6 +16,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/markmals/speckit/internal/coreassets"
+	"github.com/markmals/speckit/internal/project"
 	"github.com/markmals/speckit/internal/specmodel"
 )
 
@@ -25,7 +27,7 @@ var version = "0.0.0-dev"
 // plannedCommands is the command surface from the fork plan (D5). Phase 0
 // stubs them so the projection prompts and CI have a stable shape to target.
 var plannedCommands = []string{
-	"init", "scan", "verify", "drift", "cover", "parity",
+	"scan", "verify", "drift", "cover", "parity",
 	"gate", "lock", "ledger", "apply", "reconcile",
 	"extension", "preset", "work", "bench", "issues",
 }
@@ -61,6 +63,8 @@ func run(args []string) error {
 		return cmdVersion(jsonOut)
 	case "kinds":
 		return cmdKinds(jsonOut)
+	case "init":
+		return cmdInit(rest[1:])
 	default:
 		if slices.Contains(plannedCommands, cmd) {
 			return fmt.Errorf("%q is not implemented yet (Phase 0 skeleton)", cmd)
@@ -87,6 +91,50 @@ func cmdKinds(jsonOut bool) error {
 	for _, k := range specmodel.Kinds {
 		fmt.Printf("%-14s %s\n", k, k.Prefix()+"…")
 	}
+	return nil
+}
+
+// cmdInit scaffolds a project for an agent. SPEC: story.init.basic
+func cmdInit(args []string) error {
+	integration, name := "", ""
+	force, here := false, false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--integration":
+			i++
+			if i < len(args) {
+				integration = args[i]
+			}
+		case "--force":
+			force = true
+		case "--here":
+			here = true
+		default:
+			if !strings.HasPrefix(args[i], "-") && name == "" {
+				name = args[i]
+			}
+		}
+	}
+	root := name
+	if here || name == "." {
+		root = "."
+	}
+	if root == "" {
+		return fmt.Errorf("init: provide a project name or --here")
+	}
+	if integration == "" {
+		return fmt.Errorf("init: --integration required (one of %v)", project.AdapterIDs())
+	}
+	if root != "." {
+		if err := os.MkdirAll(root, 0o755); err != nil {
+			return err
+		}
+	}
+	written, err := project.Init(root, coreassets.FS, project.Options{Integration: integration, Force: force})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Initialized SpecKit (%s) at %s — %d paths written\n", integration, root, len(written))
 	return nil
 }
 
