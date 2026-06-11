@@ -1,0 +1,21 @@
+# Fork-specific commit scopes for the Go rewrite (one per line; # = comment).
+#
+# The scoped-commits gate also accepts automatically: every spec/feature `id:`
+# in specs/ & features/, the `specs` scope, each features/<slug>, the harness
+# areas (hooks, skills, commands, agents, templates, rules, docs, mise, readme),
+# and `treewide`. Declare here only what isn't derivable that way — the Go
+# package areas under internal/ and cmd/, plus fork meta-scopes.
+
+# Go implementation areas
+cli            # cmd/specify
+project        # internal/project — init + per-agent projection
+engine         # internal/engine — scan/verify/drift/cover/parity/gate/lock/ledger
+specmodel      # internal/specmodel — the spec model parser
+coreassets     # internal/coreassets — embedded prompts/templates
+reports        # internal/reports — junit/xunit/event-stream adapters
+integrations   # internal/integrations
+extensions     # internal/extensions
+
+# Fork meta
+fork           # fork establishment, provenance, FORK.md
+spike          # throwaway spikes/
