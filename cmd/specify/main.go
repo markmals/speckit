@@ -3,13 +3,14 @@
 // Because the binary is present at runtime there is no bash/PowerShell script
 // layer — slash-command prompts call `specify <subcommand> --json`.
 //
-// This is the Phase-0 skeleton: it builds on all three host OSes, prints
-// version, exposes the spec kinds, and stubs the command surface. Real
-// behavior (Cobra/Fang wiring, the engine) lands in Phases 2–3.
+// Arguments are parsed with the standard library flag package: each subcommand
+// owns a flag.FlagSet, so flags precede any positional argument
+// (e.g. `specify init --integration claude my-project`).
 package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -24,8 +25,8 @@ import (
 // version is overridden at release time via -ldflags "-X main.version=...".
 var version = "0.0.0-dev"
 
-// plannedCommands is the command surface from the fork plan (D5). Phase 0
-// stubs them so the projection prompts and CI have a stable shape to target.
+// plannedCommands is the command surface from the fork plan (D5); these are
+// stubbed until implemented.
 var plannedCommands = []string{
 	"scan", "verify", "drift", "cover", "parity",
 	"gate", "lock", "ledger", "apply", "reconcile",
@@ -40,52 +41,51 @@ func main() {
 }
 
 func run(args []string) error {
-	jsonOut := false
-	rest := make([]string, 0, len(args))
-	for _, a := range args {
-		if a == "--json" {
-			jsonOut = true
-			continue
-		}
-		rest = append(rest, a)
+	if len(args) == 0 {
+		usage(os.Stdout)
+		return nil
 	}
-
-	cmd := ""
-	if len(rest) > 0 {
-		cmd = rest[0]
-	}
-
+	cmd, rest := args[0], args[1:]
 	switch cmd {
-	case "", "help", "-h", "--help":
+	case "help", "-h", "--help":
 		usage(os.Stdout)
 		return nil
 	case "version", "--version":
-		return cmdVersion(jsonOut)
+		return cmdVersion(rest)
 	case "kinds":
-		return cmdKinds(jsonOut)
+		return cmdKinds(rest)
 	case "init":
-		return cmdInit(rest[1:])
+		return cmdInit(rest)
 	default:
 		if slices.Contains(plannedCommands, cmd) {
-			return fmt.Errorf("%q is not implemented yet (Phase 0 skeleton)", cmd)
+			return fmt.Errorf("%q is not implemented yet (planned)", cmd)
 		}
 		usage(os.Stderr)
 		return fmt.Errorf("unknown command %q", cmd)
 	}
 }
 
-func cmdVersion(jsonOut bool) error {
-	if jsonOut {
+// jsonFlagSet returns a FlagSet carrying the standard --json flag (D2).
+func jsonFlagSet(name string) (*flag.FlagSet, *bool) {
+	fs := flag.NewFlagSet(name, flag.ExitOnError)
+	jsonOut := fs.Bool("json", false, "emit output as JSON")
+	return fs, jsonOut
+}
+
+func cmdVersion(args []string) error {
+	fs, jsonOut := jsonFlagSet("version")
+	_ = fs.Parse(args)
+	if *jsonOut {
 		return writeJSON(os.Stdout, map[string]string{"version": version})
 	}
 	fmt.Println(version)
 	return nil
 }
 
-// cmdKinds prints the closed kind taxonomy — a tiny end-to-end check that the
-// binary, the shared specmodel package, and --json all wire together.
-func cmdKinds(jsonOut bool) error {
-	if jsonOut {
+func cmdKinds(args []string) error {
+	fs, jsonOut := jsonFlagSet("kinds")
+	_ = fs.Parse(args)
+	if *jsonOut {
 		return writeJSON(os.Stdout, specmodel.Kinds)
 	}
 	for _, k := range specmodel.Kinds {
@@ -96,33 +96,20 @@ func cmdKinds(jsonOut bool) error {
 
 // cmdInit scaffolds a project for an agent. SPEC: story.init.basic
 func cmdInit(args []string) error {
-	integration, name := "", ""
-	force, here := false, false
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--integration":
-			i++
-			if i < len(args) {
-				integration = args[i]
-			}
-		case "--force":
-			force = true
-		case "--here":
-			here = true
-		default:
-			if !strings.HasPrefix(args[i], "-") && name == "" {
-				name = args[i]
-			}
-		}
-	}
-	root := name
-	if here || name == "." {
+	fs := flag.NewFlagSet("init", flag.ExitOnError)
+	integration := fs.String("integration", "", "agent integration (claude|codex|copilot|generic)")
+	force := fs.Bool("force", false, "proceed even if the target directory is non-empty")
+	here := fs.Bool("here", false, "initialize in the current directory")
+	_ = fs.Parse(args)
+
+	root := fs.Arg(0)
+	if *here || root == "." {
 		root = "."
 	}
 	if root == "" {
 		return fmt.Errorf("init: provide a project name or --here")
 	}
-	if integration == "" {
+	if *integration == "" {
 		return fmt.Errorf("init: --integration required (one of %v)", project.AdapterIDs())
 	}
 	if root != "." {
@@ -130,11 +117,11 @@ func cmdInit(args []string) error {
 			return err
 		}
 	}
-	written, err := project.Init(root, coreassets.FS, project.Options{Integration: integration, Force: force})
+	written, err := project.Init(root, coreassets.FS, project.Options{Integration: *integration, Force: *force})
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Initialized SpecKit (%s) at %s — %d paths written\n", integration, root, len(written))
+	fmt.Printf("Initialized SpecKit (%s) at %s — %d paths written\n", *integration, root, len(written))
 	return nil
 }
 
@@ -145,11 +132,11 @@ func writeJSON(w io.Writer, v any) error {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintf(w, "specify %s — SpecKit CLI (Phase 0 skeleton)\n\n", version)
-	fmt.Fprintln(w, "Usage: specify <command> [--json]")
-	fmt.Fprintln(w, "\nAvailable now:")
-	fmt.Fprintln(w, "  version   print the binary version")
-	fmt.Fprintln(w, "  kinds     list the spec kind taxonomy")
+	fmt.Fprintf(w, "specify %s — SpecKit CLI\n\n", version)
+	fmt.Fprintln(w, "Usage: specify <command> [flags]")
+	fmt.Fprintln(w, "\nCommands:")
+	fmt.Fprintln(w, "  init --integration <agent> [name]   scaffold a project")
+	fmt.Fprintln(w, "  version | kinds                     (add --json for structured output)")
 	fmt.Fprintln(w, "\nPlanned (stubbed):")
 	fmt.Fprintln(w, "  "+strings.Join(plannedCommands, ", "))
 }
