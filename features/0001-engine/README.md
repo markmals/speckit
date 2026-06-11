@@ -1,0 +1,13 @@
+# 0001 — Spec engine
+
+The deterministic core of `specify`: scan/verify/drift over the spec library (cover/parity arrive once a second platform exists). These specs gate **Phase 3** of the fork plan, and the Phase 1 spike pressure-tests the `verify` scenario-join (D12) and `parity` deviation handling (D11) before this lands for real.
+
+Scenarios are lifted from the plan's Phase-3 exit criteria.
+
+| Spec | Capability |
+| --- | --- |
+| [`story.engine.scan`](stories/engine.scan.md) | Lint the spec library against the `domain.specmodel` invariants. |
+| [`story.engine.verify`](stories/engine.verify.md) | Run a platform's tests, normalize reports, join to scenarios, write the lock on green. |
+| [`story.engine.drift`](stories/engine.drift.md) | Report specs whose content hash no longer matches their locked-green hash. |
+
+Depends on [`domain.specmodel`](../../specs/models/specmodel.md) and [`conventions`](../../specs/CONVENTIONS.md).

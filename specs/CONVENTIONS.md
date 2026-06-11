@@ -1,0 +1,173 @@
+---
+id: conventions
+kind: conventions
+---
+
+# Spec Conventions
+
+This document defines the structure of specs in SpecKit. Every spec, reverse pointer, and drift check assumes these rules. The `internal/specmodel` package is the mechanized form of this file; if you change anything here, audit `specmodel` and every existing spec for consistency.
+
+> **TL;DR:** Markdown files with YAML frontmatter, stable dotted IDs, one logical thing per file, `// SPEC: <id>` comments in the code that implements them, and a content-hash lock that records what was last verified green.
+
+This file is derived from the Workbench conventions and amended per the fork plan — most importantly **D7** (drift is a content-hash acknowledgment lock, not an mtime comparison).
+
+## Why specs at all
+
+Native, idiomatic implementations on every platform mean the _behavior_ must converge even though the _code_ won't. Specs are the only artifact shared across platforms — they are the contract. Everything else (the web app, the UIKit app, the Convex schema) is a regeneration target. Specs describe **what** must hold; tests prove it; implementations satisfy it. None of the three is the source of truth on its own.
+
+SpecKit is its own first user: the engine's behavior is specified here under `features/` and `specs/models/`, and its tests carry the same reverse pointers any product would.
+
+## File and directory layout
+
+```
+specs/                          ← cross-cutting (used by ≥ 2 features or tool-wide)
+├── CONVENTIONS.md              ← this file
+├── ARCHITECTURE.md             ← singular per product (optional)
+├── DESIGN_SYSTEM.md            ← singular per product (optional)
+├── models/<id>.md              ← cross-cutting domain models
+└── view-models/<id>.md         ← cross-cutting view models (rare)
+
+features/<NNNN>-<slug>/         ← feature-scoped (only this feature uses it)
+├── NARRATIVE.md                ← singular per feature
+├── README.md                   ← singular per feature; describes the folder
+├── stories/<id>.md             ← one user story per file
+├── use-cases/<id>.md           ← one concrete use case per file
+├── user-flow/<id>.md           ← one interaction sequence per file
+├── models/<id>.md              ← one domain model per file
+├── view-models/<id>.md         ← one view model per file
+└── errors/<id>.md              ← one error catalog entry per file
+```
+
+### One logical thing per file
+
+If a kind has multiple instances in a feature, it gets a **directory** of `<id>.md` files. If a kind has exactly one instance (the narrative), it stays a **file**. Directory names are kebab-case (`view-models/`, not `view_models/`).
+
+### Cross-cutting vs feature-scoped
+
+A spec lives in `features/<n>/` until a _second_ feature depends on it, then it is **promoted** to `specs/<kind>/<id>.md` — the file moves, **the ID does not change**, and reverse pointers stay valid through the move.
+
+## Frontmatter schema
+
+```yaml
+---
+id: <stable-dotted-id>          # required; must match the filename stem
+kind: <one of the kinds below>  # required
+depends-on: [<id>, <id>]        # optional; specs this one references
+status: draft | accepted        # optional; default = accepted
+---
+```
+
+Singular cross-cutting files use the short form (`id: conventions`, `kind: conventions`). `depends-on` is a flat, non-transitive list, primarily so a human or agent can grep for "what depends on `domain.specmodel`".
+
+## Kind taxonomy
+
+The closed set of allowed `kind:` values. Adding a kind is a deliberate change to this file **and** to `internal/specmodel` — never ad hoc.
+
+| Kind            | Directory       | ID prefix                      | Notes                                          |
+| --------------- | --------------- | ------------------------------ | ---------------------------------------------- |
+| `narrative`     | (singular file) | `narrative.<feature-slug>`     | One per feature.                               |
+| `story`         | `stories/`      | `story.<feature>.<capability>` | Gherkin lives inline.                          |
+| `use-case`      | `use-cases/`    | `usecase.<feature>.<scenario>` | Concrete walkthrough.                          |
+| `flow`          | `user-flow/`    | `flow.<feature>.<action>`      | Step-by-step interaction sequence.             |
+| `domain`        | `models/`       | `domain.<entity>`              | Data shapes, invariants, validation rules.     |
+| `view-model`    | `view-models/`  | `vm.<feature>.<view>`          | State, actions, transitions, derived values.   |
+| `error`         | `errors/`       | `error.<domain>.<kind>`        | User-observable failure + recovery.            |
+| `architecture`  | (singular file) | `architecture`                 | Cross-cutting; one per product.                |
+| `design-system` | (singular file) | `design-system`                | Cross-cutting; one per product.                |
+| `conventions`   | (this file)     | `conventions`                  | Cross-cutting; one per product.                |
+
+## Stable IDs
+
+IDs are dotted, lowercase, hierarchical, and stable. The first segment is the kind prefix; the rest narrow to an instance.
+
+**Good:** `domain.specmodel`, `story.engine.scan`, `vm.items.list`, `error.item.duplicate`
+**Bad:** `Specmodel`, `engine/scan`, `vm-items-list`, `viewmodel.items.list` (use `vm.`)
+
+- IDs are immutable once an implementation references them. Renaming is a deliberate migration: update the spec ID, every `// SPEC:` reference, and every test tag in one commit.
+- IDs do not change on promotion from `features/` to `specs/`.
+- IDs do not encode platform — they describe abstract behavior.
+
+### Filename = ID stem
+
+The filename matches the trailing segment of the ID, dots preserved within the stem: `domain.specmodel` → `models/specmodel.md`; `story.engine.scan` → `stories/engine.scan.md`; `vm.items.list` → `view-models/items.list.md`.
+
+## Reverse pointers
+
+Every implementation unit that realizes a spec carries its ID in a comment, attached to the smallest unit that fully realizes the spec (usually a class or top-level function). Do not annotate every helper.
+
+```go
+// SPEC: domain.specmodel
+type Frontmatter struct { /* ... */ }
+```
+
+```ts
+// SPEC: vm.items.list
+export const itemsListQueryOptions = queryOptions({ /* ... */ })
+```
+
+```swift
+// SPEC: vm.items.list
+@Observable final class ItemsListViewModel { /* ... */ }
+```
+
+### Tests carry the same IDs — the scenario join (D12)
+
+Every behavioral test is tagged with the spec **and scenario** IDs it verifies. The mechanism is per-language but the discipline is uniform, and the engine's `verify` join (D12) is built on it — a scenario with no joinable test, or a test whose scenario ref is dangling, is a **hard error**, never a silent zero-match.
+
+- **Go (the engine's own tests):** the test file carries `// SPEC: <id>`, and each scenario has a `// [scenario.<id>] …` comment above its `t.Run` / test func (Go test names can't hold dots or brackets, so the sub-ID lives in the comment the scanner greps).
+- **Vitest:** `describe("vm.items.list")` + `it("[scenario.items.list.empty] …")`.
+- **Swift Testing:** `@Test(.tags(.spec("vm.items.list"), .scenario("items.list.empty")))`.
+- **kotlin.test (JUnit5):** `@Tag("spec:vm.items.list")` + `@DisplayName("[scenario.items.list.empty] …")`.
+- **cargo-nextest (Rust):** a `mod` with `// SPEC: <id>` and a test fn named `scenario_items_list_empty` (mangled sub-ID; the scanner demangles).
+
+## Stories and scenarios
+
+A story file contains frontmatter, an `As a / I want / So that` block, and an `# Acceptance Criteria` section of Gherkin scenarios. Each scenario carries a stable sub-ID:
+
+```md
+## Scenario 1: Creating an item with valid information
+
+<!-- id: scenario.item.create.happy-path -->
+
+- Given a signed-in user
+- When the user creates an item with valid information
+- Then the item appears in the user's list
+```
+
+Sub-IDs follow `scenario.<feature>.<capability>.<short-name>` and are what tests reference in their `[scenario.id]` tag.
+
+## Marking unspecified content
+
+Do not silently guess. Mark gaps inline with `[NEEDS CLARIFICATION: <question>]`. A spec cannot be applied (`/speckit.apply`) while markers remain; `/speckit.clarify` surfaces and resolves them. Use it when a behavior/constraint/value is unstated or two interpretations are equally plausible — not for implementation details (those are `(deviates:)` comments) or out-of-scope placeholders.
+
+## Deviation marker (D11)
+
+When a platform must diverge — constraint, idiom, or deliberate UX choice — annotate it so the pointer stays live:
+
+```swift
+// SPEC: vm.items.list (deviates: iOS uses pull-to-refresh; web uses a button)
+```
+
+```ts
+// SPEC: manual — platform-specific code with no spec
+```
+
+`(deviates: <reason>)` keeps drift detection flagging spec changes. Per **D11** a deviation is a **human attestation the engine cannot verify**: `specify parity` surfaces every marker in a stale-deviation audit and treats a deviation cell as "needs sign-off," never as green. `// SPEC: manual` opts out entirely, used sparingly.
+
+## Drift detection (D7 — acknowledgment lock, not mtime)
+
+A spec and its implementation on a platform are **in sync** when:
+
+1. Every spec has at least one reverse pointer on that platform (or is intentionally not yet implemented).
+2. The platform's lock shard for the spec records the **content hash of the spec version last verified green**, and that hash matches the spec's current content.
+3. Tests tagged with the spec's scenarios exist on the platform and passed at that verified-green hash.
+
+The lock lives at `.speckit/lock/<platform>/<spec-id>` — sharded per spec so parallel worktree agents never merge-conflict. `specify lock` is the **only** writer, invoked by `specify verify` on green; the path is covered by the generated-file gate. `specify drift` reports any spec whose current hash differs from its locked hash (or has no lock) — hash-mismatch-or-missing, with no reliance on filesystem mtimes (which git does not preserve).
+
+## Reconciliation
+
+When one platform's implementation diverges from the spec (usually a direct bug fix), `specify reconcile <platform>` reads the platform's impl + tests, diffs against the spec, and proposes updates to the spec and the other platforms. Reconciliation is **not automatic** — the agent proposes; a human approves.
+
+## What is NOT a spec
+
+Reference material an agent may read but must not place under `specs/` or a feature's spec subdirectories: wireframes/Figma URLs, prototype code, meeting notes/RFCs (use `docs/`), analytics/telemetry, and platform-local cosmetic defects (those go in `apps/<platform>/DEFECTS.md`). The test: **could a different platform realize this differently and still be correct?** If no, it's implementation, not spec.
