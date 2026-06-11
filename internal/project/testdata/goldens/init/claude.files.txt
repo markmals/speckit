@@ -1,0 +1,16 @@
+.claude/skills/speckit-analyze/SKILL.md
+.claude/skills/speckit-checklist/SKILL.md
+.claude/skills/speckit-clarify/SKILL.md
+.claude/skills/speckit-constitution/SKILL.md
+.claude/skills/speckit-implement/SKILL.md
+.claude/skills/speckit-plan/SKILL.md
+.claude/skills/speckit-specify/SKILL.md
+.claude/skills/speckit-tasks/SKILL.md
+.claude/skills/speckit-taskstoissues/SKILL.md
+.speckit/extensions.yml
+.speckit/memory/constitution.md
+.speckit/templates/checklist-template.md
+.speckit/templates/plan-template.md
+.speckit/templates/spec-template.md
+.speckit/templates/tasks-template.md
+CLAUDE.md

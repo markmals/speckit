@@ -1,0 +1,16 @@
+.agents/skills/speckit-analyze/SKILL.md
+.agents/skills/speckit-checklist/SKILL.md
+.agents/skills/speckit-clarify/SKILL.md
+.agents/skills/speckit-constitution/SKILL.md
+.agents/skills/speckit-implement/SKILL.md
+.agents/skills/speckit-plan/SKILL.md
+.agents/skills/speckit-specify/SKILL.md
+.agents/skills/speckit-tasks/SKILL.md
+.agents/skills/speckit-taskstoissues/SKILL.md
+.speckit/extensions.yml
+.speckit/memory/constitution.md
+.speckit/templates/checklist-template.md
+.speckit/templates/plan-template.md
+.speckit/templates/spec-template.md
+.speckit/templates/tasks-template.md
+AGENTS.md
