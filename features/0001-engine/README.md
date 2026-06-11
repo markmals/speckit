@@ -9,5 +9,9 @@ Scenarios are lifted from the plan's Phase-3 exit criteria.
 | [`story.engine.scan`](stories/engine.scan.md) | Lint the spec library against the `domain.specmodel` invariants. |
 | [`story.engine.verify`](stories/engine.verify.md) | Run a platform's tests, normalize reports, join to scenarios, write the lock on green. |
 | [`story.engine.drift`](stories/engine.drift.md) | Report specs whose content hash no longer matches their locked-green hash. |
+| [`story.engine.parity`](stories/engine.parity.md) | Per (platform × scenario) parity: conforming / declared-deviation / drifted / missing / suspect. |
+| [`story.engine.cover`](stories/engine.cover.md) | Per-spec coverage across the platform matrix, read from the lock. |
+| [`story.engine.lock`](stories/engine.lock.md) | The single writer of the acknowledgment lock (D7). |
+| [`story.engine.gate`](stories/engine.gate.md) | Agent-agnostic enforcement subchecks for git/CI (D8). |
 
 Depends on [`domain.specmodel`](../../specs/models/specmodel.md) and [`conventions`](../../specs/CONVENTIONS.md).
