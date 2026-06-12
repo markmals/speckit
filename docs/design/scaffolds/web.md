@@ -1,42 +1,41 @@
 # Web scaffold — tooling preview
 
-**Status:** ⚠️ **Revised 2026-06-12 after inspecting the actual repos.** The earlier
-"TanStack Start" approval was based on a shallow read (repo names + primary
-language) and is **superseded**. The real, actively-developed web stack —
-confirmed from `remix-3-templates` and `remix-3-contacts` source — is **Remix 3
-on your own toolchain**. **Re-approval needed.**
+**Status:** proposal, grounded in your real product repos (`trove/apps/trove`,
+`trove/apps/tangerine-dashboard`) + your stated intent. Supersedes both earlier
+drafts (the TanStack-off-metadata one and the Remix-3 overcorrection). For sign-off.
 
-## Real stack (inspected, not guessed)
+> **What went wrong twice, so it's on record:** I first proposed TanStack off repo
+> *names*; then "corrected" to Remix 3 off your *most-pushed* repos — but those are
+> you working **on** the Remix framework, not your **product** stack. Reading the
+> actual `package.json` of a shipping app settled it.
 
-| layer | what your repos actually use | evidence |
+## The stack (inspected from `trove`)
+
+| layer | choice | from |
 | --- | --- | --- |
-| **framework** | **Remix 3** (`remix@3.0.0-beta.2`) — *not* React/TanStack (no `react` dep at all; Remix 3 is its own framework) | `remix-3-templates`, `remix-3-contacts`, 4× `remix-frame-*`, all pushed this month |
-| **toolchain** | **vite-plus** — `vite` is aliased to `@voidzero-dev/vite-plus-core`; `@hiogawa/vite-plugin-fullstack` | `remix-3-templates/bun/package.json` |
-| **runtime** | **Bun** and/or **Cloudflare Workers** (`wrangler`, `@cloudflare/vite-plugin`) | `bun/` + `cloudflare/` template variants |
-| **TS / lint** | **tsgo** (`@typescript/native-preview`) + **oxlint** (`oxlint-tsgolint`, `oxc-parser`) | dev deps |
-| **styling** | custom CSS (`app/styles/preflight.css`) — **not Tailwind** | template tree |
-| **testing** | `remix-test.config.ts` + `*.test.ts` (vite-plus/vitest-compatible) + **Playwright** e2e | `remix-3-contacts` |
-| **data** | SQL migrations (`db/migrations/*`) | `remix-3-templates/bun/db` |
-| **layout** | `app/` (actions, components, data, routes.ts, entry.{browser,server}, middleware) | template tree |
+| **framework** | **TanStack Start** (React 19 + **React Compiler**) — `@tanstack/react-start`, `react-router`, `react-query`/`form`/`table` | both trove apps |
+| **toolchain** | **vite-plus** (`defineConfig` from `vite-plus`; `@vitejs/plugin-react` + `@rolldown/plugin-babel` reactCompiler; **lightningcss**) | `apps/trove/vite.config.ts` |
+| **styling** | **Tailwind v4** (`@tailwindcss/vite`) + `cva` + `tailwind-merge` + `react-aria-components` | both apps |
+| **TS / lint** | **tsgo** (`@typescript/native-preview`) + `eslint-plugin-{perfectionist,prefer-let}` | both apps |
+| **data** | **Convex** (hosted) by default; *or* **Drizzle** + `@hey-api/openapi-ts` against an OpenAPI backend (Trove's Go-daemon pattern) | your intent + trove |
+| **auth** *(optional)* | **Clerk** (`@clerk/tanstack-react-start`) via `--with clerk` | tangerine-dashboard |
+| **runtime** | **Cloudflare Workers** (SSR, prod default — `@cloudflare/vite-plugin` + `wrangler`) · **Node-local** (Trove's daemon-served SPA, `spa: { enabled: true }`) | both apps |
+| **testing** | `*.test.ts` via **`vp test`** (vitest under vite-plus) → `junit` | trove tests |
 
-You're also already doing SDD here — `remix-3-contacts` ships `.claude/skills/remix/`
-and `docs/superpowers/specs/`.
+Layout mirrors your apps: `app/` (routes.ts virtual routes → `routes.gen.ts`,
+`entry.*`, `components/`, `styles/`, `lib/`).
 
-## Implication: mirror your own template
+## Proposed defaults (adjust at will)
 
-SpecKit's `web` scaffold should **be your `remix-3-templates`** (the canonical
-Remix 3 + vite-plus + Bun/Cloudflare setup you already maintain) with the SpecKit
-**binding harness** layered on — not an invented TanStack project. And the
-shipped `web` **pack** (`web-development`, which I ported from Workbench as
-React/TanStack/Tailwind) is **wrong for you** → it should be rewritten to Remix 3
-(you already have `.claude/skills/remix/` as the source of truth).
+- **Runtime:** `--runtime cloudflare` (prod) | `node` (Trove pattern). Default **cloudflare**.
+- **Data:** `--data convex` (default, hosted) | `drizzle` (with an OpenAPI backend).
+- **Auth:** off; `--with clerk` adds it.
 
-## The binding harness (makes `specify verify web` green on arrival)
+## The binding harness (green on `specify verify web`)
 
-- The test runner (vite-plus / `remix-test.config.ts`) configured with a
-  **`junit` reporter** → the `report` path.
-- One example story under `features/` + a bound `*.test.ts` using
-  **`// [scenario.<id>]`** above the test, and a `// SPEC:` pointer on the unit.
+`vp test` configured with a **`junit` reporter** → the `report` path; one example
+story under `features/` + a bound `*.test.ts` using **`// [scenario.<id>]`** + a
+`// SPEC:` pointer.
 
 ```json
 "web": {
@@ -48,20 +47,15 @@ React/TanStack/Tailwind) is **wrong for you** → it should be rewritten to Remi
 }
 ```
 
-(`command`/`report` flags pinned once I confirm vp test's junit output at build.)
+## Consequence for the pack
 
-## Your calls (re-approval)
-
-1. **Runtime default** — Bun · Cloudflare Workers · ask each time. (Your templates ship both.)
-2. **Mirror `remix-3-templates` as-is**, or a trimmed variant for scaffolding?
-3. **Styling** — keep custom CSS (your default), or offer Tailwind as `--with`?
-4. **Pack** — rewrite `web-development` to Remix 3 now, or point it at your existing `.claude/skills/remix/`?
+The shipped `web-development` pack (ported from Workbench) is close in spirit
+(React/TanStack/Tailwind) but should be refreshed to *this* exact stack
+(React Compiler, vite-plus, Convex/Drizzle, Clerk) — a follow-up, not a blocker.
 
 ## Method note
 
-This correction came from reading the actual `package.json` + file trees. The
-same **inspect-don't-guess** pass should precede every stack's preview (e.g. the
-iOS apps, the TS libs, the VS Code extensions) before we build them.
-
-Sources (mid-2026 currency): [Remix blog](https://remix.run/blog) ·
-[Vite+ / VoidZero](https://voidzero.dev) — exact versions pinned at build time.
+Every remaining stack gets the same treatment: read a real shipping repo's
+manifest before its preview, not the name/language. (Confirmed by inspection so
+far: `remctl` = Swift `.executable` CLI; `Reactivity` = Swift `.library`;
+`SafariInjector` = a Theos jailbreak tweak, not an extension.)

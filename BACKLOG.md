@@ -82,12 +82,12 @@ First slice = **web** end-to-end (green on `specify verify` immediately), then *
 **Resolved:** plain `specs.json` (so the merge is a trivial load→add→write), keep `{{ }}` with escaping,
 and `target add` runs the install (`--no-install` to skip). Folded into the design doc.
 
-**Web tooling — REVISED after code inspection** ([web preview](docs/design/scaffolds/web.md)): the TanStack
-proposal was **superseded** by reading the actual repos. The real active stack is **Remix 3**
-(`remix@3.0.0-beta.2`) on **vite-plus** + Bun/Cloudflare + tsgo/oxlint + custom CSS, mirroring Mark's own
-`remix-3-templates`. Re-approval pending. The shipped `web-development` pack (ported as TanStack/React) also
-needs rewriting to Remix 3 (Mark already has `.claude/skills/remix/`). **Lesson: inspect each stack's real
-repos before previewing it — don't infer from names/languages.**
+**Web tooling — grounded in the real product repos** ([web preview](docs/design/scaffolds/web.md), from
+`trove/apps/*`): **TanStack Start** (React 19 + React Compiler) + **vite-plus** + **Tailwind v4** + tsgo;
+data via **Convex** (default) or **Drizzle + @hey-api/openapi-ts**; runtimes **Cloudflare Workers** (prod) +
+**Node-local** (trove); **Clerk** optional. (The first-instinct TanStack was right; the Remix-3 detour was
+framework R&D, not the product stack — Remix repos are Mark working *on* Remix.) Pack refresh to this exact
+stack is a follow-up. **Lesson: read a real shipping repo's manifest before each stack's preview.**
 
 ## Coverage gap — libraries / Swift packages / CLIs / extensions (from the ~/Developer sweep)
 
