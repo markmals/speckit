@@ -140,6 +140,7 @@ Because SpecKit uses the same spec conventions as the Workbench template, **the 
      "agent": "claude",
      "targets": {
        "web": {
+         "stack": "web",
          "command": "pnpm -C apps/web test --run",
          "format": "junit",
          "report": "apps/web/report.junit.xml",
@@ -152,7 +153,11 @@ Because SpecKit uses the same spec conventions as the Workbench template, **the 
    ```sh
    specify verify web
    ```
-3. **Make sure each test names its scenario** in source (the binding `verify` joins on). If your Workbench tests already carry scenario tags, you're done; otherwise add them as you verify each spec.
+3. **Project the platform packs** for your targets' stacks — the stack-specific dev/verification skills:
+   ```sh
+   specify packs
+   ```
+4. **Make sure each test names its scenario** in source (the binding `verify` joins on). If your Workbench tests already carry scenario tags, you're done; otherwise add them as you verify each spec.
 
 You don't need to run `init` on an existing project — it's for new projects. `init --here` can add the `/speckit.*` command projections to a project that doesn't have its own, but a Workbench project already ships its agent commands, so adopting SpecKit there is just the binary plus the targets in `.speckit/specs.jsonc`.
 
@@ -230,7 +235,8 @@ Run `specify <command>`. Reporting commands print a styled summary by default an
 
 | Command | What it does |
 | --- | --- |
-| `specify scan [path]` | Check the spec library for problems — malformed/duplicate IDs, broken cross-references, scenarios missing IDs. Exits non-zero if any are found. |
+| `specify scan [path]` | Check the spec library for problems — malformed/duplicate IDs, broken cross-references, scenarios missing IDs — and validate `.speckit/specs.jsonc`. Exits non-zero if any are found. |
+| `specify packs [path]` | Project the platform skill packs for your targets' stacks (per `.speckit/specs.jsonc`) into the agent's skills dir. |
 | `specify kinds` | List the kinds of spec the project understands (story, model, error, …). |
 
 ### Verify and track each target

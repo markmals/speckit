@@ -16,6 +16,7 @@ implementations the engine verifies. It's JSONC: plain JSON plus `//` and
 
   "targets": {
     "web": {
+      "stack":   "web",                          // selects the platform pack (see "Platform packs")
       "command": "pnpm -C apps/web test --run",  // shell string (à la a Mise task's `run`); omit if the report already exists
       "format":  "junit",                        // junit | swift
       "report":  "apps/web/report.junit.xml",    // where the run writes its report
@@ -23,6 +24,7 @@ implementations the engine verifies. It's JSONC: plain JSON plus `//` and
       "product": "consumer-app"                  // optional label (see "Products" below)
     },
     "ios": {
+      "stack":   "apple",
       "command": "xcodebuild test -scheme App -resultBundlePath …",
       "format":  "swift",                        // Swift Testing's event-stream NDJSON
       "report":  "apps/ios/.build/tests.ndjson",
@@ -48,6 +50,36 @@ implementations the engine verifies. It's JSONC: plain JSON plus `//` and
 
 A **target is the atomic unit**: a globally-unique name with its own lock. The
 `platform` vocabulary from earlier builds is gone — it's `target` everywhere now.
+
+## Platform packs
+
+A target's optional **`stack`** selects a **pack** of platform skills — the
+stack-specific dev and verification guidance (React/TanStack, UIKit/SwiftUI,
+Compose, WinUI, the CLI stacks, …). Unlike the process-discipline skills (which
+`init` projects for every project), platform skills are stack-specific, so
+they're projected **on demand**:
+
+```sh
+specify packs        # project the packs for every stack in specs.jsonc
+```
+
+`packs` reads `specs.jsonc`, takes the distinct `stack` values across your
+targets, and projects each pack's skills into the agent's skills dir — using the
+`agent` field to know where (`.claude/skills`, `.agents/skills`, `.github/skills`).
+Re-run it after adding a target on a new stack.
+
+| `stack` | pack skills projected |
+| --- | --- |
+| `web` | `web-development`, `web-verification` |
+| `website` | `website-development` |
+| `apple` | `ios-development`, `ios-simulator-control` |
+| `android` | `android-development`, `android-emulator-control` |
+| `windows` | `windows-development`, `windows-app-control` |
+| `linux` | `linux-development` |
+| `go-cli` · `node-cli` · `rust-cli` | the matching `*-development` skill |
+
+The GUI packs pair with the `visual-verifier` subagent, which drives a real
+browser / simulator / emulator through a story's Gherkin scenarios.
 
 ## Products — today, a label
 

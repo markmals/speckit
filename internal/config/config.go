@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 // File is the config path relative to the project root.
@@ -39,6 +40,7 @@ type Paths struct {
 type Target struct {
 	Product  string   `json:"product,omitempty"`
 	Products []string `json:"products,omitempty"`
+	Stack    string   `json:"stack,omitempty"` // selects the platform pack: web|apple|android|windows|linux|go-cli|node-cli|rust-cli|website
 	Command  string   `json:"command,omitempty"`
 	Format   string   `json:"format"` // junit | swift
 	Report   string   `json:"report"`
@@ -107,6 +109,21 @@ func (c Config) ProductTargets() map[string][]string {
 		}
 	}
 	return m
+}
+
+// Stacks lists the distinct, non-empty target stacks (which platform packs
+// `specify packs` should project).
+func (c Config) Stacks() []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, t := range c.Targets {
+		if t.Stack != "" && !seen[t.Stack] {
+			seen[t.Stack] = true
+			out = append(out, t.Stack)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 func (t Target) productLabels() []string {

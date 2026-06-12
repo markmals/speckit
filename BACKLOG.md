@@ -35,9 +35,10 @@ Workbench has **21 skills**; the slash commands should invoke them (as `/sdd-*` 
 - ✅ implementing-a-spec · brainstorming-feature · writing-user-stories (ported + wired to the commands)
 - 🔒 **triaging-defects** — the `DEFECTS.md` drain; blocked on establishing a defect-ledger convention + a `/speckit.defect` equivalent + the per-target folder model.
 
-**Platform dev skills (9):** android · go-cli · ios · linux · node-cli · rust-cli · web · website · windows -development. ⬜ **Unblocked** — targets exist now. Port + project, gated on the configured targets. The big next slice.
-
-**Platform verification/control skills (4):** android-emulator-control · ios-simulator-control · web-verification · windows-app-control. ⬜ Same slice; brings the `visual-verifier` subagent's sim/browser bridges with it.
+**Platform dev (9) + verification/control (4) skills:** ✅ All 13 ported to
+`internal/coreassets/templates/packs/<stack>/` and projected **on demand** by `specify packs`,
+gated on each target's `stack` (web/apple/android/windows/linux/go-cli/node-cli/rust-cli/website).
+`init` stays process-skills-only. See [docs/config.md](docs/config.md#platform-packs).
 
 **Wire skills to slash commands** ✅ — `/speckit.specify` → brainstorming-feature (+ writing-user-stories); `/speckit.implement` → implementing-a-spec; `/speckit.analyze` → `specify scan` + semantic passes; etc.
 
@@ -80,8 +81,8 @@ the feature folder; `plan` and `tasks` become **per-platform layers on top** —
 - ✅ `spec-reviewer` · `test-gap-finder` · `drift-hunter` · `handoff-builder` ported and projected into
   `.claude/agents/` (claude-only — codex/generic/copilot have no projectable subagent-dispatch dir). Each
   leans on the engine: spec-reviewer → `specify scan`; the rest → `specify verify`/`drift`/`parity`.
-- 🔒 `visual-verifier` — deferred to the **platform packs**: it drives Chrome DevTools / iOS sim / Android
-  emulator, bridges that arrive with the platform verification skills (blocked on the targets config).
+- ✅ `visual-verifier` — ported (drives Chrome DevTools / iOS sim / Android emulator through a story's
+  Gherkin scenarios), projected by `init` alongside the other subagents.
 - ⬜ codex/copilot review-equivalents — open question; their delegation models differ from Claude's dispatch.
 
 ---

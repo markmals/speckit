@@ -43,7 +43,7 @@ func rootCmd() *cobra.Command {
 	}
 	root.SetErrPrefix("specify:")
 	root.AddCommand(
-		versionCmd(), kindsCmd(), initCmd(), scanCmd(),
+		versionCmd(), kindsCmd(), initCmd(), scanCmd(), packsCmd(),
 		lockCmd(), driftCmd(), coverCmd(), verifyCmd(), parityCmd(), gateCmd(),
 	)
 	// Planned-but-unimplemented commands (D5): registered so they report intent
@@ -138,6 +138,42 @@ func initCmd() *cobra.Command {
 	c.Flags().BoolVar(&force, "force", false, "proceed even if the target directory is non-empty")
 	c.Flags().BoolVar(&here, "here", false, "initialize in the current directory")
 	return c
+}
+
+// packsCmd projects the platform skill packs for the target stacks declared in
+// .speckit/specs.jsonc, into the configured agent's skills dir.
+func packsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "packs [path]",
+		Short: "Project platform skill packs for the configured target stacks",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root := "."
+			if len(args) > 0 {
+				root = args[0]
+			}
+			cfg, found, err := config.Load(root)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return fmt.Errorf("no %s — define your targets first (run specify init)", config.File)
+			}
+			if cfg.Agent == "" {
+				return fmt.Errorf(`%s: set "agent" to project packs`, config.File)
+			}
+			stacks := cfg.Stacks()
+			if len(stacks) == 0 {
+				return fmt.Errorf(`no target declares a "stack" in %s`, config.File)
+			}
+			written, err := project.ProjectPacks(root, coreassets.FS, cfg.Agent, stacks)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Projected %d pack skill(s) for stacks: %s\n", len(written), strings.Join(stacks, ", "))
+			return nil
+		},
+	}
 }
 
 // SPEC: story.engine.scan

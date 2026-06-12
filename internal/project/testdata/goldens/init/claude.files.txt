@@ -2,6 +2,7 @@
 .claude/agents/handoff-builder.md
 .claude/agents/spec-reviewer.md
 .claude/agents/test-gap-finder.md
+.claude/agents/visual-verifier.md
 .claude/skills/adversarial-review/SKILL.md
 .claude/skills/brainstorming-feature/SKILL.md
 .claude/skills/implementing-a-spec/SKILL.md
