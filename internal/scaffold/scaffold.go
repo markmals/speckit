@@ -6,6 +6,7 @@ package scaffold
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -123,6 +124,16 @@ func renderSubtree(src fs.FS, root, destDir string, data Data) ([]string, error)
 		return nil
 	})
 	return written, err
+}
+
+// RenderRoot renders the scaffold's optional root/ subtree into the project root
+// (e.g. an example feature into features/, so a fresh target is green on
+// `specify verify`). Returns nil if the scaffold has no root/ subtree.
+func RenderRoot(src fs.FS, projectRoot string, data Data) ([]string, error) {
+	if _, err := fs.Stat(src, "root"); errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	return renderSubtree(src, "root", projectRoot, data)
 }
 
 // RenderFeature renders a feature's files subtree into destDir.

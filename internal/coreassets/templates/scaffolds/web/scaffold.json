@@ -1,0 +1,10 @@
+{
+  "stack": "web",
+  "install": "pnpm install",
+  "target": {
+    "command": "cd {{.Dir}} && mise run test",
+    "format": "junit",
+    "report": "{{.Dir}}/junit.xml",
+    "source": "{{.Dir}}/app"
+  }
+}

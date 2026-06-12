@@ -233,6 +233,15 @@ func targetAddCmd() *cobra.Command {
 				}
 				written = append(written, w...)
 			}
+			// Seed the scaffold's example feature into the project root, but only
+			// when the spec library is empty — never clobber existing specs.
+			if featuresEmpty(".") {
+				w, err := scaffold.RenderRoot(sub, ".", data)
+				if err != nil {
+					return err
+				}
+				written = append(written, w...)
+			}
 
 			rt, err := scaffold.RenderTarget(m, data)
 			if err != nil {
@@ -268,6 +277,16 @@ func targetAddCmd() *cobra.Command {
 	c.Flags().StringArrayVar(&with, "with", nil, "optional scaffold features (repeatable)")
 	c.Flags().BoolVar(&noInstall, "no-install", false, "skip the scaffold's install command")
 	return c
+}
+
+// featuresEmpty reports whether the project has no spec library yet (so a
+// scaffold may seed an example feature without clobbering anything).
+func featuresEmpty(root string) bool {
+	es, err := os.ReadDir(filepath.Join(root, "features"))
+	if err != nil {
+		return true // absent
+	}
+	return len(es) == 0
 }
 
 // runIn runs the scaffold's install (a developer/SpecKit-controlled shell string

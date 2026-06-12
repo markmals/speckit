@@ -95,9 +95,13 @@ by React Aria (not Radix). Pack refresh = follow-up.
     (manifest, `.tmpl` handling, FuncMap casings, `--with` features, `RenderTarget`); `specify target add <name>
     --stack <stack> [--dir --product --with --no-install]` — wired + tested (fixture). Runs the install, registers
     the target, projects the pack.
-  - ⬜ **Build Part B (web scaffold content):** the TanStack Start + Mise(monorepo) + Tailwind/React-Aria tree
-    with the binding harness, in `templates/scaffolds/web/`. The proof: scaffold → `pnpm install` → `vitest` →
-    `specify verify web` green. Then the `--data convex`/Drizzle + SSR/server variants.
+  - ✅ **Build Part B (web scaffold) — green end-to-end:** `templates/scaffolds/web/` (TanStack Start 1.168 +
+    React 19 + Vite 8 + Tailwind 4 + Vitest 4 + Mise) seeds an example feature at the project root + a bound
+    test. Proven in a temp project: `target add web` → `pnpm install` (clean) → `mise run test` →
+    **`specify verify web` green + locked**. The scaffold `root/` subtree + `featuresEmpty` seeding are wired.
+  - ⬜ **Web scaffold — flesh out:** the full default deps (React Compiler, React Aria, Motion, Zod, TanStack
+    Query/Table/Form/Hotkeys), the `app/` router structure, `--data convex|drizzle`, the SSR/server variants,
+    the `--with` features (clerk/stripe/…), Varlock + GitHub Actions + `.vscode`. Pack refresh to this stack.
   - **Per-stack previews** ([docs/design/scaffolds/](docs/design/scaffolds/)): **web** ✅ spec'd (comprehensive
     stack), **node-cli** ✅ spec'd (shares the Node toolchain; CLI-specific = Bombshell/TS-Rest/plainjob/SEA +
     Homebrew/Mise/apt/winget dist). Each remaining stack gets the same inspect-then-spec pass; no scaffold is

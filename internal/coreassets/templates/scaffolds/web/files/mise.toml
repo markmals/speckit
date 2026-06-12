@@ -1,0 +1,15 @@
+[tools]
+node = "24"
+
+# Call npm binaries (vite, vitest) by bare name — no npx.
+[env]
+_.path = ['{{config_root}}/node_modules/.bin']
+
+[tasks.dev]
+run = "vite dev"
+
+[tasks.test]
+run = "vitest run --reporter=junit --outputFile=junit.xml"
+
+[tasks.build]
+run = "vite build"

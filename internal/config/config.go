@@ -8,6 +8,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -76,14 +77,17 @@ func (c *Config) applyDefaults() {
 
 // Save writes the config to .speckit/specs.json (creating .speckit/ if needed).
 func (c Config) Save(root string) error {
-	b, err := json.MarshalIndent(c, "", "  ")
-	if err != nil {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false) // keep && in shell commands readable, not &&
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(c); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Join(root, ".speckit"), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(root, File), append(b, '\n'), 0o644)
+	return os.WriteFile(filepath.Join(root, File), buf.Bytes(), 0o644)
 }
 
 // AddTarget loads the config (or starts a fresh v1 one), adds or replaces the
