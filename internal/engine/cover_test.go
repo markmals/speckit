@@ -2,7 +2,7 @@ package engine
 
 import "testing"
 
-// SPEC: story.engine.cover (scenario.engine.cover.per-platform, .reads-lock, .drifted)
+// SPEC: story.engine.cover (scenario.engine.cover.per-target, .reads-lock, .drifted)
 func TestCover(t *testing.T) {
 	root := t.TempDir()
 	writeSpecFile(t, root, "specs/models/item.md", itemSpec)
@@ -28,12 +28,12 @@ func TestCover(t *testing.T) {
 	}
 	got := map[string]string{}
 	for _, c := range r.Cells {
-		got[c.Platform] = c.State
+		got[c.Target] = c.State
 	}
 	want := map[string]string{"apple": "drifted", "linux": "missing", "web": "conforming"}
 	for p, w := range want {
 		if got[p] != w {
-			t.Errorf("platform %s: got %q, want %q", p, got[p], w)
+			t.Errorf("target %s: got %q, want %q", p, got[p], w)
 		}
 	}
 }

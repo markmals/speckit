@@ -13,11 +13,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/markmals/speckit/internal/config"
 	"github.com/markmals/speckit/internal/coreassets"
 	"github.com/markmals/speckit/internal/engine"
 	"github.com/markmals/speckit/internal/project"
@@ -155,15 +156,27 @@ func scanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// Validate .speckit/specs.jsonc too, when present.
+			var configErrs []string
+			if cfg, found, err := config.Load(root); err != nil {
+				configErrs = append(configErrs, err.Error())
+			} else if found {
+				for _, e := range cfg.Validate() {
+					configErrs = append(configErrs, e.Error())
+				}
+			}
 			if jsonOut {
-				if err := writeJSON(os.Stdout, findings); err != nil {
+				if err := writeJSON(os.Stdout, map[string]any{"library": findings, "config": configErrs}); err != nil {
 					return err
 				}
 			} else {
 				fmt.Println(renderScan(findings))
+				for _, e := range configErrs {
+					fmt.Printf("  ✗ %s: %s\n", config.File, e)
+				}
 			}
-			if len(findings) > 0 {
-				os.Exit(1) // SPEC: scenario.engine.scan.* — findings exit non-zero
+			if len(findings) > 0 || len(configErrs) > 0 {
+				os.Exit(1) // SPEC: scenario.engine.scan.* — findings or config errors exit non-zero
 			}
 			return nil
 		},
@@ -175,8 +188,8 @@ func scanCmd() *cobra.Command {
 // SPEC: story.engine.lock
 func lockCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "lock <platform> <spec-id>",
-		Short: "Acknowledge a spec green on a platform",
+		Use:   "lock <target> <spec-id>",
+		Short: "Acknowledge a spec green on a target",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := engine.Lock(".", args[0], specmodel.SpecID(args[1])); err != nil {
@@ -192,15 +205,15 @@ func lockCmd() *cobra.Command {
 func driftCmd() *cobra.Command {
 	var jsonOut bool
 	c := &cobra.Command{
-		Use:   "drift <platform> [path]",
+		Use:   "drift <target> [path]",
 		Short: "Report specs that drifted from the lock",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			platform, root := args[0], "."
+			target, root := args[0], "."
 			if len(args) > 1 {
 				root = args[1]
 			}
-			report, err := engine.Drift(root, platform)
+			report, err := engine.Drift(root, target)
 			if err != nil {
 				return err
 			}
@@ -209,7 +222,7 @@ func driftCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				fmt.Println(renderDrift(report, platform))
+				fmt.Println(renderDrift(report, target))
 			}
 			if report.HasDrift() {
 				os.Exit(1) // SPEC: scenario.engine.drift.edited-spec-red
@@ -226,7 +239,7 @@ func coverCmd() *cobra.Command {
 	var jsonOut bool
 	c := &cobra.Command{
 		Use:   "cover <spec-id> [path]",
-		Short: "Show a spec's per-platform coverage",
+		Short: "Show a spec's per-target coverage",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, root := args[0], "."
@@ -252,19 +265,19 @@ func coverCmd() *cobra.Command {
 func verifyCmd() *cobra.Command {
 	var jsonOut bool
 	c := &cobra.Command{
-		Use:   "verify <platform> [path]",
-		Short: "Run a platform's tests and lock what passes",
+		Use:   "verify <target> [path]",
+		Short: "Run a target's tests and lock what passes",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			platform, root := args[0], "."
+			target, root := args[0], "."
 			if len(args) > 1 {
 				root = args[1]
 			}
-			cfg, err := loadVerifyConfig(root, platform)
+			cfg, err := verifyConfigFor(root, target)
 			if err != nil {
 				return err
 			}
-			v, locked, err := engine.Verify(root, platform, cfg)
+			v, locked, err := engine.Verify(root, target, cfg)
 			if err != nil {
 				return err
 			}
@@ -273,7 +286,7 @@ func verifyCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				fmt.Println(renderVerify(v, locked, platform))
+				fmt.Println(renderVerify(v, locked, target))
 			}
 			if !v.Green() {
 				os.Exit(1) // SPEC: scenario.engine.verify.* — a non-green verify exits non-zero
@@ -289,19 +302,19 @@ func verifyCmd() *cobra.Command {
 func parityCmd() *cobra.Command {
 	var jsonOut, gate bool
 	c := &cobra.Command{
-		Use:   "parity <platform> [path]",
+		Use:   "parity <target> [path]",
 		Short: "The five-state parity matrix",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			platform, root := args[0], "."
+			target, root := args[0], "."
 			if len(args) > 1 {
 				root = args[1]
 			}
-			cfg, err := loadVerifyConfig(root, platform)
+			cfg, err := verifyConfigFor(root, target)
 			if err != nil {
 				return err
 			}
-			report, err := engine.Parity(root, platform, cfg)
+			report, err := engine.Parity(root, target, cfg)
 			if err != nil {
 				return err
 			}
@@ -435,18 +448,30 @@ func reportGate(findings []engine.GateFinding) error {
 	return nil
 }
 
-// loadVerifyConfig reads a platform's verify adapter config (.speckit/verify/<platform>.json).
-func loadVerifyConfig(root, platform string) (engine.VerifyConfig, error) {
-	cfgPath := filepath.Join(root, ".speckit", "verify", platform+".json")
-	data, err := os.ReadFile(cfgPath)
+// verifyConfigFor resolves a target's verify wiring from .speckit/specs.jsonc.
+func verifyConfigFor(root, target string) (engine.VerifyConfig, error) {
+	cfg, found, err := config.Load(root)
 	if err != nil {
-		return engine.VerifyConfig{}, fmt.Errorf("no verify adapter for %q at %s", platform, cfgPath)
+		return engine.VerifyConfig{}, err
 	}
-	var cfg engine.VerifyConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return engine.VerifyConfig{}, fmt.Errorf("verify config %s: %w", cfgPath, err)
+	if !found {
+		return engine.VerifyConfig{}, fmt.Errorf("no %s — define your targets first (run specify init)", config.File)
 	}
-	return cfg, nil
+	t, ok := cfg.Targets[target]
+	if !ok {
+		return engine.VerifyConfig{}, fmt.Errorf("target %q not in %s (have: %s)", target, config.File, strings.Join(targetNames(cfg), ", "))
+	}
+	return engine.VerifyConfig{Command: t.Command, Format: t.Format, Report: t.Report, Source: t.Source}, nil
+}
+
+// targetNames lists the configured target names, sorted.
+func targetNames(cfg config.Config) []string {
+	names := make([]string, 0, len(cfg.Targets))
+	for n := range cfg.Targets {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func writeJSON(w io.Writer, v any) error {

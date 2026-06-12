@@ -13,8 +13,8 @@ import (
 )
 
 // Shard is one acknowledgment-lock file at
-// .speckit/lock/<platform>/<spec-id>.json — the content hash of the spec
-// version last verified/acked green on a platform, plus per-scenario results.
+// .speckit/lock/<target>/<spec-id>.json — the content hash of the spec
+// version last verified/acked green on a target, plus per-scenario results.
 //
 // SPEC: domain.lock
 type Shard struct {
@@ -29,14 +29,14 @@ func Hash(content []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func shardPath(root, platform string, id specmodel.SpecID) string {
-	return filepath.Join(root, ".speckit", "lock", platform, string(id)+".json")
+func shardPath(root, target string, id specmodel.SpecID) string {
+	return filepath.Join(root, ".speckit", "lock", target, string(id)+".json")
 }
 
-// WriteShard writes the shard for (platform, id). `specify lock` is the sole
+// WriteShard writes the shard for (target, id). `specify lock` is the sole
 // writer of drift state (L1); shards are one-file-per-spec (L3).
-func WriteShard(root, platform string, id specmodel.SpecID, shard Shard) error {
-	p := shardPath(root, platform, id)
+func WriteShard(root, target string, id specmodel.SpecID, shard Shard) error {
+	p := shardPath(root, target, id)
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
@@ -47,9 +47,9 @@ func WriteShard(root, platform string, id specmodel.SpecID, shard Shard) error {
 	return os.WriteFile(p, append(b, '\n'), 0o644)
 }
 
-// ReadShard reads the shard for (platform, id); exists is false if absent.
-func ReadShard(root, platform string, id specmodel.SpecID) (shard Shard, exists bool, err error) {
-	b, err := os.ReadFile(shardPath(root, platform, id))
+// ReadShard reads the shard for (target, id); exists is false if absent.
+func ReadShard(root, target string, id specmodel.SpecID) (shard Shard, exists bool, err error) {
+	b, err := os.ReadFile(shardPath(root, target, id))
 	if os.IsNotExist(err) {
 		return Shard{}, false, nil
 	}
@@ -62,13 +62,13 @@ func ReadShard(root, platform string, id specmodel.SpecID) (shard Shard, exists 
 	return shard, true, nil
 }
 
-// Lock acknowledges a spec as green on a platform at its current content,
+// Lock acknowledges a spec as green on a target at its current content,
 // writing the lock shard. Normally invoked by `specify verify` on green with
 // real per-scenario results; invoked directly it records the spec's scenarios
 // as acknowledged.
 //
 // SPEC: story.engine.lock
-func Lock(root, platform string, id specmodel.SpecID) error {
+func Lock(root, target string, id specmodel.SpecID) error {
 	fsys := os.DirFS(root)
 	specs, err := specmodel.LoadLibrary(fsys)
 	if err != nil {
@@ -94,5 +94,5 @@ func Lock(root, platform string, id specmodel.SpecID) error {
 			scenarios[sc.SubID] = "pass"
 		}
 	}
-	return WriteShard(root, platform, id, Shard{SpecHash: Hash(content), Scenarios: scenarios})
+	return WriteShard(root, target, id, Shard{SpecHash: Hash(content), Scenarios: scenarios})
 }

@@ -1,4 +1,4 @@
-// Package reports normalizes the test output of each platform's runner into a
+// Package reports normalizes the test output of each target's runner into a
 // common []Result keyed by test identity (D12). The engine's scenario join
 // reads the scenario binding from source and joins it to these results by
 // identity, so a report need not carry the scenario id.

@@ -81,7 +81,7 @@ func (k Kind) Singular() bool {
 
 // SpecID is a dotted, lowercase, hierarchical, stable identifier — e.g.
 // domain.item, vm.items.list, story.item.create. IDs are immutable once an
-// implementation references them; they do not encode platform.
+// implementation references them; they do not encode target.
 type SpecID string
 
 // Frontmatter is the YAML header every spec file carries. status defaults to

@@ -118,7 +118,7 @@ func bindingsInContent(src string) []Binding {
 	return bs
 }
 
-// ScanBindings reads scenario↔test bindings from a platform's test source (D15):
+// ScanBindings reads scenario↔test bindings from a target's test source (D15):
 // Swift Testing `.scenario(...)` traits on raw-identifier funcs, and Vitest
 // it() titles that lead with [scenario.id]. The binding's Identity is the test
 // name as it appears in the runner's report.

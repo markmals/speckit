@@ -11,10 +11,10 @@ import (
 	"github.com/markmals/speckit/internal/specmodel"
 )
 
-// VerifyConfig describes how to verify a platform: the test command to run as a
+// VerifyConfig describes how to verify a target: the test command to run as a
 // shell string (optional — empty if the report already exists, à la a Mise
 // task's `run`), the report format and path, and the test source directory.
-// Normally supplied by the platform pack's verify adapter.
+// Normally supplied by the target pack's verify adapter.
 type VerifyConfig struct {
 	Command string `json:"command,omitempty"`
 	Format  string `json:"format"` // "junit" | "swift"
@@ -22,11 +22,11 @@ type VerifyConfig struct {
 	Source  string `json:"source"` // test source dir, relative to root
 }
 
-// joinPlatform runs the platform's command (if any), parses the report, scans
-// source bindings, scopes to the specs the platform implements (those with a
+// joinTarget runs the target's command (if any), parses the report, scans
+// source bindings, scopes to the specs the target implements (those with a
 // binding here), and joins. Shared by Verify (which then locks the green specs)
 // and Parity (which crosses the result with deviation markers).
-func joinPlatform(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.SpecID]bool, map[specmodel.SpecID][]specmodel.SpecID, error) {
+func joinTarget(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.SpecID]bool, map[specmodel.SpecID][]specmodel.SpecID, error) {
 	if cfg.Command != "" {
 		// cfg.Command is a shell string from the project's own .speckit/verify
 		// config (developer-controlled, like a Mise task's `run`), so shell
@@ -96,14 +96,14 @@ func joinPlatform(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.Sp
 	return Join(declared, results, bindings), inScope, specScenarios, nil
 }
 
-// Verify runs a platform's tests, joins outcomes to declared scenarios, and
+// Verify runs a target's tests, joins outcomes to declared scenarios, and
 // writes the lock for each spec whose scenarios all passed — only when source
 // integrity is clean (no dangling/unbound, D12) and all of the spec's scenarios
 // passed (scenario.engine.lock.no-write-on-red).
 //
 // SPEC: story.engine.verify, story.engine.lock
-func Verify(root, platform string, cfg VerifyConfig) (VerifyResult, []specmodel.SpecID, error) {
-	v, inScope, specScenarios, err := joinPlatform(root, cfg)
+func Verify(root, target string, cfg VerifyConfig) (VerifyResult, []specmodel.SpecID, error) {
+	v, inScope, specScenarios, err := joinTarget(root, cfg)
 	if err != nil {
 		return VerifyResult{}, nil, err
 	}
@@ -123,7 +123,7 @@ func Verify(root, platform string, cfg VerifyConfig) (VerifyResult, []specmodel.
 				}
 			}
 			if all {
-				if err := Lock(root, platform, spec); err != nil {
+				if err := Lock(root, target, spec); err != nil {
 					return v, locked, err
 				}
 				locked = append(locked, spec)

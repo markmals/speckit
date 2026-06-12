@@ -7,7 +7,7 @@ import (
 	"github.com/markmals/speckit/internal/specmodel"
 )
 
-// DriftReport classifies every spec in the library on a platform.
+// DriftReport classifies every spec in the library on a target.
 //
 // SPEC: story.engine.drift
 type DriftReport struct {
@@ -20,11 +20,11 @@ type DriftReport struct {
 func (r DriftReport) HasDrift() bool { return len(r.Drifted) > 0 }
 
 // Drift compares each spec's current content hash to its locked-green hash on a
-// platform: a hash mismatch is drifted, an absent shard is missing, a match is
+// target: a hash mismatch is drifted, an absent shard is missing, a match is
 // clean. It never consults mtimes (D7).
 //
 // SPEC: story.engine.drift
-func Drift(root, platform string) (DriftReport, error) {
+func Drift(root, target string) (DriftReport, error) {
 	fsys := os.DirFS(root)
 	specs, err := specmodel.LoadLibrary(fsys)
 	if err != nil {
@@ -40,7 +40,7 @@ func Drift(root, platform string) (DriftReport, error) {
 		if err != nil {
 			return DriftReport{}, err
 		}
-		shard, ok, err := ReadShard(root, platform, s.ID)
+		shard, ok, err := ReadShard(root, target, s.ID)
 		if err != nil {
 			return DriftReport{}, err
 		}

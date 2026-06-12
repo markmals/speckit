@@ -12,7 +12,7 @@ import (
 
 var deviateRe = regexp.MustCompile(`// SPEC: (scenario\.[a-z0-9.\-]+) \(deviates: ([^)]*)\)`)
 
-// ScanDeviations reads scenario-scoped deviation markers from a platform's
+// ScanDeviations reads scenario-scoped deviation markers from a target's
 // source — `// SPEC: <scenario-id> (deviates: <reason>)` (CONVENTIONS) — and
 // returns scenario-id -> reason.
 //
@@ -41,16 +41,16 @@ func ScanDeviations(dir string) (map[specmodel.SpecID]string, error) {
 	return out, err
 }
 
-// ParityCell is a scenario's state on a platform (D11).
+// ParityCell is a scenario's state on a target (D11).
 type ParityCell struct {
 	Scenario specmodel.SpecID `json:"scenario"`
 	State    string           `json:"state"` // conforming | declared-deviation | drifted | suspect | missing
 	Reason   string           `json:"reason,omitempty"`
 }
 
-// ParityReport is a platform's parity matrix.
+// ParityReport is a target's parity matrix.
 type ParityReport struct {
-	Platform string       `json:"platform"`
+	Target string       `json:"target"`
 	Cells    []ParityCell `json:"cells"`
 }
 
@@ -73,8 +73,8 @@ func (r ParityReport) Gated() bool {
 // axes, so a marker over a failing test is suspect, never declared-deviation.
 //
 // SPEC: story.engine.parity
-func Parity(root, platform string, cfg VerifyConfig) (ParityReport, error) {
-	v, _, _, err := joinPlatform(root, cfg)
+func Parity(root, target string, cfg VerifyConfig) (ParityReport, error) {
+	v, _, _, err := joinTarget(root, cfg)
 	if err != nil {
 		return ParityReport{}, err
 	}
@@ -83,7 +83,7 @@ func Parity(root, platform string, cfg VerifyConfig) (ParityReport, error) {
 		return ParityReport{}, err
 	}
 
-	report := ParityReport{Platform: platform}
+	report := ParityReport{Target: target}
 	cell := func(s specmodel.SpecID, passed, failed bool) ParityCell {
 		reason, hasDev := deviations[s]
 		switch {

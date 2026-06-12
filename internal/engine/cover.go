@@ -10,14 +10,14 @@ import (
 	"github.com/markmals/speckit/internal/specmodel"
 )
 
-// CoverCell is a spec's state on one platform, derived from the lock.
+// CoverCell is a spec's state on one target, derived from the lock.
 type CoverCell struct {
-	Platform  string            `json:"platform"`
+	Target  string            `json:"target"`
 	State     string            `json:"state"` // conforming | drifted | missing
 	Scenarios map[string]string `json:"scenarios,omitempty"`
 }
 
-// CoverReport is one spec's coverage across the platforms that have lock state.
+// CoverReport is one spec's coverage across the targets that have lock state.
 //
 // SPEC: story.engine.cover
 type CoverReport struct {
@@ -25,7 +25,7 @@ type CoverReport struct {
 	Cells []CoverCell      `json:"cells"`
 }
 
-// Cover reports a spec's state on each platform, read from the lock (no test
+// Cover reports a spec's state on each target, read from the lock (no test
 // re-run): a matching hash is conforming, a stale hash is drifted, an absent
 // shard is missing.
 //
@@ -52,17 +52,17 @@ func Cover(root string, id specmodel.SpecID) (CoverReport, error) {
 	}
 	current := Hash(content)
 
-	platforms, err := lockPlatforms(root)
+	targets, err := lockTargets(root)
 	if err != nil {
 		return CoverReport{}, err
 	}
 	report := CoverReport{Spec: id, Cells: []CoverCell{}}
-	for _, p := range platforms {
+	for _, p := range targets {
 		shard, ok, err := ReadShard(root, p, id)
 		if err != nil {
 			return CoverReport{}, err
 		}
-		cell := CoverCell{Platform: p}
+		cell := CoverCell{Target: p}
 		switch {
 		case !ok:
 			cell.State = "missing"
@@ -76,9 +76,9 @@ func Cover(root string, id specmodel.SpecID) (CoverReport, error) {
 	return report, nil
 }
 
-// lockPlatforms lists the platforms that have lock state (subdirs of
+// lockTargets lists the targets that have lock state (subdirs of
 // .speckit/lock/).
-func lockPlatforms(root string) ([]string, error) {
+func lockTargets(root string) ([]string, error) {
 	entries, err := os.ReadDir(filepath.Join(root, ".speckit", "lock"))
 	if os.IsNotExist(err) {
 		return nil, nil
