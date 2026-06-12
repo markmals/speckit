@@ -20,3 +20,7 @@
 
 # Legacy local Python virtualenv
 .venv/
+
+# mise local overrides
+mise.local.toml
+.mise.local.toml

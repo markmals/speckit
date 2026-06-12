@@ -1,0 +1,34 @@
+[tools]
+go = "1.26"
+
+[tasks.build]
+description = "compile all packages"
+run = "go build ./..."
+
+[tasks.vet]
+description = "go vet"
+run = "go vet ./..."
+
+[tasks.test]
+description = "run the test suite"
+run = "go test ./..."
+
+[tasks.fmt]
+description = "format the tree in place"
+run = "gofmt -w cmd internal"
+
+[tasks.fmt-check]
+description = "fail if anything needs gofmt"
+run = '''
+unformatted=$(gofmt -l cmd internal)
+if [ -n "$unformatted" ]; then
+  echo "gofmt needed (run: mise run fmt):"
+  echo "$unformatted"
+  exit 1
+fi
+'''
+
+[tasks.ci]
+description = "everything CI runs, plus a gofmt gate — run before pushing"
+depends = ["fmt-check"]
+run = ["go build ./...", "go vet ./...", "go test ./..."]

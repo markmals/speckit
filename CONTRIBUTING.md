@@ -9,11 +9,11 @@ Run the local CI gate — it mirrors the `go` GitHub workflow exactly, plus a
 gofmt check:
 
 ```sh
-make ci      # gofmt-check + go build + go vet + go test, all packages
+mise run ci   # gofmt-check + go build + go vet + go test, all packages
 ```
 
-`make fmt` formats the tree in place. **Always run `make ci` before pushing** so
-failures are caught locally instead of on a remote runner.
+`mise run fmt` formats the tree in place. **Always run `mise run ci` before
+pushing** so failures are caught locally instead of on a remote runner.
 
 ## Layout
 
