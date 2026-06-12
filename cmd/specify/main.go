@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -29,7 +30,7 @@ var version = "0.0.0-dev"
 // plannedCommands is the command surface from the fork plan (D5); these are
 // stubbed until implemented.
 var plannedCommands = []string{
-	"verify", "parity",
+	"parity",
 	"gate", "ledger", "apply", "reconcile",
 	"extension", "preset", "work", "bench", "issues",
 }
@@ -65,6 +66,8 @@ func run(args []string) error {
 		return cmdDrift(rest)
 	case "cover":
 		return cmdCover(rest)
+	case "verify":
+		return cmdVerify(rest)
 	default:
 		if slices.Contains(plannedCommands, cmd) {
 			return fmt.Errorf("%q is not implemented yet (planned)", cmd)
@@ -247,6 +250,59 @@ func cmdCover(args []string) error {
 	return nil
 }
 
+// cmdVerify runs a platform's tests and joins them to scenarios, locking each
+// spec that passed. The adapter config lives at .speckit/verify/<platform>.json.
+// SPEC: story.engine.verify
+func cmdVerify(args []string) error {
+	fs, jsonOut := jsonFlagSet("verify")
+	_ = fs.Parse(args)
+	platform := fs.Arg(0)
+	if platform == "" {
+		return fmt.Errorf("usage: specify verify <platform> [path]")
+	}
+	root := fs.Arg(1)
+	if root == "" {
+		root = "."
+	}
+	cfgPath := filepath.Join(root, ".speckit", "verify", platform+".json")
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return fmt.Errorf("no verify adapter for %q at %s", platform, cfgPath)
+	}
+	var cfg engine.VerifyConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("verify config %s: %w", cfgPath, err)
+	}
+	v, locked, err := engine.Verify(root, platform, cfg)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		if err := writeJSON(os.Stdout, map[string]any{"result": v, "locked": locked}); err != nil {
+			return err
+		}
+	} else {
+		for _, s := range v.Failed {
+			fmt.Printf("FAIL       %s\n", s)
+		}
+		for _, s := range v.Unjoinable {
+			fmt.Printf("unjoinable %s\n", s)
+		}
+		for _, b := range v.Dangling {
+			fmt.Printf("dangling   %s (%s)\n", b.Scenario, b.Identity)
+		}
+		for _, r := range v.Unbound {
+			fmt.Printf("unbound    %s\n", r.Name)
+		}
+		fmt.Printf("verify(%s): %d passed, %d failed, %d unjoinable, %d dangling, %d unbound; %d locked\n",
+			platform, len(v.Passed), len(v.Failed), len(v.Unjoinable), len(v.Dangling), len(v.Unbound), len(locked))
+	}
+	if !v.Green() {
+		os.Exit(1) // SPEC: scenario.engine.verify.* — a non-green verify exits non-zero
+	}
+	return nil
+}
+
 func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
@@ -262,6 +318,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "  lock <platform> <spec-id>           acknowledge a spec green on a platform")
 	fmt.Fprintln(w, "  drift <platform> [path]             report specs that drifted from the lock")
 	fmt.Fprintln(w, "  cover <spec-id> [path]              show a spec's per-platform coverage")
+	fmt.Fprintln(w, "  verify <platform> [path]            run a platform's tests, lock what passes")
 	fmt.Fprintln(w, "  version | kinds                     (add --json for structured output)")
 	fmt.Fprintln(w, "\nPlanned (stubbed):")
 	fmt.Fprintln(w, "  "+strings.Join(plannedCommands, ", "))
