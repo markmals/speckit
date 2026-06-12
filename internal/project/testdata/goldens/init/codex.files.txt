@@ -8,6 +8,7 @@
 .agents/skills/speckit-specify/SKILL.md
 .agents/skills/speckit-tasks/SKILL.md
 .agents/skills/speckit-taskstoissues/SKILL.md
+.agents/skills/systematic-debugging/SKILL.md
 .agents/skills/test-driven-development/SKILL.md
 .agents/skills/verification-before-completion/SKILL.md
 .speckit/extensions.yml

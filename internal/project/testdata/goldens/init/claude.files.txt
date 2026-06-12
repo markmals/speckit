@@ -8,6 +8,7 @@
 .claude/skills/speckit-specify/SKILL.md
 .claude/skills/speckit-tasks/SKILL.md
 .claude/skills/speckit-taskstoissues/SKILL.md
+.claude/skills/systematic-debugging/SKILL.md
 .claude/skills/test-driven-development/SKILL.md
 .claude/skills/verification-before-completion/SKILL.md
 .speckit/extensions.yml

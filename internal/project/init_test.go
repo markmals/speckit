@@ -77,7 +77,7 @@ func TestInitProjectsSkills(t *testing.T) {
 	if _, err := Init(claude, coreassets.FS, Options{Integration: "claude"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, s := range []string{"test-driven-development", "verification-before-completion", "adversarial-review"} {
+	for _, s := range []string{"test-driven-development", "verification-before-completion", "adversarial-review", "systematic-debugging"} {
 		mustExist(t, filepath.Join(claude, ".claude", "skills", s, "SKILL.md"))
 	}
 
