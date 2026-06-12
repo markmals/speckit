@@ -114,15 +114,18 @@ export const itemsListQueryOptions = queryOptions({ /* ... */ })
 
 The engine joins a scenario to the test that proves it. The binding is **declared in source**; the **outcome is read from the report and matched by test identity** (suite/class + test name). The report does _not_ need to carry the scenario ID — verified in spike 0001, where Swift Testing's xunit and event-stream output drop custom traits and display names entirely. A scenario with no bound test, or a bound test the spec doesn't declare, is a **hard error** (`scan`/`verify`), never a silent zero-match.
 
-Per-language _source_ binding (the scanner reads these; the runner only has to identify the test):
+**Use each framework's native metadata affordance where it has one; a source comment where it doesn't — never pollute the human-readable test description.** The scanner reads the binding from source; the runner's report supplies only pass/fail keyed by test identity, so no framework needs to surface the tag in its output.
 
-- **Go (the engine's own tests):** `// SPEC: <id>` on the test file/func, and a `// [scenario.<id>]` comment above each `t.Run` / test func.
-- **Vitest (web):** `it("[scenario.<id>] …")`. Vitest's junit happens to preserve this in the `name` attribute, so web _can_ also join report-side; the source remains canonical.
-- **Swift Testing (apple):** custom traits — `@Suite(.spec("<id>"))` on the suite and `@Test(.scenario("<sub-id>"))` on each test, with **raw-identifier** function names carrying the human description (`` func `toggling an active todo completes it`() ``). The dotted ID lives verbatim in the trait (source); outcomes join by suite + raw-identifier name. The `.spec` / `.scenario` trait definitions ship as `SpecTraits.swift` in the `platform-apple` pack.
-- **kotlin.test (android):** `@Test` from `kotlin.test` (not raw JUnit), with the scenario id in a `// [scenario.<id>]` source binding above the test; outcomes join from the Gradle test report by class + method.
-- **cargo-nextest (Rust):** a `mod` with `// SPEC: <id>` and a `// [scenario.<id>]` comment above each `#[test]` fn.
+| Framework | Affordance — binds without touching the description |
+| --- | --- |
+| **Swift Testing** (apple) | Custom traits: `@Suite(.spec("<id>"))` + `@Test(.scenario("<sub-id>"))` (shipped as `SpecTraits.swift`), with **raw-identifier** function names for the human description. The dotted ID lives in the trait. |
+| **MSTest** (C# / Windows) | Attributes: `[TestProperty("spec", "<id>")]` and `[TestProperty("scenario", "<sub-id>")]` (or `[TestCategory]`) — metadata, not the method name. |
+| **kotlin.test** (android, JUnit-platform) | Annotations: `@Tag("spec:<id>")` and `@Tag("scenario:<sub-id>")` — metadata, not the `@DisplayName`. |
+| **Vitest** (web) | No native trait — a `// [scenario.<sub-id>]` comment directly above the `it(...)`, keeping the title clean. (A `[scenario.…]`-prefixed title is also accepted.) |
+| **cargo-nextest** (Rust) | No native trait — a `// [scenario.<sub-id>]` comment above the `#[test]` fn (fn names can't hold dots/brackets). |
+| **go test** | No native trait — a `// [scenario.<sub-id>]` comment above the test func / `t.Run`. |
 
-The runner's report (Vitest junit, Swift Testing event stream, Gradle XML, …) supplies only pass/fail keyed by test identity; the per-format verify adapter normalizes that, and the join overlays the source-declared scenario binding. Because the binding is source-side, encoding the scenario into test _names_ (and the fragile mangling that needs) is never required.
+In every case the per-format verify adapter normalizes the report to pass/fail by test identity, and the join overlays the source-declared scenario binding. Because the binding is source-side, encoding the scenario into test _names_ — and the fragile mangling that needs — is never required.
 
 ## Stories and scenarios
 

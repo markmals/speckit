@@ -136,7 +136,7 @@ Because SpecKit uses the same spec conventions as the Workbench template, **the 
 2. **Tell `verify` how to run each platform's tests** by adding an adapter at `.speckit/verify/<platform>.json`:
    ```json
    {
-     "command": ["pnpm", "-C", "apps/web", "test", "--run"],
+     "command": "pnpm -C apps/web test --run",
      "format": "junit",
      "report": "apps/web/report.junit.xml",
      "source": "apps/web"

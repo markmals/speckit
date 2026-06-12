@@ -5,20 +5,21 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/markmals/speckit/internal/reports"
 	"github.com/markmals/speckit/internal/specmodel"
 )
 
-// VerifyConfig describes how to verify a platform: the test command to run
-// (optional — empty if the report already exists), the report format and path,
-// and the test source directory. Normally supplied by the platform pack's
-// verify adapter.
+// VerifyConfig describes how to verify a platform: the test command to run as a
+// shell string (optional — empty if the report already exists, à la a Mise
+// task's `run`), the report format and path, and the test source directory.
+// Normally supplied by the platform pack's verify adapter.
 type VerifyConfig struct {
-	Command []string `json:"command,omitempty"`
-	Format  string   `json:"format"` // "junit" | "swift"
-	Report  string   `json:"report"` // report path, relative to root
-	Source  string   `json:"source"` // test source dir, relative to root
+	Command string `json:"command,omitempty"`
+	Format  string `json:"format"` // "junit" | "swift"
+	Report  string `json:"report"` // report path, relative to root
+	Source  string `json:"source"` // test source dir, relative to root
 }
 
 // joinPlatform runs the platform's command (if any), parses the report, scans
@@ -26,8 +27,16 @@ type VerifyConfig struct {
 // binding here), and joins. Shared by Verify (which then locks the green specs)
 // and Parity (which crosses the result with deviation markers).
 func joinPlatform(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.SpecID]bool, map[specmodel.SpecID][]specmodel.SpecID, error) {
-	if len(cfg.Command) > 0 {
-		cmd := exec.Command(cfg.Command[0], cfg.Command[1:]...)
+	if cfg.Command != "" {
+		// cfg.Command is a shell string from the project's own .speckit/verify
+		// config (developer-controlled, like a Mise task's `run`), so shell
+		// interpretation is intended — the project owner is the trust boundary.
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd", "/c", cfg.Command)
+		} else {
+			cmd = exec.Command("sh", "-c", cfg.Command)
+		}
 		cmd.Dir = root
 		_ = cmd.Run() // a failing suite is expected; the report carries the truth
 	}
