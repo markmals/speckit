@@ -35,9 +35,9 @@ Workbench has **21 skills**; the slash commands should invoke them (as `/sdd-*` 
 - ✅ implementing-a-spec · brainstorming-feature · writing-user-stories (ported + wired to the commands)
 - 🔒 **triaging-defects** — the `DEFECTS.md` drain; blocked on establishing a defect-ledger convention + a `/speckit.defect` equivalent + the per-target folder model.
 
-**Platform dev skills (9):** android · go-cli · ios · linux · node-cli · rust-cli · web · website · windows -development. 🔒 Blocked on the targets/`specs.jsonc` config + a platform-pack projection decision.
+**Platform dev skills (9):** android · go-cli · ios · linux · node-cli · rust-cli · web · website · windows -development. ⬜ **Unblocked** — targets exist now. Port + project, gated on the configured targets. The big next slice.
 
-**Platform verification/control skills (4):** android-emulator-control · ios-simulator-control · web-verification · windows-app-control. 🔒 Same dependency.
+**Platform verification/control skills (4):** android-emulator-control · ios-simulator-control · web-verification · windows-app-control. ⬜ Same slice; brings the `visual-verifier` subagent's sim/browser bridges with it.
 
 **Wire skills to slash commands** ✅ — `/speckit.specify` → brainstorming-feature (+ writing-user-stories); `/speckit.implement` → implementing-a-spec; `/speckit.analyze` → `specify scan` + semantic passes; etc.
 
@@ -66,8 +66,12 @@ the feature folder; `plan` and `tasks` become **per-platform layers on top** —
 
 ## Config system — `.speckit/specs.jsonc`
 
-⬜ products / contracts / targets / agent. Targets generate the verify adapters; the engine keys on
-**"target"** rather than "platform". (`verify.command` as a string is already done.)
+- ✅ **targets** — `.speckit/specs.jsonc` (JSONC, hand-rolled stripper) with version/agent/paths/targets;
+  each target's verify wiring inline, retiring `.speckit/verify/<platform>.json`. The engine keys on
+  **target** (lock `.speckit/lock/<target>/`); `scan` validates the config. Products are an optional
+  label; the `products` collection and `contracts` are documented as futures in [docs/config.md](docs/config.md).
+- ⬜ **product-rollup render** — `cover`/`parity` grouping + per-product verdict. The label and
+  `ProductTargets()` exist; the render lands with the multi-target slice below.
 
 ---
 

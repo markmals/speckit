@@ -28,8 +28,8 @@ type VerifyConfig struct {
 // and Parity (which crosses the result with deviation markers).
 func joinTarget(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.SpecID]bool, map[specmodel.SpecID][]specmodel.SpecID, error) {
 	if cfg.Command != "" {
-		// cfg.Command is a shell string from the project's own .speckit/verify
-		// config (developer-controlled, like a Mise task's `run`), so shell
+		// cfg.Command is a shell string from the project's own .speckit/specs.jsonc
+		// target (developer-controlled, like a Mise task's `run`), so shell
 		// interpretation is intended — the project owner is the trust boundary.
 		var cmd *exec.Cmd
 		if runtime.GOOS == "windows" {

@@ -1,8 +1,8 @@
 # SpecKit
 
-> Spec-driven development for native, multiplatform apps. You write the behavior once as a spec; each platform implements it in its own native stack; the `specify` tool keeps every implementation honest against the spec.
+> Spec-driven development for native, multiplatform apps. You write the behavior once as a spec; each target implements it in its own native stack; the `specify` tool keeps every implementation honest against the spec.
 
-SpecKit is a single Go binary. You use it to scaffold a project, then to continuously check that each platform's code still does what the specs say. Specs are the source of truth and live alongside the code; the native implementations (web, iOS, Android, …) are how that one spec gets realized on each platform.
+SpecKit is a single Go binary. You use it to scaffold a project, then to continuously check that each target's code still does what the specs say. Specs are the source of truth and live alongside the code; the native implementations (web, iOS, Android, …) are how that one spec gets realized on each target.
 
 It is a rewrite of [github/spec-kit](https://github.com/github/spec-kit) in Go, with one important difference: the `specify` binary stays in your project and *is* the verification engine, rather than being a one-time installer.
 
@@ -13,7 +13,7 @@ There are two halves to working in SpecKit, and the README covers both:
 
 ## Status
 
-Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`) and the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`). In progress: a published release (and the Homebrew/Mise install that depends on it), the `check`/`self upgrade`/`extension`/`preset` commands, the ready-made platform setups that let `verify` drive a real web/Apple test suite out of the box, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
+Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`) and the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`). In progress: a published release (and the Homebrew/Mise install that depends on it), the `check`/`self upgrade`/`extension`/`preset` commands, the ready-made target setups that let `verify` drive a real web/Apple test suite out of the box, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
 
 ## Install
 
@@ -43,13 +43,13 @@ specify version
 ## How it works
 
 - **You describe behavior in specs.** Markdown files with a small structured header, a stable ID, and acceptance scenarios written as plain Given/When/Then. They live in `specs/` (shared) and `features/<NNNN>-<slug>/` (per feature). See [the spec conventions](specs/CONVENTIONS.md).
-- **Each platform implements the spec natively.** No shared runtime or cross-platform framework — web in React, Apple in Swift, Android in Kotlin, and so on. The spec is the only thing shared across them.
+- **Each target implements the spec natively.** No shared runtime or cross-platform framework — web in React, Apple in Swift, Android in Kotlin, and so on. The spec is the only thing shared across them.
 - **Tests are bound to scenarios in the code.** Each test names the scenario it proves (a `// [scenario.id]` comment, a Swift `.scenario("…")` trait, a Vitest `it("[scenario.id] …")` title). That binding is read from source, not from test output.
-- **`specify` checks implementations against specs.** It runs a platform's tests, matches the results back to the scenarios they prove, and records which specs are genuinely passing on which platform. From then on it tells you what's changed, what's covered, and where a platform has drifted.
+- **`specify` checks implementations against specs.** It runs a target's tests, matches the results back to the scenarios they prove, and records which specs are genuinely passing on which target. From then on it tells you what's changed, what's covered, and where a target has drifted.
 
 ## Building an app, step by step
 
-The job is always "make this spec true on this platform." You author a feature once with your agent, build it on a reference platform, then bring up the rest. Your agent's commands do the writing; the `specify` CLI does the checking.
+The job is always "make this spec true on this target." You author a feature once with your agent, build it on a reference target, then bring up the rest. Your agent's commands do the writing; the `specify` CLI does the checking.
 
 > The `/speckit.*` commands below are installed into your agent by `init` (as Claude skills, Codex/Copilot commands, etc.). Run them in your agent; run `specify …` in your terminal.
 
@@ -63,7 +63,7 @@ cd my-app
 You get the `/speckit.*` commands wired for your agent, a `.speckit/` runtime, and a place for specs. The first time, set your project's ground rules:
 
 ```text
-/speckit.constitution    # the principles every spec and platform must honor
+/speckit.constitution    # the principles every spec and target must honor
 ```
 
 ### 2. Author the feature — specs first, no code yet
@@ -82,9 +82,9 @@ Then confirm the library is well-formed:
 specify scan       # exits non-zero on a malformed spec library
 ```
 
-This is where the leverage is — the clearer the spec, the cleaner every platform that follows from it.
+This is where the leverage is — the clearer the spec, the cleaner every target that follows from it.
 
-### 3. Build it on your first platform (web)
+### 3. Build it on your first target (web)
 
 Have your agent plan and implement the feature natively, **tests first**, with each test bound to the scenario it proves:
 
@@ -103,9 +103,9 @@ specify drift web                # clean, right after a passing verify
 
 A passing `verify` doesn't just mean "tests are green" — it means the *right* scenarios were proven. If a scenario has no test, or a test points at a scenario that doesn't exist, `verify` fails and names it.
 
-### 4. Bring up the other platforms
+### 4. Bring up the other targets
 
-Same specs, one platform at a time. The web implementation is a worked example the agent mirrors:
+Same specs, one target at a time. The web implementation is a worked example the agent mirrors:
 
 ```text
 /speckit.plan      "Apple: Swift + UIKit, tests in Swift Testing"
@@ -118,12 +118,12 @@ specify verify apple
 ### 5. Keep everything honest over time
 
 ```sh
-specify cover <spec-id>     # where a spec stands across platforms
-specify drift <platform>    # what changed since it was last verified
-specify parity <platform>   # the full per-scenario picture for a platform
+specify cover <spec-id>     # where a spec stands across targets
+specify drift <target>    # what changed since it was last verified
+specify parity <target>   # the full per-scenario picture for a target
 ```
 
-When a platform genuinely must behave differently, note it in the code: `// SPEC: <scenario-id> (deviates: <reason>)`. `parity` shows that scenario as a **declared-deviation** instead of a failure — but if its test is actually failing, it shows up as **suspect**. Marking something intentional can never hide a real failure.
+When a target genuinely must behave differently, note it in the code: `// SPEC: <scenario-id> (deviates: <reason>)`. `parity` shows that scenario as a **declared-deviation** instead of a failure — but if its test is actually failing, it shows up as **suspect**. Marking something intentional can never hide a real failure.
 
 ## Convert an existing project
 
@@ -133,22 +133,28 @@ Because SpecKit uses the same spec conventions as the Workbench template, **the 
    ```sh
    specify scan
    ```
-2. **Tell `verify` how to run each platform's tests** by adding an adapter at `.speckit/verify/<platform>.json`:
-   ```json
+2. **Tell `verify` how to run each target's tests** by declaring your targets in `.speckit/specs.jsonc`:
+   ```jsonc
    {
-     "command": "pnpm -C apps/web test --run",
-     "format": "junit",
-     "report": "apps/web/report.junit.xml",
-     "source": "apps/web"
+     "version": 1,
+     "agent": "claude",
+     "targets": {
+       "web": {
+         "command": "pnpm -C apps/web test --run",
+         "format": "junit",
+         "report": "apps/web/report.junit.xml",
+         "source": "apps/web/src"
+       }
+     }
    }
    ```
-   `format` is `junit` (Vitest, Gradle) or `swift` (Swift Testing's event stream). Then:
+   `format` is `junit` (Vitest, Gradle) or `swift` (Swift Testing's event stream). See [docs/config.md](docs/config.md) for the full schema and the optional `product` label. Then:
    ```sh
    specify verify web
    ```
 3. **Make sure each test names its scenario** in source (the binding `verify` joins on). If your Workbench tests already carry scenario tags, you're done; otherwise add them as you verify each spec.
 
-You don't need to run `init` on an existing project — it's for new projects. `init --here` can add the `/speckit.*` command projections to a project that doesn't have its own, but a Workbench project already ships its agent commands, so adopting SpecKit there is just the binary plus the verify adapters.
+You don't need to run `init` on an existing project — it's for new projects. `init --here` can add the `/speckit.*` command projections to a project that doesn't have its own, but a Workbench project already ships its agent commands, so adopting SpecKit there is just the binary plus the targets in `.speckit/specs.jsonc`.
 
 ## Working with Git and GitHub
 
@@ -156,21 +162,21 @@ SpecKit is **trunk-based**: the spec library lives on `main` as the durable sour
 
 ### Branches and worktrees
 
-The unit of work is "satisfy spec X on platform Y." For parallel work — one agent on web while another does iOS — use a **git worktree per (spec × platform)**:
+The unit of work is "satisfy spec X on target Y." For parallel work — one agent on web while another does iOS — use a **git worktree per (spec × target)**:
 
 ```sh
 git worktree add ../app-items-web feat/items-web
 ```
 
-The lock is **sharded per spec** (`.speckit/lock/<platform>/<spec-id>.json`), so worktrees verifying different specs never collide in it. (`specify work start <spec> <platform>` will automate this — planned.)
+The lock is **sharded per spec** (`.speckit/lock/<target>/<spec-id>.json`), so worktrees verifying different specs never collide in it. (`specify work start <spec> <target>` will automate this — planned.)
 
 ### Pull requests
 
-Open a PR per feature (or per platform bring-up). Run the engine as **required status checks** so nothing merges with drift or broken parity:
+Open a PR per feature (or per target bring-up). Run the engine as **required status checks** so nothing merges with drift or broken parity:
 
 - `specify scan` — the spec library is well-formed
-- `specify verify <platform>` — the implicated platforms are green
-- `specify parity <platform> --gate` — every scenario conforms (a `suspect` or a `drifted` cell blocks the merge)
+- `specify verify <target>` — the implicated targets are green
+- `specify parity <target> --gate` — every scenario conforms (a `suspect` or a `drifted` cell blocks the merge)
 
 The pre-commit `gate` checks keep each commit honest before it's pushed (see below).
 
@@ -195,7 +201,7 @@ jobs:
         with: { go-version: stable }
       - run: go install github.com/markmals/speckit/cmd/specify@latest
       - run: specify scan
-      - run: specify verify web          # for each platform you ship
+      - run: specify verify web          # for each target you ship
       - run: specify parity web --gate
 ```
 
@@ -227,15 +233,15 @@ Run `specify <command>`. Reporting commands print a styled summary by default an
 | `specify scan [path]` | Check the spec library for problems — malformed/duplicate IDs, broken cross-references, scenarios missing IDs. Exits non-zero if any are found. |
 | `specify kinds` | List the kinds of spec the project understands (story, model, error, …). |
 
-### Verify and track each platform
+### Verify and track each target
 
 | Command | What it does |
 | --- | --- |
-| `specify verify <platform>` | Run the platform's tests (per `.speckit/verify/<platform>.json`), match results to the scenarios they prove, and lock each fully-passing spec. Exits non-zero unless everything it checked passed. |
-| `specify lock <platform> <spec-id>` | Mark a spec verified-good on a platform at its current contents (usually done for you by `verify`). |
-| `specify drift <platform>` | List specs whose text changed since they were last verified (**drifted**) or were never verified (**missing**). Exits non-zero on drift. |
-| `specify cover <spec-id>` | Show one spec's status on every platform — conforming, drifted, or missing. |
-| `specify parity <platform> [--gate]` | Per-scenario status: **conforming**, **declared-deviation**, **drifted**, **suspect**, or **missing**. `--gate` exits non-zero unless everything conforms. |
+| `specify verify <target>` | Run the target's tests (per its entry in `.speckit/specs.jsonc`), match results to the scenarios they prove, and lock each fully-passing spec. Exits non-zero unless everything it checked passed. |
+| `specify lock <target> <spec-id>` | Mark a spec verified-good on a target at its current contents (usually done for you by `verify`). |
+| `specify drift <target>` | List specs whose text changed since they were last verified (**drifted**) or were never verified (**missing**). Exits non-zero on drift. |
+| `specify cover <spec-id>` | Show one spec's status on every target — conforming, drifted, or missing. |
+| `specify parity <target> [--gate]` | Per-scenario status: **conforming**, **declared-deviation**, **drifted**, **suspect**, or **missing**. `--gate` exits non-zero unless everything conforms. |
 
 ### Enforce in git hooks and CI
 
@@ -266,7 +272,7 @@ Coming (the rest of the process-pack / **claude-pack**): more skills (`systemati
 
 ## Concepts
 
-- **The lock.** `.speckit/lock/<platform>/<spec-id>.json` holds the spec content hash last verified green, sharded per spec so parallel worktrees never conflict. `verify` is the only writer; drift is hash-mismatch-or-missing — never file timestamps (git doesn't preserve them).
+- **The lock.** `.speckit/lock/<target>/<spec-id>.json` holds the spec content hash last verified green, sharded per spec so parallel worktrees never conflict. `verify` is the only writer; drift is hash-mismatch-or-missing — never file timestamps (git doesn't preserve them).
 - **The join.** The scenario↔test binding is declared in *source*; outcomes come from the runner's report, matched by test identity. Any unjoinable scenario or untagged test is a hard error.
 - **Parity.** Deviation-presence and test-outcome are crossed on **independent axes**, so a `(deviates:)` marker can never suppress a failing test.
 
