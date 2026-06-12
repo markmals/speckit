@@ -22,8 +22,8 @@ before code.
 | dev server | **Vite** |
 | library bundler | **tsdown** |
 | test runner | **Vitest** |
-| formatter | **Oxfmt**; **Prettier + `@prettier/plugin-oxc`** |
-| linter | **Oxlint**; **ESLint + `eslint-plugin-oxlint`** |
+| formatter | **Oxfmt** (web app) · Prettier + `@prettier/plugin-oxc` (Astro `website` only — oxc can't format `.astro`) |
+| linter | **Oxlint** (web app) · ESLint + `eslint-plugin-oxlint` (Astro `website` only) |
 | type checker | **tsgo** (`@typescript/native-preview`) |
 | dev tools | **TanStack DevTools** |
 
@@ -79,7 +79,9 @@ before code.
 Captured for context; this is the **`website`** stack, scaffolded separately:
 **Astro** + React + React Compiler + Tailwind (+ Tailwind Plus) + React Aria,
 animations via **View Transitions**, Zod, **Astro** i18n, Drizzle +
-`node:sqlite`/D1, **content collections** for markdown, fetch, Evlog.
+`node:sqlite`/D1, **content collections** for markdown, fetch, Evlog. Formatter
+**Prettier + `@prettier/plugin-oxc`** and linter **ESLint + `eslint-plugin-oxlint`**
+(oxc can't handle `.astro`).
 
 ---
 
@@ -87,7 +89,7 @@ animations via **View Transitions**, Zod, **Astro** i18n, Drizzle +
 
 **Default — the green-on-arrival starter:**
 - **TanStack Start** + Router (virtual routes) + Query; React 19 + React Compiler; TanStack DevTools.
-- **Mise** (monorepo) driving pnpm · Vite · Vitest · tsdown · Oxfmt/Prettier · Oxlint/ESLint · tsgo.
+- **Mise** (monorepo) driving pnpm · Vite · Vitest · tsdown · **Oxfmt** · **Oxlint** · tsgo. (Prettier/ESLint belong to the Astro `website` stack, since oxc can't handle `.astro`.)
 - **Tailwind CSS** + **React Aria**; **Motion**; **Zod**.
 - **Data:** `--data convex` (default) · `drizzle` (`node:sqlite`/D1).
 - **Runtime/deploy:** Cloudflare (default) · Node-local; the SSR/server matrix below.
@@ -124,7 +126,7 @@ _.path = ['{{config_root}}/node_modules/.bin']
 ```
 
 Tasks: `dev` (vite) · `test` (vitest → junit) · `build` (vite; tsdown for libs) ·
-`fmt` (oxfmt / prettier) · `lint` (oxlint / eslint) · `check` (tsgo) · Drizzle db tasks.
+`fmt` (oxfmt) · `lint` (oxlint) · `check` (tsgo) · Drizzle db tasks.
 
 ## Folder layout & routing
 
