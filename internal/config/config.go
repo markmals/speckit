@@ -21,7 +21,7 @@ const File = ".speckit/specs.json"
 // Config is the parsed .speckit/specs.json.
 type Config struct {
 	Version int               `json:"version"`
-	Agent   string            `json:"agent"`
+	Agent   string            `json:"agent,omitempty"`
 	Paths   Paths             `json:"paths"`
 	Targets map[string]Target `json:"targets"`
 }
@@ -40,7 +40,7 @@ type Paths struct {
 type Target struct {
 	Product  string   `json:"product,omitempty"`
 	Products []string `json:"products,omitempty"`
-	Stack    string   `json:"stack,omitempty"` // selects the platform pack: web|apple|android|windows|linux|go-cli|node-cli|rust-cli|website
+	Stack    string   `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|node-cli|swift-package|swift-cli|ts-lib|vscode-extension
 	Command  string   `json:"command,omitempty"`
 	Format   string   `json:"format"` // junit | swift
 	Report   string   `json:"report"`
@@ -72,6 +72,36 @@ func (c *Config) applyDefaults() {
 	if c.Paths.Features == "" {
 		c.Paths.Features = "features"
 	}
+}
+
+// Save writes the config to .speckit/specs.json (creating .speckit/ if needed).
+func (c Config) Save(root string) error {
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".speckit"), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(root, File), append(b, '\n'), 0o644)
+}
+
+// AddTarget loads the config (or starts a fresh v1 one), adds or replaces the
+// named target, and writes it back. Used by `specify target add`.
+func AddTarget(root, name string, t Target) error {
+	cfg, found, err := Load(root)
+	if err != nil {
+		return err
+	}
+	if !found {
+		cfg = Config{Version: 1}
+		cfg.applyDefaults()
+	}
+	if cfg.Targets == nil {
+		cfg.Targets = map[string]Target{}
+	}
+	cfg.Targets[name] = t
+	return cfg.Save(root)
 }
 
 // Validate returns every problem with the config (nil = valid). scan surfaces

@@ -91,6 +91,14 @@ Clerk optional. Defaults `--ssr --server`/cloudflare/convex. **No bundled compon
 Catalyst-derived (paid/closed-source); encourage DIY Tailwind+React-Aria; **future:** a shadcn registry backed
 by React Aria (not Radix). Pack refresh = follow-up.
 
+  - ✅ **Build Part A (machinery):** `config.AddTarget`/`Save`; the `internal/scaffold` text/template renderer
+    (manifest, `.tmpl` handling, FuncMap casings, `--with` features, `RenderTarget`); `specify target add <name>
+    --stack <stack> [--dir --product --with --no-install]` — wired + tested (fixture). Runs the install, registers
+    the target, projects the pack.
+  - ⬜ **Build Part B (web scaffold content):** the TanStack Start + Mise(monorepo) + Tailwind/React-Aria tree
+    with the binding harness, in `templates/scaffolds/web/`. The proof: scaffold → `pnpm install` → `vitest` →
+    `specify verify web` green. Then the `--data convex`/Drizzle + SSR/server variants.
+
 ## Coverage gap — libraries / Swift packages / CLIs / extensions (from the ~/Developer sweep)
 
 ⬜ A sweep of `~/Developer` showed SpecKit is **app-centric** but a large slice of the real work isn't apps:

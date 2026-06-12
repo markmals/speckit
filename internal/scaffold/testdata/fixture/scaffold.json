@@ -1,0 +1,10 @@
+{
+  "stack": "fixture",
+  "install": "echo installed",
+  "target": {
+    "command": "mise run -C {{.Dir}} test",
+    "format": "junit",
+    "report": "{{.Dir}}/junit.xml",
+    "source": "{{.Dir}}/app"
+  }
+}

@@ -91,3 +91,28 @@ func TestSharedTargetListsBothProducts(t *testing.T) {
 		t.Errorf("shared target should appear under both products: %v", pt)
 	}
 }
+
+func TestAddTargetRoundTrips(t *testing.T) {
+	root := t.TempDir() // no specs.json yet → AddTarget creates it
+	if err := AddTarget(root, "web", Target{Stack: "web", Command: "mise run test", Format: "junit", Report: "j.xml", Source: "app"}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, found, err := Load(root)
+	if err != nil || !found {
+		t.Fatalf("reload: found=%v err=%v", found, err)
+	}
+	if cfg.Version != 1 || cfg.Targets["web"].Stack != "web" {
+		t.Errorf("cfg = %+v", cfg)
+	}
+	if errs := cfg.Validate(); len(errs) != 0 {
+		t.Errorf("generated config should validate: %v", errs)
+	}
+	// a second target preserves the first
+	if err := AddTarget(root, "ios", Target{Stack: "apple", Format: "swift", Report: "r", Source: "s"}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, _, _ = Load(root)
+	if len(cfg.Targets) != 2 {
+		t.Errorf("expected 2 targets, got %d", len(cfg.Targets))
+	}
+}

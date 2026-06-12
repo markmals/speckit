@@ -11,8 +11,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -22,6 +25,7 @@ import (
 	"github.com/markmals/speckit/internal/coreassets"
 	"github.com/markmals/speckit/internal/engine"
 	"github.com/markmals/speckit/internal/project"
+	"github.com/markmals/speckit/internal/scaffold"
 	"github.com/markmals/speckit/internal/specmodel"
 )
 
@@ -43,7 +47,7 @@ func rootCmd() *cobra.Command {
 	}
 	root.SetErrPrefix("specify:")
 	root.AddCommand(
-		versionCmd(), kindsCmd(), initCmd(), scanCmd(), packsCmd(),
+		versionCmd(), kindsCmd(), initCmd(), scanCmd(), packsCmd(), targetCmd(),
 		lockCmd(), driftCmd(), coverCmd(), verifyCmd(), parityCmd(), gateCmd(),
 	)
 	// Planned-but-unimplemented commands (D5): registered so they report intent
@@ -174,6 +178,110 @@ func packsCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// targetCmd scaffolds and registers targets.
+func targetCmd() *cobra.Command {
+	c := &cobra.Command{Use: "target", Short: "Scaffold and register targets"}
+	c.AddCommand(targetAddCmd())
+	return c
+}
+
+// targetAddCmd scaffolds a stack's starter into <dir>, registers the target in
+// .speckit/specs.json, projects the stack's pack, and runs the install.
+func targetAddCmd() *cobra.Command {
+	var stack, dir, product string
+	var with []string
+	var noInstall bool
+	c := &cobra.Command{
+		Use:   "add <name>",
+		Short: "Scaffold a target's stack and register it",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			if stack == "" {
+				return fmt.Errorf("target add: --stack required")
+			}
+			if dir == "" {
+				dir = filepath.Join("apps", name)
+			}
+			sub, err := fs.Sub(coreassets.FS, "templates/scaffolds/"+stack)
+			if err != nil {
+				return err
+			}
+			m, err := scaffold.LoadManifest(sub)
+			if err != nil {
+				return fmt.Errorf("unknown or invalid stack %q: %w", stack, err)
+			}
+			features := map[string]bool{}
+			for _, f := range with {
+				if _, ok := m.Features[f]; !ok {
+					return fmt.Errorf("stack %q has no --with feature %q", stack, f)
+				}
+				features[f] = true
+			}
+			data := scaffold.Data{Name: name, Dir: dir, Product: product, Features: features, Vars: map[string]string{}}
+
+			written, err := scaffold.Render(sub, dir, data)
+			if err != nil {
+				return err
+			}
+			for f := range features {
+				w, err := scaffold.RenderFeature(sub, m.Features[f], dir, data)
+				if err != nil {
+					return err
+				}
+				written = append(written, w...)
+			}
+
+			rt, err := scaffold.RenderTarget(m, data)
+			if err != nil {
+				return err
+			}
+			if err := config.AddTarget(".", name, config.Target{
+				Stack: stack, Product: product,
+				Command: rt.Command, Format: rt.Format, Report: rt.Report, Source: rt.Source,
+			}); err != nil {
+				return err
+			}
+
+			if cfg, found, _ := config.Load("."); found && cfg.Agent != "" {
+				if _, err := project.ProjectPacks(".", coreassets.FS, cfg.Agent, []string{stack}); err != nil {
+					fmt.Fprintf(os.Stderr, "specify: pack projection skipped: %v\n", err)
+				}
+			}
+
+			if m.Install != "" && !noInstall {
+				fmt.Printf("running install: %s\n", m.Install)
+				if err := runIn(dir, m.Install); err != nil {
+					return fmt.Errorf("install %q failed: %w", m.Install, err)
+				}
+			}
+
+			fmt.Printf("✓ scaffolded %q (%s) → %s/ (%d files)\n  next: specify verify %s\n", name, stack, dir, len(written), name)
+			return nil
+		},
+	}
+	c.Flags().StringVar(&stack, "stack", "", "the stack to scaffold (required)")
+	c.Flags().StringVar(&dir, "dir", "", "where to scaffold (default apps/<name>)")
+	c.Flags().StringVar(&product, "product", "", "product label for the target")
+	c.Flags().StringArrayVar(&with, "with", nil, "optional scaffold features (repeatable)")
+	c.Flags().BoolVar(&noInstall, "no-install", false, "skip the scaffold's install command")
+	return c
+}
+
+// runIn runs the scaffold's install (a developer/SpecKit-controlled shell string
+// from the embedded manifest — same trust boundary as a verify command) in dir.
+func runIn(dir, command string) error {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", command)
+	} else {
+		cmd = exec.Command("sh", "-c", command)
+	}
+	cmd.Dir = dir
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return cmd.Run()
 }
 
 // SPEC: story.engine.scan
