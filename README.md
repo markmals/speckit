@@ -6,107 +6,106 @@ SpecKit is a single Go binary. You use it to scaffold a project, then to continu
 
 It is a rewrite of [github/spec-kit](https://github.com/github/spec-kit) in Go, with one important difference: the `specify` binary stays in your project and *is* the verification engine, rather than being a one-time installer.
 
+There are two halves to working in SpecKit, and the README covers both:
+
+1. **Your coding agent** drafts specs and writes the native code, driven by the `/speckit.*` commands that `init` installs.
+2. **The `specify` CLI** checks that code against the specs — what's verified, what's drifted, what's covered — deterministically, in your terminal and in CI.
+
 ## Status
 
-The core is implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`) and the engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`). Still in progress: the `check` and `self upgrade` commands, extension/preset management, and the ready-made platform setups that let `verify` drive a real web or Apple test suite out of the box. There's no published release yet — build from source.
+Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`) and the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`). In progress: a published release (and the Homebrew/Mise install that depends on it), the `check`/`self upgrade`/`extension`/`preset` commands, the ready-made platform setups that let `verify` drive a real web/Apple test suite out of the box, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
 
-## Build
+## Install
 
 ```sh
-go build -o specify ./cmd/specify
-./specify version
+# from source (works today)
+go install github.com/markmals/speckit/cmd/specify@latest
+specify version
+```
+
+Once a release is published, the intended install paths are:
+
+```sh
+# Homebrew
+brew install markmals/tap/speckit
+
+# Mise (pulls the released binary from GitHub)
+mise use -g ubi:markmals/speckit[exe=specify]
 ```
 
 ## How it works
 
-- **You describe behavior in specs.** Specs are markdown files with a little structured header, a stable ID, and acceptance scenarios written as plain Given/When/Then. They live in `specs/` (shared) and `features/<NNNN>-<slug>/` (per feature). See [the spec conventions](specs/CONVENTIONS.md).
-- **Each platform implements the spec natively.** There's no shared runtime or cross-platform framework — web is built in React, Apple in Swift, Android in Kotlin, and so on. The spec is the only thing shared across them.
-- **`specify` checks the implementations against the specs.** It runs each platform's tests, matches the results back to the scenarios they prove, and records which specs are genuinely passing on which platforms. From then on it can tell you what's changed, what's covered, and where a platform has drifted out of sync.
-
-## Commands
-
-Run `specify <command>`. Reporting commands accept `--json`. Commands that find problems (`scan`, `drift`, `verify`, `parity --gate`, `gate`) exit with a non-zero status so they work in scripts and CI.
-
-### Set up a project
-
-| Command | What it does |
-| --- | --- |
-| `specify init [name] --integration <agent>` | Create a new project wired for your coding agent (`claude`, `codex`, `copilot`, or `generic`). Use `--here` to set up the current directory, `--force` to merge into a non-empty one. |
-
-### Work with the spec library
-
-| Command | What it does |
-| --- | --- |
-| `specify scan [path]` | Check the spec library for problems — malformed IDs, duplicate IDs, broken cross-references, scenarios missing IDs, and the like. Reports each issue and exits non-zero if any are found. |
-| `specify kinds` | List the kinds of spec the project understands (story, model, error, …). |
-
-### Verify and track each platform
-
-| Command | What it does |
-| --- | --- |
-| `specify verify <platform>` | Run that platform's tests, match the results to the scenarios they prove, and mark each fully-passing spec as verified for that platform. Exits non-zero unless everything it checked passed. |
-| `specify lock <platform> <spec-id>` | Mark a spec as verified-good on a platform at its current contents (usually done for you by `verify`). |
-| `specify drift <platform>` | List the specs whose text has changed since they were last verified on that platform (**drifted**), and those never verified there (**missing**). Exits non-zero if anything drifted. |
-| `specify cover <spec-id>` | Show one spec's status on every platform — verified, drifted, or not implemented — at a glance. |
-| `specify parity <platform> [--gate]` | Show every scenario's status on a platform: **conforming**, an intentional **declared-deviation**, **drifted**, **suspect** (more on this below), or **missing**. Add `--gate` to exit non-zero unless everything conforms. |
-
-### Enforce in git hooks and CI
-
-| Command | What it does |
-| --- | --- |
-| `specify gate firewall` | Block a change that edits a test tied to a scenario without also touching that scenario's spec — so tests can't be quietly weakened to pass. |
-| `specify gate generated` | Block edits to files SpecKit generates and owns. |
-| `specify gate scope <subject>` | Check that a commit message starts with a recognized scope. |
-
-### Other
-
-| Command | What it does |
-| --- | --- |
-| `specify version` · `specify help` | Print the version; show help for any command. |
-
-A few commands are designed but not built yet: `check`, `self upgrade`, `extension`, `preset`, `apply`, `reconcile`, `ledger`, `work`, `bench`, and `issues`. They'll tell you so if you run them.
+- **You describe behavior in specs.** Markdown files with a small structured header, a stable ID, and acceptance scenarios written as plain Given/When/Then. They live in `specs/` (shared) and `features/<NNNN>-<slug>/` (per feature). See [the spec conventions](specs/CONVENTIONS.md).
+- **Each platform implements the spec natively.** No shared runtime or cross-platform framework — web in React, Apple in Swift, Android in Kotlin, and so on. The spec is the only thing shared across them.
+- **Tests are bound to scenarios in the code.** Each test names the scenario it proves (a `// [scenario.id]` comment, a Swift `.scenario("…")` trait, a Vitest `it("[scenario.id] …")` title). That binding is read from source, not from test output.
+- **`specify` checks implementations against specs.** It runs a platform's tests, matches the results back to the scenarios they prove, and records which specs are genuinely passing on which platform. From then on it tells you what's changed, what's covered, and where a platform has drifted.
 
 ## Building an app, step by step
 
-The job is always "make this spec true on this platform." You write a spec once and bring each platform up to it.
+The job is always "make this spec true on this platform." You author a feature once with your agent, build it on a reference platform, then bring up the rest. Your agent's commands do the writing; the `specify` CLI does the checking.
+
+> The `/speckit.*` commands below are installed into your agent by `init` (as Claude skills, Codex/Copilot commands, etc.). Run them in your agent; run `specify …` in your terminal.
 
 ### 1. Create the project
 
 ```sh
-specify init my-app --integration claude
+specify init my-app --integration claude   # or codex, copilot, generic
 cd my-app
 ```
 
-You get your agent's commands installed, a place for specs, and the `specify` tool ready to use.
+You get the `/speckit.*` commands wired for your agent, a `.speckit/` runtime, and a place for specs. The first time, set your project's ground rules:
 
-### 2. Write the spec — no code yet
-
-Use your agent to draft the feature: the story, the data it touches, and the acceptance scenarios. Anything you're unsure of, leave marked for clarification and resolve it before moving on. Then check the library is well-formed:
-
-```sh
-specify scan
+```text
+/speckit.constitution    # the principles every spec and platform must honor
 ```
 
-This is where the leverage is. The clearer the spec, the cleaner every platform that follows from it.
+### 2. Author the feature — specs first, no code yet
 
-### 3. Build it on your first platform
+Work with your agent to turn an idea into specs:
 
-Have your agent implement the spec — tests first — and make sure each test names the scenario it proves. Then verify:
-
-```sh
-specify verify web
-specify drift web    # clean, right after a passing verify
+```text
+/speckit.specify   "Users can create, rename, and archive projects"
+/speckit.clarify                 # resolve every [NEEDS CLARIFICATION] with you
+/speckit.analyze                 # read-only: gaps, contradictions, broken references
 ```
 
-A passing `verify` doesn't just mean "tests are green" — it means the *right* scenarios were actually proven. If a scenario has no test, or a test points at a scenario that doesn't exist, `verify` fails and tells you exactly which one.
+Then confirm the library is well-formed:
+
+```sh
+specify scan       # exits non-zero on a malformed spec library
+```
+
+This is where the leverage is — the clearer the spec, the cleaner every platform that follows from it.
+
+### 3. Build it on your first platform (web)
+
+Have your agent plan and implement the feature natively, **tests first**, with each test bound to the scenario it proves:
+
+```text
+/speckit.plan      "Web: React + TanStack, tests in Vitest"
+/speckit.tasks                   # break the plan into ordered tasks
+/speckit.implement               # write the failing tests, then the code to pass them
+```
+
+Then verify with the engine:
+
+```sh
+specify verify web               # run the tests, join to scenarios, lock what passes
+specify drift web                # clean, right after a passing verify
+```
+
+A passing `verify` doesn't just mean "tests are green" — it means the *right* scenarios were proven. If a scenario has no test, or a test points at a scenario that doesn't exist, `verify` fails and names it.
 
 ### 4. Bring up the other platforms
 
-Same specs, one platform at a time. The first implementation serves as a worked example:
+Same specs, one platform at a time. The web implementation is a worked example the agent mirrors:
 
+```text
+/speckit.plan      "Apple: Swift + UIKit, tests in Swift Testing"
+/speckit.implement
+```
 ```sh
 specify verify apple
-specify verify android
 ```
 
 ### 5. Keep everything honest over time
@@ -117,18 +116,151 @@ specify drift <platform>    # what changed since it was last verified
 specify parity <platform>   # the full per-scenario picture for a platform
 ```
 
-When a platform genuinely needs to behave differently, note it in the code with a short reason. `parity` then shows that scenario as a **declared-deviation** instead of a failure — but if the test for it is actually failing, it shows up as **suspect** instead. Marking something as intentional can never hide a real failure.
+When a platform genuinely must behave differently, note it in the code: `// SPEC: <scenario-id> (deviates: <reason>)`. `parity` shows that scenario as a **declared-deviation** instead of a failure — but if its test is actually failing, it shows up as **suspect**. Marking something intentional can never hide a real failure.
 
-### 6. Wire it into CI
+## Convert an existing project
 
-So none of this depends on remembering:
+Because SpecKit uses the same spec conventions as the Workbench template, **the engine works on an existing spec library with no migration** — `specify scan` runs clean on a Workbench project today. To adopt SpecKit:
+
+1. **Install `specify`** (above), then from the project root confirm the library is healthy:
+   ```sh
+   specify scan
+   ```
+2. **Tell `verify` how to run each platform's tests** by adding an adapter at `.speckit/verify/<platform>.json`:
+   ```json
+   {
+     "command": ["pnpm", "-C", "apps/web", "test", "--run"],
+     "format": "junit",
+     "report": "apps/web/report.junit.xml",
+     "source": "apps/web"
+   }
+   ```
+   `format` is `junit` (Vitest, Gradle) or `swift` (Swift Testing's event stream). Then:
+   ```sh
+   specify verify web
+   ```
+3. **Make sure each test names its scenario** in source (the binding `verify` joins on). If your Workbench tests already carry scenario tags, you're done; otherwise add them as you verify each spec.
+
+You don't need to run `init` on an existing project — it's for new projects. `init --here` can add the `/speckit.*` command projections to a project that doesn't have its own, but a Workbench project already ships its agent commands, so adopting SpecKit there is just the binary plus the verify adapters.
+
+## Working with Git and GitHub
+
+SpecKit is **trunk-based**: the spec library lives on `main` as the durable source of truth, and implementation work happens on short-lived branches or worktrees that merge back. (GitHub is assumed throughout.)
+
+### Branches and worktrees
+
+The unit of work is "satisfy spec X on platform Y." For parallel work — one agent on web while another does iOS — use a **git worktree per (spec × platform)**:
 
 ```sh
-specify gate scope --message "$1"   # commit-message hook
-specify gate firewall               # pre-commit
-specify gate generated              # pre-commit
-specify parity web --gate           # CI: don't merge unless the platform is in sync
+git worktree add ../app-items-web feat/items-web
 ```
+
+The lock is **sharded per spec** (`.speckit/lock/<platform>/<spec-id>.json`), so worktrees verifying different specs never collide in it. (`specify work start <spec> <platform>` will automate this — planned.)
+
+### Pull requests
+
+Open a PR per feature (or per platform bring-up). Run the engine as **required status checks** so nothing merges with drift or broken parity:
+
+- `specify scan` — the spec library is well-formed
+- `specify verify <platform>` — the implicated platforms are green
+- `specify parity <platform> --gate` — every scenario conforms (a `suspect` or a `drifted` cell blocks the merge)
+
+The pre-commit `gate` checks keep each commit honest before it's pushed (see below).
+
+### Issues and Projects
+
+You'll likely need fewer of these than usual: **the spec library is the source of work.** `specify drift` and `specify cover` derive the "ready" queue — specs that exist but aren't implemented, or that have drifted — straight from the repo, so a spec ID is already a stable, greppable work item. Use GitHub **Issues** for cross-cutting or non-spec work, and **Projects** for a board view if you want one; SpecKit doesn't require either. (Materializing specs/scenarios as issues via `specify issues` is planned.)
+
+### Actions (CI/CD)
+
+A few lines wire the engine into every PR:
+
+```yaml
+# .github/workflows/speckit.yml
+name: speckit
+on: pull_request
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: stable }
+      - run: go install github.com/markmals/speckit/cmd/specify@latest
+      - run: specify scan
+      - run: specify verify web          # for each platform you ship
+      - run: specify parity web --gate
+```
+
+Add the `gate` checks to git hooks for fast local feedback:
+
+```sh
+# .git/hooks/commit-msg
+specify gate scope --message "$1"
+# .git/hooks/pre-commit
+specify gate firewall && specify gate generated
+```
+
+A ready-made Action (the parity matrix as a check-run summary, spec→issues, the PR-comment-to-agent loop) is the planned **github-pack**; until then, the snippet above is all you need. Deploys run on merge to `main` however you like — SpecKit doesn't prescribe a target.
+
+## The `specify` command reference
+
+Run `specify <command>`. Reporting commands print a styled summary by default and accept `--json` for machine-readable output (pipe it to `jq`). Commands that find problems (`scan`, `drift`, `verify`, `parity --gate`, `gate`) exit non-zero so they work in scripts and CI.
+
+### Set up a project
+
+| Command | What it does |
+| --- | --- |
+| `specify init [name] --integration <agent>` | Create a project wired for your agent (`claude`, `codex`, `copilot`, `generic`). `--here` sets up the current directory; `--force` merges into a non-empty one. |
+
+### Work with the spec library
+
+| Command | What it does |
+| --- | --- |
+| `specify scan [path]` | Check the spec library for problems — malformed/duplicate IDs, broken cross-references, scenarios missing IDs. Exits non-zero if any are found. |
+| `specify kinds` | List the kinds of spec the project understands (story, model, error, …). |
+
+### Verify and track each platform
+
+| Command | What it does |
+| --- | --- |
+| `specify verify <platform>` | Run the platform's tests (per `.speckit/verify/<platform>.json`), match results to the scenarios they prove, and lock each fully-passing spec. Exits non-zero unless everything it checked passed. |
+| `specify lock <platform> <spec-id>` | Mark a spec verified-good on a platform at its current contents (usually done for you by `verify`). |
+| `specify drift <platform>` | List specs whose text changed since they were last verified (**drifted**) or were never verified (**missing**). Exits non-zero on drift. |
+| `specify cover <spec-id>` | Show one spec's status on every platform — conforming, drifted, or missing. |
+| `specify parity <platform> [--gate]` | Per-scenario status: **conforming**, **declared-deviation**, **drifted**, **suspect**, or **missing**. `--gate` exits non-zero unless everything conforms. |
+
+### Enforce in git hooks and CI
+
+| Command | What it does |
+| --- | --- |
+| `specify gate firewall` | Block a change that edits a scenario-tagged test without touching that scenario's spec. |
+| `specify gate generated` | Block edits to files SpecKit generates and owns (`.speckit/lock/`, codegen output). |
+| `specify gate scope <subject>` | Check that a commit subject starts with a recognized scope. |
+
+### Other
+
+| Command | What it does |
+| --- | --- |
+| `specify version` · `specify help` | Print the version; show help for any command. |
+
+A few commands are designed but not built yet: `check`, `self upgrade`, `extension`, `preset`, `apply`, `reconcile`, `ledger`, `work`, `bench`, `issues`. They report intent if you run them.
+
+## What `init` installs
+
+| In the project | What it is |
+| --- | --- |
+| `/speckit.*` commands | The authoring/implementation prompts, projected for your agent — Claude skills under `.claude/skills/`, Codex/`generic` skills under `.agents/skills/`, Copilot under `.github/`. |
+| `.speckit/` | The runtime: the constitution, spec/plan/tasks/checklist templates, and (after `verify`) the lock. No shell scripts. |
+| Orientation file | `CLAUDE.md` / `AGENTS.md` / `.github/copilot-instructions.md` for the agent. |
+
+Planned (the **claude-pack**): lifecycle **hooks** (format-on-edit, block edits to generated files, reconcile reminders) and review **subagents** (drift-hunter, spec-reviewer, test-gap-finder). Not shipped yet.
+
+## Concepts
+
+- **The lock.** `.speckit/lock/<platform>/<spec-id>.json` holds the spec content hash last verified green, sharded per spec so parallel worktrees never conflict. `verify` is the only writer; drift is hash-mismatch-or-missing — never file timestamps (git doesn't preserve them).
+- **The join.** The scenario↔test binding is declared in *source*; outcomes come from the runner's report, matched by test identity. Any unjoinable scenario or untagged test is a hard error.
+- **Parity.** Deviation-presence and test-outcome are crossed on **independent axes**, so a `(deviates:)` marker can never suppress a failing test.
 
 ## Project layout
 
@@ -137,6 +269,7 @@ specify parity web --gate           # CI: don't merge unless the platform is in 
 | [`specs/CONVENTIONS.md`](specs/CONVENTIONS.md) | How specs are written — IDs, kinds, scenarios, and how code points back to them. Read this before writing specs. |
 | `specs/`, `features/` | The spec library. (This repo specs *itself* — `specify scan` runs clean on it.) |
 | `cmd/specify/`, `internal/` | The CLI and the engine. |
+| [`FORK.md`](FORK.md), [`FORK-PLAN.md`](FORK-PLAN.md) | Provenance and the full design (decisions D1–D15). |
 
 ## License
 
