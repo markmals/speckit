@@ -109,24 +109,24 @@ func renderParity(r engine.ParityReport) string {
 			parts = append(parts, colored(stateColor(s), fmt.Sprintf("%d %s", counts[s], s)))
 		}
 	}
-	return title("parity", r.Platform) + "\n" + tbl + "\n  " + strings.Join(parts, faintStyle.Render("  ·  "))
+	return title("parity", r.Target) + "\n" + tbl + "\n  " + strings.Join(parts, faintStyle.Render("  ·  "))
 }
 
 func renderCover(r engine.CoverReport) string {
 	if len(r.Cells) == 0 {
-		return title("cover", string(r.Spec)) + "\n  " + faintStyle.Render("no platforms have lock state yet")
+		return title("cover", string(r.Spec)) + "\n  " + faintStyle.Render("no targets have lock state yet")
 	}
 	rows := make([][]string, len(r.Cells))
 	for i, c := range r.Cells {
-		rows[i] = []string{c.Platform, stateSymbol(c.State) + " " + c.State}
+		rows[i] = []string{c.Target, stateSymbol(c.State) + " " + c.State}
 	}
 	tbl := stateTable([]string{"PLATFORM", "STATE"}, rows, 1, func(row int) string { return r.Cells[row].State })
 	return title("cover", string(r.Spec)) + "\n" + tbl
 }
 
-func renderDrift(r engine.DriftReport, platform string) string {
+func renderDrift(r engine.DriftReport, target string) string {
 	var b strings.Builder
-	b.WriteString(title("drift", platform) + "\n")
+	b.WriteString(title("drift", target) + "\n")
 	for _, id := range r.Drifted {
 		b.WriteString("  " + colored(cRed, "✗ "+string(id)) + "\n")
 	}
@@ -145,9 +145,9 @@ func renderDrift(r engine.DriftReport, platform string) string {
 	return b.String()
 }
 
-func renderVerify(v engine.VerifyResult, locked []specmodel.SpecID, platform string) string {
+func renderVerify(v engine.VerifyResult, locked []specmodel.SpecID, target string) string {
 	var b strings.Builder
-	b.WriteString(title("verify", platform) + "\n")
+	b.WriteString(title("verify", target) + "\n")
 	for _, s := range v.Failed {
 		b.WriteString("  " + colored(cRed, "✗ failed      "+string(s)) + "\n")
 	}
@@ -201,6 +201,6 @@ func renderInit(integration, root string, n int) string {
 		faintStyle.Render(fmt.Sprintf(" (%s) at %s — %d paths", integration, root, n))
 }
 
-func renderLock(platform, id string) string {
-	return colored(cGreen, "✓ locked ") + id + faintStyle.Render(" on "+platform)
+func renderLock(target, id string) string {
+	return colored(cGreen, "✓ locked ") + id + faintStyle.Render(" on "+target)
 }
