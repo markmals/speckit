@@ -65,6 +65,29 @@ the feature folder; `plan` and `tasks` become **per-platform layers on top** —
 
 ---
 
+## Stack scaffolding (new — proposed, needs direction)
+
+⬜ `specify` should **scaffold a target's stack** — the wired-up starter (deps, pinned versions, config,
+and the scenario-binding test harness) — so the agent doesn't reassemble the right packages/conventions
+every time a new target or product begins. Complements the platform packs: a **pack** is the agent's
+*guidance* for a stack; a **scaffold** is the runnable *starter* for it, on the SpecKit-recommended stack.
+
+Prior art: `~/Developer/Libraries/create-sprinkles` (a `vp create`-style template scaffolder — web-only,
+React Router; a *different* stack than SpecKit's web pack recommends, so templates would be SpecKit-curated).
+
+Sketch:
+- A command like `specify target add <name> --stack <stack>` that (1) scaffolds the starter into the
+  target's source dir, (2) writes/updates the target's `.speckit/specs.jsonc` entry, (3) runs `specify packs`.
+- Templates embedded in coreassets (`templates/scaffolds/<stack>/`), version-pinned, with the binding
+  harness pre-wired (Vitest `// [scenario.id]`, Swift Testing `SpecTraits.swift`, MSTest `[TestProperty]`, …)
+  aligned with each pack's recommended stack.
+
+Open decisions (product calls):
+- **Full curated templates** (turnkey, but ongoing version maintenance) vs **harness-overlay** (delegate the
+  base scaffold to each ecosystem's `create-*`, then layer SpecKit conventions — lighter to maintain, depends on external tools).
+- Which stacks first (web + apple, or all nine).
+- Command shape + interactivity (project name, GitHub owner, optional add-ons à la create-sprinkles' Convex).
+
 ## Config system — `.speckit/specs.jsonc`
 
 - ✅ **targets** — `.speckit/specs.jsonc` (JSONC, hand-rolled stripper) with version/agent/paths/targets;
