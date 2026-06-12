@@ -21,15 +21,11 @@ type VerifyConfig struct {
 	Source  string   `json:"source"` // test source dir, relative to root
 }
 
-// Verify runs a platform's tests (if a command is given), parses the report,
-// joins outcomes to declared scenarios via source bindings, and writes the lock
-// for each spec whose scenarios all passed. A spec is locked only when source
-// integrity is clean (no dangling/unbound bindings, D12) and all of its
-// scenarios passed (scenario.engine.lock.no-write-on-red). Only the specs the
-// platform actually implements (those with a binding here) are in scope.
-//
-// SPEC: story.engine.verify, story.engine.lock
-func Verify(root, platform string, cfg VerifyConfig) (VerifyResult, []specmodel.SpecID, error) {
+// joinPlatform runs the platform's command (if any), parses the report, scans
+// source bindings, scopes to the specs the platform implements (those with a
+// binding here), and joins. Shared by Verify (which then locks the green specs)
+// and Parity (which crosses the result with deviation markers).
+func joinPlatform(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.SpecID]bool, map[specmodel.SpecID][]specmodel.SpecID, error) {
 	if len(cfg.Command) > 0 {
 		cmd := exec.Command(cfg.Command[0], cfg.Command[1:]...)
 		cmd.Dir = root
@@ -38,7 +34,7 @@ func Verify(root, platform string, cfg VerifyConfig) (VerifyResult, []specmodel.
 
 	data, err := os.ReadFile(filepath.Join(root, cfg.Report))
 	if err != nil {
-		return VerifyResult{}, nil, err
+		return VerifyResult{}, nil, nil, err
 	}
 	var results []reports.Result
 	switch cfg.Format {
@@ -47,20 +43,20 @@ func Verify(root, platform string, cfg VerifyConfig) (VerifyResult, []specmodel.
 	case "swift":
 		results, err = reports.ParseSwiftEvents(data)
 	default:
-		return VerifyResult{}, nil, fmt.Errorf("unknown report format %q", cfg.Format)
+		return VerifyResult{}, nil, nil, fmt.Errorf("unknown report format %q", cfg.Format)
 	}
 	if err != nil {
-		return VerifyResult{}, nil, err
+		return VerifyResult{}, nil, nil, err
 	}
 
 	bindings, err := ScanBindings(filepath.Join(root, cfg.Source))
 	if err != nil {
-		return VerifyResult{}, nil, err
+		return VerifyResult{}, nil, nil, err
 	}
 
 	specs, err := specmodel.LoadLibrary(os.DirFS(root))
 	if err != nil {
-		return VerifyResult{}, nil, err
+		return VerifyResult{}, nil, nil, err
 	}
 	scenarioSpec := map[specmodel.SpecID]specmodel.SpecID{}
 	specScenarios := map[specmodel.SpecID][]specmodel.SpecID{}
@@ -75,7 +71,6 @@ func Verify(root, platform string, cfg VerifyConfig) (VerifyResult, []specmodel.
 		}
 	}
 
-	// A spec is in scope for this platform if any of its scenarios is bound here.
 	inScope := map[specmodel.SpecID]bool{}
 	for _, b := range bindings {
 		if spec, ok := scenarioSpec[b.Scenario]; ok {
@@ -89,10 +84,23 @@ func Verify(root, platform string, cfg VerifyConfig) (VerifyResult, []specmodel.
 		}
 	}
 
-	v := Join(declared, results, bindings)
+	return Join(declared, results, bindings), inScope, specScenarios, nil
+}
+
+// Verify runs a platform's tests, joins outcomes to declared scenarios, and
+// writes the lock for each spec whose scenarios all passed — only when source
+// integrity is clean (no dangling/unbound, D12) and all of the spec's scenarios
+// passed (scenario.engine.lock.no-write-on-red).
+//
+// SPEC: story.engine.verify, story.engine.lock
+func Verify(root, platform string, cfg VerifyConfig) (VerifyResult, []specmodel.SpecID, error) {
+	v, inScope, specScenarios, err := joinPlatform(root, cfg)
+	if err != nil {
+		return VerifyResult{}, nil, err
+	}
 
 	var locked []specmodel.SpecID
-	if len(v.Dangling) == 0 && len(v.Unbound) == 0 { // source integrity clean
+	if len(v.Dangling) == 0 && len(v.Unbound) == 0 {
 		passed := map[specmodel.SpecID]bool{}
 		for _, sc := range v.Passed {
 			passed[sc] = true
