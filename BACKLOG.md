@@ -82,6 +82,26 @@ First slice = **web** end-to-end (green on `specify verify` immediately), then *
 **Resolved:** plain `specs.json` (so the merge is a trivial load→add→write), keep `{{ }}` with escaping,
 and `target add` runs the install (`--no-install` to skip). Folded into the design doc.
 
+## Coverage gap — libraries / Swift packages / CLIs / extensions (from the ~/Developer sweep)
+
+⬜ A sweep of `~/Developer` showed SpecKit is **app-centric** but a large slice of the real work isn't apps:
+**libraries** (Reactivity, downpour, icing-components, content-layer, cider, sqlite-data, PrivateHeaderKit,
+catalyst-remix, create-sprinkles), **Swift packages/CLIs** (remctl, apple-platform-tools — a monorepo of
+Swift packages + CLIs), and a **VS Code extension** (mise-vscode). These don't fit the app-centric authoring
+model (NARRATIVE → human user stories → view-models/flows) — a library's consumer is a developer.
+
+**The engine doesn't care** (it joins scenario↔test regardless), so the fix is **additive**, not a redesign:
+- A product **`kind: app | library`**. For `library`, relax `writing-user-stories`' "actor is human" → the
+  actor is the API/CLI consumer; `story`+`domain`+`error` kinds apply, `view-model`/`flow` (UI) don't; dovetails
+  with the property-test guidance already in TDD. Maybe an `api`/`contract` spec kind.
+- New stacks/scaffolds: **`swift-package`**, **`swift-cli`** (SwiftPM, `swift test`, no simulator — distinct
+  from the GUI `apple` stack), **`ts-lib`** (npm package: tsup/vite-lib + Vitest, no dev server), **`vscode-extension`**
+  (vsce), maybe `browser-extension`. The binding harness (Swift Testing / Vitest) carries over unchanged.
+- Monorepos (apple-platform-tools) are already covered — each package is a target/product.
+
+The one **design change**: add `kind` to the product model so the authoring path branches. Everything else
+is additive (more scaffolds + a library authoring variant). Needs Mark's call on sequencing.
+
 ## Config system — `.speckit/specs.json`
 
 - ✅ **targets** — `.speckit/specs.json` (plain JSON) with version/agent/paths/targets;
