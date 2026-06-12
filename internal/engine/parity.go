@@ -51,7 +51,7 @@ type ParityCell struct {
 // ParityReport is a target's parity matrix.
 type ParityReport struct {
 	Target string       `json:"target"`
-	Cells    []ParityCell `json:"cells"`
+	Cells  []ParityCell `json:"cells"`
 }
 
 // Gated reports whether `parity --gate` should fail: any cell that is not

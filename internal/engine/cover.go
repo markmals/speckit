@@ -12,7 +12,7 @@ import (
 
 // CoverCell is a spec's state on one target, derived from the lock.
 type CoverCell struct {
-	Target  string            `json:"target"`
+	Target    string            `json:"target"`
 	State     string            `json:"state"` // conforming | drifted | missing
 	Scenarios map[string]string `json:"scenarios,omitempty"`
 }

@@ -36,10 +36,10 @@ func main() {
 
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:           "specify",
-		Short:         "SpecKit — project bootstrapper and spec engine",
-		SilenceUsage:  true,
-		Version:       version,
+		Use:          "specify",
+		Short:        "SpecKit — project bootstrapper and spec engine",
+		SilenceUsage: true,
+		Version:      version,
 	}
 	root.SetErrPrefix("specify:")
 	root.AddCommand(
