@@ -95,14 +95,18 @@ model (NARRATIVE → human user stories → view-models/flows) — a library's c
   actor is the API/CLI consumer; `story`+`domain`+`error` kinds apply, `view-model`/`flow` (UI) don't; dovetails
   with the property-test guidance already in TDD. Maybe an `api`/`contract` spec kind.
 - New stacks/scaffolds: **`swift-package`**, **`swift-cli`** (SwiftPM, `swift test`, no simulator — distinct
-  from the GUI `apple` stack), **`ts-lib`** (npm package: tsup/vite-lib + Vitest, no dev server), **`vscode-extension`**
-  (vsce), maybe `browser-extension`. The binding harness (Swift Testing / Vitest) carries over unchanged.
+  from the GUI `apple` stack), **`ts-lib`** (npm package + Vitest, no dev server), **`vscode-extension`**.
+  The binding harness (Swift Testing / Vitest) carries over unchanged.
 - Monorepos (apple-platform-tools) are already covered — each package is a target/product.
 
 **Decided: expand now.** Design folded into [docs/design/library-products.md](docs/design/library-products.md)
-(the `kind` + the library authoring variant) and the [scaffolding doc](docs/design/stack-scaffolding.md)
-(the `swift-package`/`swift-cli`/`ts-lib`/`vscode-extension`/`browser-extension` stacks). First build slice
-stays **web**; library scaffolds + the authoring branch follow. No engine change.
+(the `kind` + the library authoring variant) and the [scaffolding doc](docs/design/stack-scaffolding.md).
+
+**Stack roster is evidence-based** (`~/Developer` + the `markmals`/`markmals-archive` GitHub accounts, 141 repos):
+**kept** — web · website (Astro) · apple · android (light: 2 archived Kotlin/KMP) · go-cli · node-cli ·
+swift-package · swift-cli · ts-lib · vscode-extension. **Dropped (zero evidence)** — `rust-cli`, `windows`
+(.NET), `linux`, `browser-extension` (only the ambiguous ObjC `SafariInjector`). Each stack's exact
+bleeding-edge tooling is **previewed for Mark's sign-off before its scaffold is built**. First build = web.
 
 ## Config system — `.speckit/specs.json`
 

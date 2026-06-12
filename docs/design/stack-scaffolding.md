@@ -30,7 +30,7 @@ specify target add <name> --stack <stack> [--dir <path>] [--product <p>] [--with
 ```
 
 - `<name>` — the target's key in `.speckit/specs.json` (e.g. `web`, `consumer-web`).
-- `--stack` — which scaffold. **App stacks:** `web` · `website` · `apple` · `android` · `windows` · `linux` · `go-cli` · `node-cli` · `rust-cli`. **Library/extension stacks:** `swift-package` · `swift-cli` · `ts-lib` · `vscode-extension` · `browser-extension` — these set the product `kind: library` ([library-products.md](library-products.md)).
+- `--stack` — which scaffold. The roster is **evidence-based** — only stacks Mark has actually worked on (per `~/Developer` + the `markmals` / `markmals-archive` GitHub accounts). **App stacks:** `web` · `website` · `apple` · `android` · `go-cli` · `node-cli`. **Library stacks:** `swift-package` · `swift-cli` · `ts-lib` · `vscode-extension` — these set the product `kind: library` ([library-products.md](library-products.md)).
 - `--dir` — where to scaffold (default `apps/<name>`).
 - `--product` — optional product label written onto the target.
 - `--with` — optional add-ons the scaffold declares (e.g. `--with convex`).
@@ -114,20 +114,29 @@ working loop rather than wiring one. Concretely, per stack:
 
 | stack | test framework → report `format` | binding affordance pre-wired | harness artifact |
 | --- | --- | --- | --- |
-| web / node-cli | Vitest → `junit` | `// [scenario.<id>]` above `it(…)` | vitest config emitting junit at `report` |
-| apple | Swift Testing → `swift` (event-stream NDJSON) | `@Suite(.spec)` / `@Test(.scenario)` traits | `SpecTraits.swift` + the event-stream output flag |
+| web / website / node-cli / ts-lib | Vitest → `junit` | `// [scenario.<id>]` above `it(…)` | Vitest config emitting junit at `report` |
+| apple / swift-package / swift-cli | Swift Testing → `swift` (event-stream NDJSON) | `@Suite(.spec)` / `@Test(.scenario)` traits | `SpecTraits.swift` (no simulator for package/cli) |
 | android | kotlin.test/JUnit → `junit` | `@Tag("spec:…")` / `@Tag("scenario:…")` | Gradle test task emitting junit |
-| windows | MSTest → `junit` | `[TestProperty("scenario", …)]` | `.runsettings` emitting junit |
-| linux / rust-cli | cargo-nextest / `go test` → `junit` | `// [scenario.<id>]` comment | nextest/gotestsum junit output |
-| swift-package / swift-cli | Swift Testing → `swift` | `@Suite(.spec)` / `@Test(.scenario)` traits | `SpecTraits.swift`; SwiftPM `swift test` (no simulator) |
-| ts-lib | Vitest → `junit` | `// [scenario.<id>]` | tsup/vite-lib build; Vitest config (no dev server) |
+| go-cli | `go test` → `junit` | `// [scenario.<id>]` comment | gotestsum junit output |
 | vscode-extension | `@vscode/test-cli` (Mocha) → `junit` | `// [scenario.<id>]` | the extension-host test runner emitting junit |
-| browser-extension | Vitest / Playwright → `junit` | `// [scenario.<id>]` | web-ext test config emitting junit |
 
 Each ships an example spec + the matching bound test, so `specify scan` and
 `specify verify <name>` both pass on the freshly-scaffolded target. The
 library/extension stacks set the product `kind: library` and lay a library layout
 (no app shell) — see [library-products.md](library-products.md).
+
+## Per-stack tooling previews (Mark signs off before each build)
+
+The roster is evidence-based, but the **exact framework + tooling** for each
+stack is *not* pre-decided here. The harness table above fixes only the contract
+(report `format` + the binding affordance — SpecKit's convention). The actual
+stack — web framework (TanStack Start vs Solid Start vs …), the `ts-lib` bundler,
+the `apple` minimum-OS / Swift version, the Vitest/test-runner versions — is
+chosen at build time, targeting the **latest / bleeding-edge** of each ecosystem,
+and **previewed for Mark's sign-off before that stack's scaffold is built**. Each
+preview is a short list of the pinned deps + the layout; approved choices are
+recorded per stack as we go. No scaffold is built on a stack until its tooling is
+approved.
 
 ## specs.json merge (now trivial)
 
@@ -159,5 +168,6 @@ for offline / CI use.
 3. Then **apple** — it exercises the other report format (`swift`) and the most
    distinct harness (`SpecTraits.swift`), proving the contract generalizes.
 
-The remaining seven stacks are then mechanical (each is a manifest + a template
-tree + the harness), parallelizable the way the packs were.
+The remaining stacks follow one at a time — each gated on its tooling preview
+(above), then a manifest + template tree + harness, parallelizable the way the
+packs were.
