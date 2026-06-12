@@ -98,6 +98,10 @@ by React Aria (not Radix). Pack refresh = follow-up.
   - ⬜ **Build Part B (web scaffold content):** the TanStack Start + Mise(monorepo) + Tailwind/React-Aria tree
     with the binding harness, in `templates/scaffolds/web/`. The proof: scaffold → `pnpm install` → `vitest` →
     `specify verify web` green. Then the `--data convex`/Drizzle + SSR/server variants.
+  - **Per-stack previews** ([docs/design/scaffolds/](docs/design/scaffolds/)): **web** ✅ spec'd (comprehensive
+    stack), **node-cli** ✅ spec'd (shares the Node toolchain; CLI-specific = Bombshell/TS-Rest/plainjob/SEA +
+    Homebrew/Mise/apt/winget dist). Each remaining stack gets the same inspect-then-spec pass; no scaffold is
+    built until its tooling preview is signed off.
 
 ## Coverage gap — libraries / Swift packages / CLIs / extensions (from the ~/Developer sweep)
 
