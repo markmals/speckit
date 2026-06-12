@@ -17,20 +17,27 @@ Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`
 
 ## Install
 
-```sh
-# from source (works today)
-go install github.com/markmals/speckit/cmd/specify@latest
-specify version
-```
-
-Once a release is published, the intended install paths are:
+Once a release is published:
 
 ```sh
 # Homebrew
-brew install markmals/tap/speckit
+brew install markmals/tap/specify
+```
 
-# Mise (pulls the released binary from GitHub)
-mise use -g ubi:markmals/speckit[exe=specify]
+```toml
+# Mise — in your mise.toml
+[plugins]
+specify = "https://github.com/markmals/speckit"
+
+[tools]
+specify = "latest"
+```
+
+Or build from source today:
+
+```sh
+go install github.com/markmals/speckit/cmd/specify@latest
+specify version
 ```
 
 ## How it works
