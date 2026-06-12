@@ -42,7 +42,7 @@ release:
 # prebuilt release archive (no compile on install) and installs `specify`.
 # Requires a HOMEBREW_TAP_TOKEN secret with write access to markmals/homebrew-tap.
 brews:
-  - name: speckit
+  - name: specify
     repository:
       owner: markmals
       name: homebrew-tap
