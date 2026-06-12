@@ -1,55 +1,67 @@
 # Web scaffold — tooling preview
 
-**Status:** ✅ **Approved 2026-06-12.** Framework **TanStack Start** (React 19) ·
-toolchain **raw Vite 8** (no Vite+) · Convex **optional (`--with convex`)** ·
-extras off by default · RSC off by default. Exact versions pinned at build time.
-Ready to build.
+**Status:** ⚠️ **Revised 2026-06-12 after inspecting the actual repos.** The earlier
+"TanStack Start" approval was based on a shallow read (repo names + primary
+language) and is **superseded**. The real, actively-developed web stack —
+confirmed from `remix-3-templates` and `remix-3-contacts` source — is **Remix 3
+on your own toolchain**. **Re-approval needed.**
 
-## Proposed stack (bleeding edge, mid-2026)
+## Real stack (inspected, not guessed)
 
-| layer | proposed | current state / why |
+| layer | what your repos actually use | evidence |
 | --- | --- | --- |
-| **framework** | **TanStack Start** (React 19) | RC, API stable (v1.167+, ~6M wk downloads); RSC support landed Apr 2026 (experimental, client-first React Flight). Matches SpecKit's `web` pack. |
-| **toolchain** | **Vite 8** (Rolldown + Oxc + Lightning CSS) | single Rust pipeline since Mar 2026 — 4–20× faster, no dev/prod divergence. *Or* **Vite+ (`vp`)** — your own tooling (you ship the homebrew formula; `create-sprinkles` requires it). |
-| **styling** | **Tailwind CSS v4.3** | CSS-first config; v4.3 May 2026. |
-| **testing** | **Vitest 4** (Browser Mode, Playwright-driven) | Browser Mode + visual regression now stable; its `junit` reporter feeds the engine, and the binding harness rides on it. |
-| **data** *(optional)* | **Convex** via `--with convex` | your backend of choice; ties into the deferred `contracts` story. |
-| **extras** *(optional)* | Clerk (auth), Motion (animation) via `--with` | from the `web` pack; off by default. |
+| **framework** | **Remix 3** (`remix@3.0.0-beta.2`) — *not* React/TanStack (no `react` dep at all; Remix 3 is its own framework) | `remix-3-templates`, `remix-3-contacts`, 4× `remix-frame-*`, all pushed this month |
+| **toolchain** | **vite-plus** — `vite` is aliased to `@voidzero-dev/vite-plus-core`; `@hiogawa/vite-plugin-fullstack` | `remix-3-templates/bun/package.json` |
+| **runtime** | **Bun** and/or **Cloudflare Workers** (`wrangler`, `@cloudflare/vite-plugin`) | `bun/` + `cloudflare/` template variants |
+| **TS / lint** | **tsgo** (`@typescript/native-preview`) + **oxlint** (`oxlint-tsgolint`, `oxc-parser`) | dev deps |
+| **styling** | custom CSS (`app/styles/preflight.css`) — **not Tailwind** | template tree |
+| **testing** | `remix-test.config.ts` + `*.test.ts` (vite-plus/vitest-compatible) + **Playwright** e2e | `remix-3-contacts` |
+| **data** | SQL migrations (`db/migrations/*`) | `remix-3-templates/bun/db` |
+| **layout** | `app/` (actions, components, data, routes.ts, entry.{browser,server}, middleware) | template tree |
+
+You're also already doing SDD here — `remix-3-contacts` ships `.claude/skills/remix/`
+and `docs/superpowers/specs/`.
+
+## Implication: mirror your own template
+
+SpecKit's `web` scaffold should **be your `remix-3-templates`** (the canonical
+Remix 3 + vite-plus + Bun/Cloudflare setup you already maintain) with the SpecKit
+**binding harness** layered on — not an invented TanStack project. And the
+shipped `web` **pack** (`web-development`, which I ported from Workbench as
+React/TanStack/Tailwind) is **wrong for you** → it should be rewritten to Remix 3
+(you already have `.claude/skills/remix/` as the source of truth).
 
 ## The binding harness (makes `specify verify web` green on arrival)
 
-- Vitest configured with the **`junit` reporter** → the `report` path.
-- One example story under `features/` + a bound test using **`// [scenario.<id>]`**
-  above `it(…)`, and a `// SPEC:` pointer on the unit it covers.
-- Result: `specify scan` and `specify verify web` both pass on the fresh target —
-  the agent extends a green loop instead of wiring one.
-
-## Resulting `specs.json` target
+- The test runner (vite-plus / `remix-test.config.ts`) configured with a
+  **`junit` reporter** → the `report` path.
+- One example story under `features/` + a bound `*.test.ts` using
+  **`// [scenario.<id>]`** above the test, and a `// SPEC:` pointer on the unit.
 
 ```json
 "web": {
   "stack": "web",
-  "command": "pnpm -C apps/web test --run",
+  "command": "vp test --run",
   "format": "junit",
   "report": "apps/web/junit.xml",
-  "source": "apps/web/src"
+  "source": "apps/web/app"
 }
 ```
 
-## Decided (2026-06-12)
+(`command`/`report` flags pinned once I confirm vp test's junit output at build.)
 
-1. **Framework** — **TanStack Start** (React 19). RSC off by default.
-2. **Toolchain** — **raw Vite 8** (Rolldown + Oxc + Lightning CSS); no Vite+.
-3. **Convex** — **optional `--with convex`**; the base scaffold stays lean.
-4. **Extras** — Clerk / Motion as `--with` add-ons; off by default.
+## Your calls (re-approval)
 
-## Notes
+1. **Runtime default** — Bun · Cloudflare Workers · ask each time. (Your templates ship both.)
+2. **Mirror `remix-3-templates` as-is**, or a trimmed variant for scaffolding?
+3. **Styling** — keep custom CSS (your default), or offer Tailwind as `--with`?
+4. **Pack** — rewrite `web-development` to Remix 3 now, or point it at your existing `.claude/skills/remix/`?
 
-- **RSC stays off by default** — it's experimental in TanStack Start RC; opt-in.
-- React 19 + the React Compiler are assumed (stable).
-- Exact versions are pinned when we build, not now.
+## Method note
 
-Sources: [TanStack Start RSC](https://tanstack.com/blog/react-server-components) ·
-[Vite 8 / Rolldown](https://vite.dev/blog/announcing-vite7) ·
-[Tailwind v4.3](https://tailwindcss.com/blog/tailwindcss-v4-3) ·
-[Vitest 4 Browser Mode](https://voidzero.dev/posts/announcing-vitest-4).
+This correction came from reading the actual `package.json` + file trees. The
+same **inspect-don't-guess** pass should precede every stack's preview (e.g. the
+iOS apps, the TS libs, the VS Code extensions) before we build them.
+
+Sources (mid-2026 currency): [Remix blog](https://remix.run/blog) ·
+[Vite+ / VoidZero](https://voidzero.dev) — exact versions pinned at build time.
