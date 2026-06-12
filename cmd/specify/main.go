@@ -29,7 +29,7 @@ var version = "0.0.0-dev"
 // plannedCommands is the command surface from the fork plan (D5); these are
 // stubbed until implemented.
 var plannedCommands = []string{
-	"verify", "cover", "parity",
+	"verify", "parity",
 	"gate", "ledger", "apply", "reconcile",
 	"extension", "preset", "work", "bench", "issues",
 }
@@ -63,6 +63,8 @@ func run(args []string) error {
 		return cmdLock(rest)
 	case "drift":
 		return cmdDrift(rest)
+	case "cover":
+		return cmdCover(rest)
 	default:
 		if slices.Contains(plannedCommands, cmd) {
 			return fmt.Errorf("%q is not implemented yet (planned)", cmd)
@@ -215,6 +217,36 @@ func cmdDrift(args []string) error {
 	return nil
 }
 
+// cmdCover shows a spec's per-platform coverage from the lock.
+// SPEC: story.engine.cover
+func cmdCover(args []string) error {
+	fs, jsonOut := jsonFlagSet("cover")
+	_ = fs.Parse(args)
+	id := fs.Arg(0)
+	if id == "" {
+		return fmt.Errorf("usage: specify cover <spec-id> [path]")
+	}
+	root := fs.Arg(1)
+	if root == "" {
+		root = "."
+	}
+	report, err := engine.Cover(root, specmodel.SpecID(id))
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return writeJSON(os.Stdout, report)
+	}
+	if len(report.Cells) == 0 {
+		fmt.Printf("cover %s: no platforms have lock state yet\n", id)
+		return nil
+	}
+	for _, c := range report.Cells {
+		fmt.Printf("%-10s %s\n", c.Platform, c.State)
+	}
+	return nil
+}
+
 func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
@@ -229,6 +261,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "  scan [path]                         lint the spec library")
 	fmt.Fprintln(w, "  lock <platform> <spec-id>           acknowledge a spec green on a platform")
 	fmt.Fprintln(w, "  drift <platform> [path]             report specs that drifted from the lock")
+	fmt.Fprintln(w, "  cover <spec-id> [path]              show a spec's per-platform coverage")
 	fmt.Fprintln(w, "  version | kinds                     (add --json for structured output)")
 	fmt.Fprintln(w, "\nPlanned (stubbed):")
 	fmt.Fprintln(w, "  "+strings.Join(plannedCommands, ", "))
