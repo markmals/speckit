@@ -18,7 +18,7 @@ So that I can see, per spec, where the work stands across the platform matrix.
 
 - Given a spec implemented on some platforms and not others
 - When the user runs `specify cover <spec-id>`
-- Then each applicable platform is listed with its state: implemented-and-green, implemented-but-red, or missing
+- Then each platform with lock state is listed with its state — conforming, drifted, or missing — derived from the lock without re-running tests (a "red" state would require a fresh verify, which scenario 2 forbids)
 
 ## Scenario 2: Green is read from the lock, not re-run
 
