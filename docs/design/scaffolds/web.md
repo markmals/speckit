@@ -1,61 +1,74 @@
 # Web scaffold — tooling preview
 
-**Status:** proposal, grounded in your real product repos (`trove/apps/trove`,
-`trove/apps/tangerine-dashboard`) + your stated intent. Supersedes both earlier
-drafts (the TanStack-off-metadata one and the Remix-3 overcorrection). For sign-off.
+**Status:** revised per detailed direction (2026-06-12), grounded in
+`trove/apps/trove` + `tanstack-react-start-contacts`. For sign-off.
 
-> **What went wrong twice, so it's on record:** I first proposed TanStack off repo
-> *names*; then "corrected" to Remix 3 off your *most-pushed* repos — but those are
-> you working **on** the Remix framework, not your **product** stack. Reading the
-> actual `package.json` of a shipping app settled it.
+## The stack
 
-## The stack (inspected from `trove`)
+Copy `trove/apps/trove`'s TanStack setup, with two deliberate changes: **Mise**
+replaces `vite-plus` for tooling, and the **`foundation`** component library is
+baked in.
 
-| layer | choice | from |
-| --- | --- | --- |
-| **framework** | **TanStack Start** (React 19 + **React Compiler**) — `@tanstack/react-start`, `react-router`, `react-query`/`form`/`table` | both trove apps |
-| **toolchain** | **vite-plus** (`defineConfig` from `vite-plus`; `@vitejs/plugin-react` + `@rolldown/plugin-babel` reactCompiler; **lightningcss**) | `apps/trove/vite.config.ts` |
-| **styling** | **Tailwind v4** (`@tailwindcss/vite`) + `cva` + `tailwind-merge` + `react-aria-components` | both apps |
-| **TS / lint** | **tsgo** (`@typescript/native-preview`) + `eslint-plugin-{perfectionist,prefer-let}` | both apps |
-| **data** | **Convex** (hosted) by default; *or* **Drizzle** + `@hey-api/openapi-ts` against an OpenAPI backend (Trove's Go-daemon pattern) | your intent + trove |
-| **auth** *(optional)* | **Clerk** (`@clerk/tanstack-react-start`) via `--with clerk` | tangerine-dashboard |
-| **runtime** | **Cloudflare Workers** (SSR, prod default — `@cloudflare/vite-plugin` + `wrangler`) · **Node-local** (Trove's daemon-served SPA, `spa: { enabled: true }`) | both apps |
-| **testing** | `*.test.ts` via **`vp test`** (vitest under vite-plus) → `junit` | trove tests |
+| layer | choice |
+| --- | --- |
+| **framework** | **TanStack Start** (React 19 + **React Compiler**) — `react-start`, `react-router` (file routes), `react-query`/`form`/`table` |
+| **tooling** | **Mise** for env + tasks + toolchain (node version), driving **raw** tools — **Vite**, **Vitest**, **Oxfmt**, **Oxlint**, **tsdown** (libs). **No vite-plus / `vp`.** |
+| **styling** | **Tailwind v4** (`@tailwindcss/vite`, lightningcss) + `cva` (the `cx` helper) |
+| **components** | **`foundation`** — the Catalyst-style set on **React Aria** (`react-aria-components`) + Tailwind + `motion` (badge, button, calendar, input, navbar, select, table, …). Shared across all web apps. |
+| **data** | **`--data drizzle`** (`drizzle-orm` + `drizzle-kit`; trove's `main`) · **`--data convex`** (hosted; trove's `convex` branch) |
+| **auth** *(optional)* | **Clerk** (`@clerk/tanstack-react-start`) via `--with clerk` |
+| **TS** | **tsgo** (`@typescript/native-preview`) |
+| **testing** | **Vitest** (raw) → `junit`, run via the Mise `test` task |
 
-Layout mirrors your apps: `app/` (routes.ts virtual routes → `routes.gen.ts`,
-`entry.*`, `components/`, `styles/`, `lib/`).
+## SSR / server matrix (the new affordance)
 
-## Proposed defaults (adjust at will)
+TanStack Start can render server-side or not, and can ship with a server or not.
+Two flags, three valid modes:
 
-- **Runtime:** `--runtime cloudflare` (prod) | `node` (Trove pattern). Default **cloudflare**.
-- **Data:** `--data convex` (default, hosted) | `drizzle` (with an OpenAPI backend).
-- **Auth:** off; `--with clerk` adds it.
+| `--ssr` | `--server` | mode | host |
+| --- | --- | --- | --- |
+| on | on | **SSR app** (server-rendered) | Cloudflare Workers / Node |
+| off | on | **SPA + server** (client-rendered, server owns data/API — Trove's daemon pattern, `spa:{enabled:true}`) | Workers / a daemon |
+| off | off | **Static SPA** (no server, no SSR) | Cloudflare Pages / any static host |
+
+`--ssr --no-server` is rejected (SSR needs a server). Defaults: **`--ssr --server`**
+(production), with **Cloudflare Workers** the default runtime. Static SPA pairs
+naturally with `--data convex` (hosted backend, no server of your own).
+
+## Tooling via Mise (replaces `vp` tasks)
+
+The scaffold's `mise.toml` carries the toolchain + tasks; `package.json` carries
+the deps. Tasks: `dev` (vite) · `test` (vitest → junit) · `build` (vite; tsdown
+for any lib output) · `fmt` (oxfmt) · `lint` (oxlint) · the db tasks for Drizzle.
 
 ## The binding harness (green on `specify verify web`)
 
-`vp test` configured with a **`junit` reporter** → the `report` path; one example
-story under `features/` + a bound `*.test.ts` using **`// [scenario.<id>]`** + a
-`// SPEC:` pointer.
+The `test` task runs Vitest with a **`junit` reporter** → the `report` path; one
+example story under `features/` + a bound `*.test.ts` with **`// [scenario.<id>]`**
+and a `// SPEC:` pointer.
 
 ```json
 "web": {
   "stack": "web",
-  "command": "vp test --run",
+  "command": "mise run -C apps/web test",
   "format": "junit",
   "report": "apps/web/junit.xml",
   "source": "apps/web/app"
 }
 ```
 
-## Consequence for the pack
+## Defaults (adjust at will)
 
-The shipped `web-development` pack (ported from Workbench) is close in spirit
-(React/TanStack/Tailwind) but should be refreshed to *this* exact stack
-(React Compiler, vite-plus, Convex/Drizzle, Clerk) — a follow-up, not a blocker.
+`--ssr --server`, runtime **cloudflare**, **`--data convex`**, auth off, `foundation`
++ Tailwind + React Aria always in.
+
+## References (inspected)
+
+`trove/apps/trove` (TanStack Start + foundation + Drizzle, SPA+daemon) ·
+`trove/apps/tangerine-dashboard` (SSR + Cloudflare + Clerk) ·
+`tanstack-react-start-contacts` (SSR-on-Cloudflare config) · trove `main` (Drizzle)
+vs `convex` branch (Convex).
 
 ## Method note
 
-Every remaining stack gets the same treatment: read a real shipping repo's
-manifest before its preview, not the name/language. (Confirmed by inspection so
-far: `remctl` = Swift `.executable` CLI; `Reactivity` = Swift `.library`;
-`SafariInjector` = a Theos jailbreak tweak, not an extension.)
+Same inspect-a-shipping-repo pass precedes every other stack's preview.

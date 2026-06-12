@@ -82,12 +82,12 @@ First slice = **web** end-to-end (green on `specify verify` immediately), then *
 **Resolved:** plain `specs.json` (so the merge is a trivial load→add→write), keep `{{ }}` with escaping,
 and `target add` runs the install (`--no-install` to skip). Folded into the design doc.
 
-**Web tooling — grounded in the real product repos** ([web preview](docs/design/scaffolds/web.md), from
-`trove/apps/*`): **TanStack Start** (React 19 + React Compiler) + **vite-plus** + **Tailwind v4** + tsgo;
-data via **Convex** (default) or **Drizzle + @hey-api/openapi-ts**; runtimes **Cloudflare Workers** (prod) +
-**Node-local** (trove); **Clerk** optional. (The first-instinct TanStack was right; the Remix-3 detour was
-framework R&D, not the product stack — Remix repos are Mark working *on* Remix.) Pack refresh to this exact
-stack is a follow-up. **Lesson: read a real shipping repo's manifest before each stack's preview.**
+**Web scaffold spec'd** ([web preview](docs/design/scaffolds/web.md), per detailed direction): **TanStack
+Start** (React 19 + React Compiler) + **Mise** (env/tasks/toolchain) driving **raw Oxfmt/Oxlint/Vite/Vitest/
+tsdown** (no vite-plus) + **Tailwind v4** + **React Aria** + the **`foundation`** component lib (copied from
+`trove`); data **`--data drizzle|convex`** (trove main/convex branches); **SSR/server matrix** (`--ssr/--no-ssr`
+× `--server/--no-server` → SSR app | SPA+server | static SPA); Clerk optional. Defaults: `--ssr --server`,
+cloudflare, convex. Pack refresh to this stack is a follow-up. **Lesson: read a real shipping repo before each preview.**
 
 ## Coverage gap — libraries / Swift packages / CLIs / extensions (from the ~/Developer sweep)
 
