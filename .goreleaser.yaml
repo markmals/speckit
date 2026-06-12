@@ -35,5 +35,27 @@ release:
   github:
     owner: markmals
     name: speckit
-  draft: true
+  draft: false
   prerelease: auto
+
+# Push a Homebrew formula to the tap on each release. The formula downloads the
+# prebuilt release archive (no compile on install) and installs `specify`.
+# Requires a HOMEBREW_TAP_TOKEN secret with write access to markmals/homebrew-tap.
+brews:
+  - name: speckit
+    repository:
+      owner: markmals
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/markmals/speckit"
+    description: "Spec-driven development engine for native, multiplatform apps"
+    license: MIT
+    commit_author:
+      name: goreleaser
+      email: goreleaser@users.noreply.github.com
+    install: |
+      bin.install "specify"
+    test: |
+      system "#{bin}/specify", "version"
