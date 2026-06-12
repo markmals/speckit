@@ -77,9 +77,7 @@ Re-run it after adding a target on a new stack.
 | `website` | `website-development` |
 | `apple` | `ios-development`, `ios-simulator-control` |
 | `android` | `android-development`, `android-emulator-control` |
-| `windows` | `windows-development`, `windows-app-control` |
-| `linux` | `linux-development` |
-| `go-cli` · `node-cli` · `rust-cli` | the matching `*-development` skill |
+| `go-cli` · `node-cli` | the matching `*-development` skill |
 
 The GUI packs pair with the `visual-verifier` subagent, which drives a real
 browser / simulator / emulator through a story's Gherkin scenarios.

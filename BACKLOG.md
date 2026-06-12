@@ -37,7 +37,7 @@ Workbench has **21 skills**; the slash commands should invoke them (as `/sdd-*` 
 
 **Platform dev (9) + verification/control (4) skills:** ✅ All 13 ported to
 `internal/coreassets/templates/packs/<stack>/` and projected **on demand** by `specify packs`,
-gated on each target's `stack` (web/apple/android/windows/linux/go-cli/node-cli/rust-cli/website).
+gated on each target's `stack` (web/apple/android/go-cli/node-cli/website — evidence-based; windows/linux/rust-cli packs removed).
 `init` stays process-skills-only. See [docs/config.md](docs/config.md#platform-packs).
 
 **Wire skills to slash commands** ✅ — `/speckit.specify` → brainstorming-feature (+ writing-user-stories); `/speckit.implement` → implementing-a-spec; `/speckit.analyze` → `specify scan` + semantic passes; etc.
