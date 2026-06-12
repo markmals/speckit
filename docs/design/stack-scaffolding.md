@@ -30,7 +30,7 @@ specify target add <name> --stack <stack> [--dir <path>] [--product <p>] [--with
 ```
 
 - `<name>` — the target's key in `.speckit/specs.json` (e.g. `web`, `consumer-web`).
-- `--stack` — which scaffold: `web` | `apple` | `android` | `windows` | `linux` | `go-cli` | `node-cli` | `rust-cli` | `website`.
+- `--stack` — which scaffold. **App stacks:** `web` · `website` · `apple` · `android` · `windows` · `linux` · `go-cli` · `node-cli` · `rust-cli`. **Library/extension stacks:** `swift-package` · `swift-cli` · `ts-lib` · `vscode-extension` · `browser-extension` — these set the product `kind: library` ([library-products.md](library-products.md)).
 - `--dir` — where to scaffold (default `apps/<name>`).
 - `--product` — optional product label written onto the target.
 - `--with` — optional add-ons the scaffold declares (e.g. `--with convex`).
@@ -119,9 +119,15 @@ working loop rather than wiring one. Concretely, per stack:
 | android | kotlin.test/JUnit → `junit` | `@Tag("spec:…")` / `@Tag("scenario:…")` | Gradle test task emitting junit |
 | windows | MSTest → `junit` | `[TestProperty("scenario", …)]` | `.runsettings` emitting junit |
 | linux / rust-cli | cargo-nextest / `go test` → `junit` | `// [scenario.<id>]` comment | nextest/gotestsum junit output |
+| swift-package / swift-cli | Swift Testing → `swift` | `@Suite(.spec)` / `@Test(.scenario)` traits | `SpecTraits.swift`; SwiftPM `swift test` (no simulator) |
+| ts-lib | Vitest → `junit` | `// [scenario.<id>]` | tsup/vite-lib build; Vitest config (no dev server) |
+| vscode-extension | `@vscode/test-cli` (Mocha) → `junit` | `// [scenario.<id>]` | the extension-host test runner emitting junit |
+| browser-extension | Vitest / Playwright → `junit` | `// [scenario.<id>]` | web-ext test config emitting junit |
 
-Each ships an example `story.*` spec + the matching bound test, so `specify scan`
-and `specify verify <name>` both pass on the freshly-scaffolded target.
+Each ships an example spec + the matching bound test, so `specify scan` and
+`specify verify <name>` both pass on the freshly-scaffolded target. The
+library/extension stacks set the product `kind: library` and lay a library layout
+(no app shell) — see [library-products.md](library-products.md).
 
 ## specs.json merge (now trivial)
 

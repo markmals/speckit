@@ -99,8 +99,10 @@ model (NARRATIVE → human user stories → view-models/flows) — a library's c
   (vsce), maybe `browser-extension`. The binding harness (Swift Testing / Vitest) carries over unchanged.
 - Monorepos (apple-platform-tools) are already covered — each package is a target/product.
 
-The one **design change**: add `kind` to the product model so the authoring path branches. Everything else
-is additive (more scaffolds + a library authoring variant). Needs Mark's call on sequencing.
+**Decided: expand now.** Design folded into [docs/design/library-products.md](docs/design/library-products.md)
+(the `kind` + the library authoring variant) and the [scaffolding doc](docs/design/stack-scaffolding.md)
+(the `swift-package`/`swift-cli`/`ts-lib`/`vscode-extension`/`browser-extension` stacks). First build slice
+stays **web**; library scaffolds + the authoring branch follow. No engine change.
 
 ## Config system — `.speckit/specs.json`
 
