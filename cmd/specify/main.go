@@ -30,7 +30,6 @@ var version = "0.0.0-dev"
 // plannedCommands is the command surface from the fork plan (D5); these are
 // stubbed until implemented.
 var plannedCommands = []string{
-	"parity",
 	"gate", "ledger", "apply", "reconcile",
 	"extension", "preset", "work", "bench", "issues",
 }
@@ -68,6 +67,8 @@ func run(args []string) error {
 		return cmdCover(rest)
 	case "verify":
 		return cmdVerify(rest)
+	case "parity":
+		return cmdParity(rest)
 	default:
 		if slices.Contains(plannedCommands, cmd) {
 			return fmt.Errorf("%q is not implemented yet (planned)", cmd)
@@ -303,6 +304,53 @@ func cmdVerify(args []string) error {
 	return nil
 }
 
+// cmdParity prints a platform's five-state parity matrix; --gate fails unless
+// every cell is conforming. SPEC: story.engine.parity
+func cmdParity(args []string) error {
+	fs := flag.NewFlagSet("parity", flag.ExitOnError)
+	jsonOut := fs.Bool("json", false, "emit output as JSON")
+	gate := fs.Bool("gate", false, "exit non-zero unless every cell is conforming")
+	_ = fs.Parse(args)
+	platform := fs.Arg(0)
+	if platform == "" {
+		return fmt.Errorf("usage: specify parity <platform> [path] [--gate]")
+	}
+	root := fs.Arg(1)
+	if root == "" {
+		root = "."
+	}
+	cfgPath := filepath.Join(root, ".speckit", "verify", platform+".json")
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return fmt.Errorf("no verify adapter for %q at %s", platform, cfgPath)
+	}
+	var cfg engine.VerifyConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("verify config %s: %w", cfgPath, err)
+	}
+	report, err := engine.Parity(root, platform, cfg)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		if err := writeJSON(os.Stdout, report); err != nil {
+			return err
+		}
+	} else {
+		for _, c := range report.Cells {
+			if c.Reason != "" {
+				fmt.Printf("%-18s %s (%s)\n", c.State, c.Scenario, c.Reason)
+			} else {
+				fmt.Printf("%-18s %s\n", c.State, c.Scenario)
+			}
+		}
+	}
+	if *gate && report.Gated() {
+		os.Exit(1) // SPEC: scenario.engine.parity.suspect-lying-marker
+	}
+	return nil
+}
+
 func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
@@ -319,6 +367,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "  drift <platform> [path]             report specs that drifted from the lock")
 	fmt.Fprintln(w, "  cover <spec-id> [path]              show a spec's per-platform coverage")
 	fmt.Fprintln(w, "  verify <platform> [path]            run a platform's tests, lock what passes")
+	fmt.Fprintln(w, "  parity <platform> [path] [--gate]   the five-state parity matrix")
 	fmt.Fprintln(w, "  version | kinds                     (add --json for structured output)")
 	fmt.Fprintln(w, "\nPlanned (stubbed):")
 	fmt.Fprintln(w, "  "+strings.Join(plannedCommands, ", "))
