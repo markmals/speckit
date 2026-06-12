@@ -1,4 +1,4 @@
-// Package config loads .speckit/specs.jsonc — the project's targets (each a
+// Package config loads .speckit/specs.json — the project's targets (each a
 // product implementation with its test/report wiring) plus version/agent/paths.
 //
 // products and contracts are intentionally NOT modeled as first-class config
@@ -16,9 +16,9 @@ import (
 )
 
 // File is the config path relative to the project root.
-const File = ".speckit/specs.jsonc"
+const File = ".speckit/specs.json"
 
-// Config is the parsed .speckit/specs.jsonc.
+// Config is the parsed .speckit/specs.json.
 type Config struct {
 	Version int               `json:"version"`
 	Agent   string            `json:"agent"`
@@ -47,7 +47,7 @@ type Target struct {
 	Source   string   `json:"source"`
 }
 
-// Load reads and parses .speckit/specs.jsonc under root. found is false (with a
+// Load reads and parses .speckit/specs.json under root. found is false (with a
 // nil error) when the file is absent — engine commands that need targets treat
 // that as "configure your targets first"; scan treats it as nothing to validate.
 func Load(root string) (cfg Config, found bool, err error) {
@@ -58,7 +58,7 @@ func Load(root string) (cfg Config, found bool, err error) {
 	if err != nil {
 		return Config{}, false, err
 	}
-	if err := json.Unmarshal(stripJSONC(b), &cfg); err != nil {
+	if err := json.Unmarshal(b, &cfg); err != nil {
 		return Config{}, true, fmt.Errorf("%s: %w", File, err)
 	}
 	cfg.applyDefaults()

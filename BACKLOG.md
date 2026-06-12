@@ -79,12 +79,12 @@ every time a new target or product begins. Complements the platform packs: a **p
 First slice = **web** end-to-end (green on `specify verify` immediately), then **apple** (exercises the
 `swift` format + the `SpecTraits.swift` harness). Prior art: `~/Developer/Libraries/create-sprinkles`.
 
-**Open in the doc (need your call):** the specs.jsonc merge strategy (print-to-paste vs append vs CST
-round-trip), custom template delimiters per stack, and whether to run installers.
+**Resolved:** plain `specs.json` (so the merge is a trivial load→add→write), keep `{{ }}` with escaping,
+and `target add` runs the install (`--no-install` to skip). Folded into the design doc.
 
-## Config system — `.speckit/specs.jsonc`
+## Config system — `.speckit/specs.json`
 
-- ✅ **targets** — `.speckit/specs.jsonc` (JSONC, hand-rolled stripper) with version/agent/paths/targets;
+- ✅ **targets** — `.speckit/specs.json` (plain JSON) with version/agent/paths/targets;
   each target's verify wiring inline, retiring `.speckit/verify/<platform>.json`. The engine keys on
   **target** (lock `.speckit/lock/<target>/`); `scan` validates the config. Products are an optional
   label; the `products` collection and `contracts` are documented as futures in [docs/config.md](docs/config.md).

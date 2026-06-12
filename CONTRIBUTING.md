@@ -23,7 +23,7 @@ pushing** so failures are caught locally instead of on a remote runner.
   `cover`, `parity`, `gate`.
 - `internal/specmodel/` — the mechanized form of `specs/CONVENTIONS.md` (frontmatter,
   kinds, IDs, the scenario join).
-- `internal/config/` — the `.speckit/specs.jsonc` loader (targets).
+- `internal/config/` — the `.speckit/specs.json` loader (targets).
 - `internal/project/` — `init` scaffolding and the per-agent projection adapters,
   plus the skill / subagent / pack projection.
 - `internal/coreassets/templates/` — the embedded assets `init`/`packs` project:

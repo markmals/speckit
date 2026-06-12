@@ -141,7 +141,7 @@ func initCmd() *cobra.Command {
 }
 
 // packsCmd projects the platform skill packs for the target stacks declared in
-// .speckit/specs.jsonc, into the configured agent's skills dir.
+// .speckit/specs.json, into the configured agent's skills dir.
 func packsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "packs [path]",
@@ -192,7 +192,7 @@ func scanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Validate .speckit/specs.jsonc too, when present.
+			// Validate .speckit/specs.json too, when present.
 			var configErrs []string
 			if cfg, found, err := config.Load(root); err != nil {
 				configErrs = append(configErrs, err.Error())
@@ -484,7 +484,7 @@ func reportGate(findings []engine.GateFinding) error {
 	return nil
 }
 
-// verifyConfigFor resolves a target's verify wiring from .speckit/specs.jsonc.
+// verifyConfigFor resolves a target's verify wiring from .speckit/specs.json.
 func verifyConfigFor(root, target string) (engine.VerifyConfig, error) {
 	cfg, found, err := config.Load(root)
 	if err != nil {

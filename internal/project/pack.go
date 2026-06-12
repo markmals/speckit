@@ -33,7 +33,7 @@ func loadPack(assets fs.FS, stack string) ([]Skill, error) {
 
 // ProjectPacks projects the platform skills for the given stacks into the
 // agent's skills dir (the same dir the process skills go), returning the written
-// paths. The agent comes from .speckit/specs.jsonc's `agent`.
+// paths. The agent comes from .speckit/specs.json's `agent`.
 func ProjectPacks(root string, assets fs.FS, agentID string, stacks []string) ([]string, error) {
 	adapter, ok := AdapterFor(agentID)
 	if !ok {

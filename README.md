@@ -133,8 +133,8 @@ Because SpecKit uses the same spec conventions as the Workbench template, **the 
    ```sh
    specify scan
    ```
-2. **Tell `verify` how to run each target's tests** by declaring your targets in `.speckit/specs.jsonc`:
-   ```jsonc
+2. **Tell `verify` how to run each target's tests** by declaring your targets in `.speckit/specs.json`:
+   ```json
    {
      "version": 1,
      "agent": "claude",
@@ -159,7 +159,7 @@ Because SpecKit uses the same spec conventions as the Workbench template, **the 
    ```
 4. **Make sure each test names its scenario** in source (the binding `verify` joins on). If your Workbench tests already carry scenario tags, you're done; otherwise add them as you verify each spec.
 
-You don't need to run `init` on an existing project — it's for new projects. `init --here` can add the `/speckit.*` command projections to a project that doesn't have its own, but a Workbench project already ships its agent commands, so adopting SpecKit there is just the binary plus the targets in `.speckit/specs.jsonc`.
+You don't need to run `init` on an existing project — it's for new projects. `init --here` can add the `/speckit.*` command projections to a project that doesn't have its own, but a Workbench project already ships its agent commands, so adopting SpecKit there is just the binary plus the targets in `.speckit/specs.json`.
 
 ## Working with Git and GitHub
 
@@ -235,15 +235,15 @@ Run `specify <command>`. Reporting commands print a styled summary by default an
 
 | Command | What it does |
 | --- | --- |
-| `specify scan [path]` | Check the spec library for problems — malformed/duplicate IDs, broken cross-references, scenarios missing IDs — and validate `.speckit/specs.jsonc`. Exits non-zero if any are found. |
-| `specify packs [path]` | Project the platform skill packs for your targets' stacks (per `.speckit/specs.jsonc`) into the agent's skills dir. |
+| `specify scan [path]` | Check the spec library for problems — malformed/duplicate IDs, broken cross-references, scenarios missing IDs — and validate `.speckit/specs.json`. Exits non-zero if any are found. |
+| `specify packs [path]` | Project the platform skill packs for your targets' stacks (per `.speckit/specs.json`) into the agent's skills dir. |
 | `specify kinds` | List the kinds of spec the project understands (story, model, error, …). |
 
 ### Verify and track each target
 
 | Command | What it does |
 | --- | --- |
-| `specify verify <target>` | Run the target's tests (per its entry in `.speckit/specs.jsonc`), match results to the scenarios they prove, and lock each fully-passing spec. Exits non-zero unless everything it checked passed. |
+| `specify verify <target>` | Run the target's tests (per its entry in `.speckit/specs.json`), match results to the scenarios they prove, and lock each fully-passing spec. Exits non-zero unless everything it checked passed. |
 | `specify lock <target> <spec-id>` | Mark a spec verified-good on a target at its current contents (usually done for you by `verify`). |
 | `specify drift <target>` | List specs whose text changed since they were last verified (**drifted**) or were never verified (**missing**). Exits non-zero on drift. |
 | `specify cover <spec-id>` | Show one spec's status on every target — conforming, drifted, or missing. |

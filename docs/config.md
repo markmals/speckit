@@ -1,39 +1,42 @@
-# Configuration — `.speckit/specs.jsonc`
+# Configuration — `.speckit/specs.json`
 
-`.speckit/specs.jsonc` declares your project's **targets** — the native
-implementations the engine verifies. It's JSONC: plain JSON plus `//` and
-`/* */` comments and trailing commas.
+`.speckit/specs.json` declares your project's **targets** — the native
+implementations the engine verifies. It's plain JSON (strict — no comments or
+trailing commas).
 
 ## Schema (today)
 
-```jsonc
+```json
 {
-  "version": 1,                 // schema version of this file
-  "agent": "claude",            // claude | codex | copilot | generic — the agent init projected for
-
-  // optional; defaults shown
+  "version": 1,
+  "agent": "claude",
   "paths": { "specs": "specs", "features": "features" },
-
   "targets": {
     "web": {
-      "stack":   "web",                          // selects the platform pack (see "Platform packs")
-      "command": "pnpm -C apps/web test --run",  // shell string (à la a Mise task's `run`); omit if the report already exists
-      "format":  "junit",                        // junit | swift
-      "report":  "apps/web/report.junit.xml",    // where the run writes its report
-      "source":  "apps/web/src",                 // scanned for // SPEC: pointers + scenario bindings
-      "product": "consumer-app"                  // optional label (see "Products" below)
+      "stack": "web",
+      "command": "pnpm -C apps/web test --run",
+      "format": "junit",
+      "report": "apps/web/report.junit.xml",
+      "source": "apps/web/src",
+      "product": "consumer-app"
     },
     "ios": {
-      "stack":   "apple",
+      "stack": "apple",
       "command": "xcodebuild test -scheme App -resultBundlePath …",
-      "format":  "swift",                        // Swift Testing's event-stream NDJSON
-      "report":  "apps/ios/.build/tests.ndjson",
-      "source":  "apps/ios/Tests",
+      "format": "swift",
+      "report": "apps/ios/.build/tests.ndjson",
+      "source": "apps/ios/Tests",
       "product": "consumer-app"
     }
   }
 }
 ```
+
+Field by field: `version` is this file's schema version; `agent` is who `init`
+projected for; `paths` (optional, defaults shown) locates the spec library; each
+**target** carries a `stack` (selects its platform pack — see below), the verify
+wiring (`command` to run, `report` `format` ∈ `junit`/`swift`, `report` path,
+`source` dir scanned for bindings), and an optional `product` label.
 
 ### What the engine does with it
 
@@ -45,7 +48,7 @@ implementations the engine verifies. It's JSONC: plain JSON plus `//` and
   per-target lock.
 - `specify scan` validates this file when it's present: every target needs a
   valid `format` (`junit` | `swift`), a `report`, and a `source`. An absent
-  `specs.jsonc` is fine — engine commands that need a target just tell you to
+  `specs.json` is fine — engine commands that need a target just tell you to
   configure one.
 
 A **target is the atomic unit**: a globally-unique name with its own lock. The
@@ -60,10 +63,10 @@ Compose, WinUI, the CLI stacks, …). Unlike the process-discipline skills (whic
 they're projected **on demand**:
 
 ```sh
-specify packs        # project the packs for every stack in specs.jsonc
+specify packs        # project the packs for every stack in specs.json
 ```
 
-`packs` reads `specs.jsonc`, takes the distinct `stack` values across your
+`packs` reads `specs.json`, takes the distinct `stack` values across your
 targets, and projects each pack's skills into the agent's skills dir — using the
 `agent` field to know where (`.claude/skills`, `.agents/skills`, `.github/skills`).
 Re-run it after adding a target on a new stack.
@@ -106,7 +109,7 @@ Promote products from a label to a top-level collection the day a multi-product
 repo needs products to carry their own metadata (description, owner, release
 channel) or a named rollup independent of any single target:
 
-```jsonc
+```json
 "products": {
   "consumer-app": { "targets": ["web", "ios"], "description": "the customer app" },
   "admin-app":    { "targets": ["admin-web"] }
@@ -124,7 +127,7 @@ currently a Convex backend or an OpenAPI server (Node/Go). A single contract can
 be consumed by targets across *several* products, so contracts would be a
 top-level collection referencing targets, not nested under any one product:
 
-```jsonc
+```json
 "contracts": {
   "auth-api": {
     "kind":       "openapi",                      // openapi | convex

@@ -13,7 +13,7 @@ func writeConfig(t *testing.T, body string) string {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "specs.jsonc"), []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "specs.json"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return root
@@ -25,19 +25,18 @@ func TestLoadAbsentIsNotAnError(t *testing.T) {
 		t.Fatalf("absent config should not error: %v", err)
 	}
 	if found {
-		t.Error("found should be false when specs.jsonc is absent")
+		t.Error("found should be false when specs.json is absent")
 	}
 }
 
 func TestLoadParsesAndDefaults(t *testing.T) {
 	root := writeConfig(t, `{
-  // consumer app
   "version": 1,
   "agent": "claude",
   "targets": {
     "web": { "product": "consumer", "command": "pnpm -C apps/web test --run", "format": "junit", "report": "apps/web/junit.xml", "source": "apps/web/src" },
-    "ios": { "product": "consumer", "format": "swift", "report": "ios.ndjson", "source": "apps/ios/Tests" }, /* trailing comma below */
-  },
+    "ios": { "product": "consumer", "format": "swift", "report": "ios.ndjson", "source": "apps/ios/Tests" }
+  }
 }`)
 	cfg, found, err := Load(root)
 	if err != nil || !found {

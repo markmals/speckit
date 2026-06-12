@@ -1,6 +1,8 @@
 # Design — stack scaffolding
 
-**Status:** proposal, for review. No code yet.
+**Status:** proposal. The three sub-decisions — plain `specs.json` (no JSONC),
+keep `{{ }}` with escaping, and run the install — are resolved into this doc.
+Awaiting final go-ahead to build.
 
 ## Motivation
 
@@ -27,7 +29,7 @@ handlebars, and target SpecKit's stacks.)
 specify target add <name> --stack <stack> [--dir <path>] [--product <p>] [--with <feature>...]
 ```
 
-- `<name>` — the target's key in `.speckit/specs.jsonc` (e.g. `web`, `consumer-web`).
+- `<name>` — the target's key in `.speckit/specs.json` (e.g. `web`, `consumer-web`).
 - `--stack` — which scaffold: `web` | `apple` | `android` | `windows` | `linux` | `go-cli` | `node-cli` | `rust-cli` | `website`.
 - `--dir` — where to scaffold (default `apps/<name>`).
 - `--product` — optional product label written onto the target.
@@ -42,9 +44,10 @@ What it does, in order:
 1. Resolve `--stack` → load the scaffold manifest.
 2. Collect template variables from flags + defaults; error on anything required and unset.
 3. Render the template tree into `--dir`.
-4. Compute the target's `specs.jsonc` entry from the manifest and add it (see *specs.jsonc merge* below).
+4. Compute the target's `specs.json` entry from the manifest and add it (load → add → write; see *specs.json merge* below).
 5. Project the stack's pack (`specify packs`).
-6. Print next steps (the install command, and `specify verify <name>`).
+6. Run the scaffold's install (unless `--no-install`).
+7. Print next steps (`specify verify <name>`).
 
 ## Template layout (embedded in coreassets)
 
@@ -60,21 +63,24 @@ templates/scaffolds/<stack>/
 
 ### Manifest (`scaffold.json`)
 
-```jsonc
+`scaffold.json` is itself plain JSON. Its `target`/`variables` string values are
+run through `text/template` (so `{{.Dir}}` etc. resolve):
+
+```json
 {
   "stack": "web",
-  "delims": ["<<", ">>"],          // optional custom text/template delimiters (see below)
-  "target": {                       // becomes the specs.jsonc entry ({{.Dir}}/{{.Name}} substituted)
+  "install": "pnpm install",
+  "target": {
     "command": "pnpm -C {{.Dir}} test --run",
-    "format":  "junit",
-    "report":  "{{.Dir}}/report.junit.xml",
-    "source":  "{{.Dir}}/src"
+    "format": "junit",
+    "report": "{{.Dir}}/report.junit.xml",
+    "source": "{{.Dir}}/src"
   },
-  "variables": [                    // beyond the always-present Name/Dir/Product
-    { "name": "Module", "default": "{{.Name}}", "prompt": "package name" },
-    { "name": "GithubOwner", "from": "git" }   // resolved from the git remote when omitted
+  "variables": [
+    { "name": "Module", "default": "{{.Name}}", "from": "flag" },
+    { "name": "GithubOwner", "from": "git" }
   ],
-  "features": {                     // optional --with add-ons
+  "features": {
     "convex": { "files": "features/convex", "vars": { "Backend": "convex" } }
   }
 }
@@ -93,10 +99,10 @@ templates/scaffolds/<stack>/
       Vars     map[string]string // manifest-declared extras
   }
   ```
-- **Custom delimiters.** Go's default `{{ }}` collides with what some target
-  ecosystems already use in their own files (GitHub Actions `${{ }}`, some JS/Vue
-  templating). Each scaffold may set `"delims"` in its manifest (e.g. `<< >>`) so
-  the scaffold's templating never fights the files it emits. Default stays `{{ }}`.
+- **Delimiters stay `{{ }}`; escape literals.** Where a template file contains a
+  literal `{{` that isn't ours — chiefly a scaffolded GitHub Actions `${{ … }}` —
+  escape it as `{{"{{"}}` (text/template's literal-string trick). Most files have
+  no `{{` at all, so this is rare.
 - A small `FuncMap` for the obvious casings (`lower`, `title`, `kebab`, `pascal`)
   so one `Name` yields the package name, the Swift type name, etc.
 
@@ -117,26 +123,23 @@ working loop rather than wiring one. Concretely, per stack:
 Each ships an example `story.*` spec + the matching bound test, so `specify scan`
 and `specify verify <name>` both pass on the freshly-scaffolded target.
 
-## specs.jsonc merge (a real sub-decision)
+## specs.json merge (now trivial)
 
-Writing the new target into an existing `.speckit/specs.jsonc` while preserving
-the user's comments and formatting is the awkward part — JSONC doesn't round-trip
-through `encoding/json`. Options, simplest first:
+Because `specs.json` is plain JSON, it round-trips through `encoding/json`
+cleanly — there are no comments to preserve. `target add` loads the config
+(creating it if absent), adds the new target to `targets`, and writes it back.
+No print-to-paste, no CST round-trip. (Key order isn't preserved across a
+rewrite — fine for a generated config.)
 
-1. **Absent → create; present → print the block to add.** `target add` writes the
-   file if there's none, otherwise prints the ready-to-paste `"<name>": { … }`
-   block and tells the user where to put it. Zero risk, a little manual.
-2. **Append before the closing brace** of `targets` with a text edit (keeps
-   comments, but brittle if the file is unusual).
-3. **A comment-preserving JSONC editor** (round-trip via a CST). Correct, most work.
+## Dependency install
 
-Recommend **(1) for the first slice**, with (2)/(3) as a later `--write` upgrade.
+`target add` **runs** the scaffold's install (declared in the manifest —
+`pnpm install`, `swift build`, …) so the target is ready to `specify verify`
+immediately. It's slow and network-dependent, so a `--no-install` flag skips it
+for offline / CI use.
 
 ## Other open decisions
 
-- **Dependency install.** v1 writes files and *prints* the install command
-  (`pnpm install`, `swift build`) rather than running it — installers are slow,
-  network- and environment-dependent, and better left to the user/agent.
 - **Where targets live.** Default `apps/<name>`; `--dir` overrides. Worth a
   convention note in `docs/config.md` once it lands.
 - **Interactivity.** Flags only for v1; TTY prompts later.
@@ -144,7 +147,7 @@ Recommend **(1) for the first slice**, with (2)/(3) as a later `--write` upgrade
 ## First slice (when we build)
 
 1. The `target add` command + the manifest/loader + the `text/template` renderer
-   (custom delims, FuncMap, `.tmpl` handling) + specs.jsonc strategy (1).
+   (FuncMap, `.tmpl` handling, escape literal `{{`) + the specs.json load→add→write + run-install.
 2. The **web** scaffold end-to-end: a target that's green on `specify verify`
    the moment it's created.
 3. Then **apple** — it exercises the other report format (`swift`) and the most
