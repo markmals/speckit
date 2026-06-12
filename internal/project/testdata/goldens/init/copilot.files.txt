@@ -18,9 +18,12 @@
 .github/prompts/speckit.tasks.prompt.md
 .github/prompts/speckit.taskstoissues.prompt.md
 .github/skills/adversarial-review/SKILL.md
+.github/skills/brainstorming-feature/SKILL.md
+.github/skills/implementing-a-spec/SKILL.md
 .github/skills/systematic-debugging/SKILL.md
 .github/skills/test-driven-development/SKILL.md
 .github/skills/verification-before-completion/SKILL.md
+.github/skills/writing-user-stories/SKILL.md
 .speckit/extensions.yml
 .speckit/memory/constitution.md
 .speckit/templates/checklist-template.md

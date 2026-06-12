@@ -145,7 +145,7 @@ Sub-IDs follow `scenario.<feature>.<capability>.<short-name>` and are what tests
 
 ## Marking unspecified content
 
-Do not silently guess. Mark gaps inline with `[NEEDS CLARIFICATION: <question>]`. A spec cannot be applied (`/speckit.apply`) while markers remain; `/speckit.clarify` surfaces and resolves them. Use it when a behavior/constraint/value is unstated or two interpretations are equally plausible — not for implementation details (those are `(deviates:)` comments) or out-of-scope placeholders.
+Do not silently guess. Mark gaps inline with `[NEEDS CLARIFICATION: <question>]`. A spec cannot be implemented (`/speckit.implement`) while markers remain; `/speckit.clarify` surfaces and resolves them. Use it when a behavior/constraint/value is unstated or two interpretations are equally plausible — not for implementation details (those are `(deviates:)` comments) or out-of-scope placeholders.
 
 ## Deviation marker (D11)
 
