@@ -106,6 +106,18 @@ var (
 	vitestBindRe = regexp.MustCompile(`it\("(\[(scenario\.[a-z0-9.\-]+)\][^"]*)"`)
 )
 
+// bindingsInContent extracts scenario↔test bindings from one source file's text.
+func bindingsInContent(src string) []Binding {
+	var bs []Binding
+	for _, m := range swiftBindRe.FindAllStringSubmatch(src, -1) {
+		bs = append(bs, Binding{Scenario: specmodel.SpecID(m[1]), Identity: m[2]})
+	}
+	for _, m := range vitestBindRe.FindAllStringSubmatch(src, -1) {
+		bs = append(bs, Binding{Scenario: specmodel.SpecID(m[2]), Identity: m[1]})
+	}
+	return bs
+}
+
 // ScanBindings reads scenario↔test bindings from a platform's test source (D15):
 // Swift Testing `.scenario(...)` traits on raw-identifier funcs, and Vitest
 // it() titles that lead with [scenario.id]. The binding's Identity is the test
@@ -130,13 +142,7 @@ func ScanBindings(dir string) ([]Binding, error) {
 		if err != nil {
 			return err
 		}
-		src := string(b)
-		for _, m := range swiftBindRe.FindAllStringSubmatch(src, -1) {
-			bindings = append(bindings, Binding{Scenario: specmodel.SpecID(m[1]), Identity: m[2]})
-		}
-		for _, m := range vitestBindRe.FindAllStringSubmatch(src, -1) {
-			bindings = append(bindings, Binding{Scenario: specmodel.SpecID(m[2]), Identity: m[1]})
-		}
+		bindings = append(bindings, bindingsInContent(string(b))...)
 		return nil
 	})
 	return bindings, err
