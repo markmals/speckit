@@ -82,6 +82,10 @@ First slice = **web** end-to-end (green on `specify verify` immediately), then *
 **Resolved:** plain `specs.json` (so the merge is a trivial load→add→write), keep `{{ }}` with escaping,
 and `target add` runs the install (`--no-install` to skip). Folded into the design doc.
 
+**Web tooling approved** ([web preview](docs/design/scaffolds/web.md)): TanStack Start (React 19) + raw Vite 8 +
+Tailwind v4.3 + Vitest 4, Convex via `--with`. Ready to build the first slice: the `target add` command +
+the `text/template` renderer + the web scaffold (green on `specify verify` on arrival).
+
 ## Coverage gap — libraries / Swift packages / CLIs / extensions (from the ~/Developer sweep)
 
 ⬜ A sweep of `~/Developer` showed SpecKit is **app-centric** but a large slice of the real work isn't apps:

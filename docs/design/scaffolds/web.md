@@ -1,8 +1,9 @@
 # Web scaffold — tooling preview
 
-**Status:** preview, for sign-off. **No scaffold is built until this stack is
-approved.** Versions verified mid-2026; pinned exactly at build time (this layer
-moves fast).
+**Status:** ✅ **Approved 2026-06-12.** Framework **TanStack Start** (React 19) ·
+toolchain **raw Vite 8** (no Vite+) · Convex **optional (`--with convex`)** ·
+extras off by default · RSC off by default. Exact versions pinned at build time.
+Ready to build.
 
 ## Proposed stack (bleeding edge, mid-2026)
 
@@ -28,22 +29,19 @@ moves fast).
 ```json
 "web": {
   "stack": "web",
-  "command": "vp test --run",
+  "command": "pnpm -C apps/web test --run",
   "format": "junit",
   "report": "apps/web/junit.xml",
   "source": "apps/web/src"
 }
 ```
 
-(`command` becomes `pnpm -C apps/web test --run` if we go raw Vite instead of Vite+.)
+## Decided (2026-06-12)
 
-## Your calls (at your discretion)
-
-1. **Framework** — TanStack Start (React) · React Router 7 (framework mode — your
-   `create-sprinkles` path) · Solid Start (you also ship Solid).
-2. **Toolchain** — Vite+ (`vp`) · raw Vite 8.
-3. **Convex** — baked in · `--with convex` add-on · out.
-4. **Extras** — Clerk / Motion as `--with` add-ons · out.
+1. **Framework** — **TanStack Start** (React 19). RSC off by default.
+2. **Toolchain** — **raw Vite 8** (Rolldown + Oxc + Lightning CSS); no Vite+.
+3. **Convex** — **optional `--with convex`**; the base scaffold stays lean.
+4. **Extras** — Clerk / Motion as `--with` add-ons; off by default.
 
 ## Notes
 
