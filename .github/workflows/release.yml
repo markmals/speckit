@@ -23,7 +23,23 @@ jobs:
           version: "~> v2"
           args: release --clean
         env:
-          # Auto-provided; publishes the GitHub Release.
+          # Auto-provided; publishes the GitHub Release archives that the Mise
+          # plugin and manual installs download.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # A PAT with write access to markmals/homebrew-tap, set as a repo secret.
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+  # Homebrew is bottled natively by the tap (packaging/homebrew/). Nudge it to
+  # bump + bottle the new version now instead of waiting for its daily cron.
+  # The PAT lets us dispatch across repos (speckit -> homebrew-tap).
+  bump-tap:
+    needs: goreleaser
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger tap formula bump
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer $TAP_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/markmals/homebrew-tap/dispatches \
+            -d '{"event_type":"specify-release"}'

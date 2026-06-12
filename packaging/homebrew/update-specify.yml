@@ -1,0 +1,68 @@
+# Lives in markmals/homebrew-tap/.github/workflows/. Bumps Formula/specify.rb to
+# the latest SpecKit release (version + source tarball sha256), commits, and lets
+# brew test-bot (tests.yml) bottle it + pr-pull (publish.yml) publish the bottle.
+#
+# Triggered three ways: the daily cron (safety net), manually, and — the fast
+# path — a repository_dispatch that markmals/speckit's release workflow fires
+# right after publishing a release (see speckit/.github/workflows/release.yml).
+# Mirrors update-vite-plus.yml; differs only in source (GitHub release tarball,
+# not an npm package).
+name: Update specify formula
+
+on:
+  schedule:
+    - cron: "0 12 * * *" # daily at noon UTC (safety net)
+  workflow_dispatch:
+  repository_dispatch:
+    types: [specify-release]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for new version
+        id: check
+        run: |
+          LATEST=$(curl -sf https://api.github.com/repos/markmals/speckit/releases/latest | jq -r .tag_name | sed 's/^v//')
+          CURRENT=$(curl -sf "https://raw.githubusercontent.com/${{ github.repository }}/main/Formula/specify.rb" | grep -oP 'archive/refs/tags/v\K[\d.]+(?=\.tar\.gz)')
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.check.outputs.up_to_date == 'false'
+        uses: actions/checkout@v4
+
+      - name: Update formula
+        if: steps.check.outputs.up_to_date == 'false'
+        env:
+          VERSION: ${{ steps.check.outputs.latest }}
+        run: |
+          URL="https://github.com/markmals/speckit/archive/refs/tags/v${VERSION}.tar.gz"
+          SHA=$(curl -sfL "$URL" | shasum -a 256 | awk '{print $1}')
+          if ! echo "$SHA" | grep -qE '^[0-9a-f]{64}$'; then
+            echo "::error::Failed to compute source checksum"
+            exit 1
+          fi
+          OLD_VERSION=$(grep -oP 'archive/refs/tags/v\K[\d.]+(?=\.tar\.gz)' Formula/specify.rb)
+          sed -i "s/${OLD_VERSION}/${VERSION}/g" Formula/specify.rb
+          # Replace the sha256 on the line right after the url line.
+          sed -i "/url /{n;s/sha256 \".*\"/sha256 \"${SHA}\"/}" Formula/specify.rb
+
+      - name: Commit and push
+        if: steps.check.outputs.up_to_date == 'false'
+        env:
+          VERSION: ${{ steps.check.outputs.latest }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/specify.rb
+          git commit -m "specify: update to ${VERSION}"
+          git push
