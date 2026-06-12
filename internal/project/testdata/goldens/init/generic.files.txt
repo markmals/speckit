@@ -1,3 +1,4 @@
+.agents/skills/adversarial-review/SKILL.md
 .agents/skills/speckit-analyze/SKILL.md
 .agents/skills/speckit-checklist/SKILL.md
 .agents/skills/speckit-clarify/SKILL.md
@@ -7,6 +8,8 @@
 .agents/skills/speckit-specify/SKILL.md
 .agents/skills/speckit-tasks/SKILL.md
 .agents/skills/speckit-taskstoissues/SKILL.md
+.agents/skills/test-driven-development/SKILL.md
+.agents/skills/verification-before-completion/SKILL.md
 .speckit/extensions.yml
 .speckit/memory/constitution.md
 .speckit/templates/checklist-template.md

@@ -1,3 +1,4 @@
+.claude/skills/adversarial-review/SKILL.md
 .claude/skills/speckit-analyze/SKILL.md
 .claude/skills/speckit-checklist/SKILL.md
 .claude/skills/speckit-clarify/SKILL.md
@@ -7,6 +8,8 @@
 .claude/skills/speckit-specify/SKILL.md
 .claude/skills/speckit-tasks/SKILL.md
 .claude/skills/speckit-taskstoissues/SKILL.md
+.claude/skills/test-driven-development/SKILL.md
+.claude/skills/verification-before-completion/SKILL.md
 .speckit/extensions.yml
 .speckit/memory/constitution.md
 .speckit/templates/checklist-template.md

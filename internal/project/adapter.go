@@ -11,6 +11,10 @@ type Adapter interface {
 	// Project writes the commands + orientation file under root, returning the
 	// paths it wrote.
 	Project(root string, commands []Command) ([]string, error)
+	// SkillsDir is the directory (relative to root, slash-separated) where
+	// process-discipline skills are projected, or "" if the agent has no skills
+	// concept.
+	SkillsDir() string
 }
 
 var adapters = map[string]Adapter{}

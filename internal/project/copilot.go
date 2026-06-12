@@ -17,6 +17,9 @@ type copilotAdapter struct{}
 
 func (copilotAdapter) ID() string { return "copilot" }
 
+// Copilot has no skills concept; the discipline lives in its instructions.
+func (copilotAdapter) SkillsDir() string { return "" }
+
 func (copilotAdapter) Project(root string, commands []Command) ([]string, error) {
 	agentsDir := filepath.Join(root, ".github", "agents")
 	promptsDir := filepath.Join(root, ".github", "prompts")

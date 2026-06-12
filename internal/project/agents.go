@@ -19,6 +19,8 @@ type agentsAdapter struct{ id string }
 
 func (a agentsAdapter) ID() string { return a.id }
 
+func (agentsAdapter) SkillsDir() string { return ".agents/skills" }
+
 func (a agentsAdapter) Project(root string, commands []Command) ([]string, error) {
 	var written []string
 	for _, c := range commands {

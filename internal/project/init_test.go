@@ -70,6 +70,33 @@ func TestInitUnknownIntegration(t *testing.T) {
 	}
 }
 
+// SPEC: story.init.projection — init projects the process-discipline skills
+// into the agent's skills dir (the process-pack).
+func TestInitProjectsSkills(t *testing.T) {
+	claude := t.TempDir()
+	if _, err := Init(claude, coreassets.FS, Options{Integration: "claude"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []string{"test-driven-development", "verification-before-completion", "adversarial-review"} {
+		mustExist(t, filepath.Join(claude, ".claude", "skills", s, "SKILL.md"))
+	}
+
+	codex := t.TempDir()
+	if _, err := Init(codex, coreassets.FS, Options{Integration: "codex"}); err != nil {
+		t.Fatal(err)
+	}
+	mustExist(t, filepath.Join(codex, ".agents", "skills", "test-driven-development", "SKILL.md"))
+
+	// copilot has no skills dir — it must not get a skills/ tree.
+	cop := t.TempDir()
+	if _, err := Init(cop, coreassets.FS, Options{Integration: "copilot"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cop, ".claude", "skills")); !os.IsNotExist(err) {
+		t.Error("copilot must not get a .claude/skills tree")
+	}
+}
+
 func mustExist(t *testing.T, p string) {
 	t.Helper()
 	if _, err := os.Stat(p); err != nil {

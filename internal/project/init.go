@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 // Options controls Init.
@@ -52,7 +53,24 @@ func Init(root string, assets fs.FS, opts Options) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(written, projected...), nil
+	written = append(written, projected...)
+
+	// Project the process-discipline skills into the agent's skills dir (D3
+	// process-pack), where the agent has one.
+	if dir := adapter.SkillsDir(); dir != "" {
+		skills, err := loadSkills(assets)
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range skills {
+			w, err := writeFile(filepath.Join(root, dir, s.Name, "SKILL.md"), []byte(s.Content))
+			if err != nil {
+				return nil, err
+			}
+			written = append(written, w)
+		}
+	}
+	return written, nil
 }
 
 func dirNonEmpty(root string) (bool, error) {
