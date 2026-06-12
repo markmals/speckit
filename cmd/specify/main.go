@@ -129,7 +129,7 @@ func initCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Initialized SpecKit (%s) at %s — %d paths written\n", integration, root, len(written))
+			fmt.Println(renderInit(integration, root, len(written)))
 			return nil
 		},
 	}
@@ -155,17 +155,12 @@ func scanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			switch {
-			case jsonOut:
+			if jsonOut {
 				if err := writeJSON(os.Stdout, findings); err != nil {
 					return err
 				}
-			case len(findings) == 0:
-				fmt.Println("scan: clean")
-			default:
-				for _, f := range findings {
-					fmt.Printf("%s  %s  %s\n", f.Invariant, f.Path, f.Message)
-				}
+			} else {
+				fmt.Println(renderScan(findings))
 			}
 			if len(findings) > 0 {
 				os.Exit(1) // SPEC: scenario.engine.scan.* — findings exit non-zero
@@ -187,7 +182,7 @@ func lockCmd() *cobra.Command {
 			if err := engine.Lock(".", args[0], specmodel.SpecID(args[1])); err != nil {
 				return err
 			}
-			fmt.Printf("locked %s on %s\n", args[1], args[0])
+			fmt.Println(renderLock(args[0], args[1]))
 			return nil
 		},
 	}
@@ -214,14 +209,7 @@ func driftCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				for _, id := range report.Drifted {
-					fmt.Printf("drifted  %s\n", id)
-				}
-				for _, id := range report.Missing {
-					fmt.Printf("missing  %s\n", id)
-				}
-				fmt.Printf("drift(%s): %d drifted, %d missing, %d clean\n",
-					platform, len(report.Drifted), len(report.Missing), len(report.Clean))
+				fmt.Println(renderDrift(report, platform))
 			}
 			if report.HasDrift() {
 				os.Exit(1) // SPEC: scenario.engine.drift.edited-spec-red
@@ -252,13 +240,7 @@ func coverCmd() *cobra.Command {
 			if jsonOut {
 				return writeJSON(os.Stdout, report)
 			}
-			if len(report.Cells) == 0 {
-				fmt.Printf("cover %s: no platforms have lock state yet\n", id)
-				return nil
-			}
-			for _, cell := range report.Cells {
-				fmt.Printf("%-10s %s\n", cell.Platform, cell.State)
-			}
+			fmt.Println(renderCover(report))
 			return nil
 		},
 	}
@@ -291,20 +273,7 @@ func verifyCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				for _, s := range v.Failed {
-					fmt.Printf("FAIL       %s\n", s)
-				}
-				for _, s := range v.Unjoinable {
-					fmt.Printf("unjoinable %s\n", s)
-				}
-				for _, b := range v.Dangling {
-					fmt.Printf("dangling   %s (%s)\n", b.Scenario, b.Identity)
-				}
-				for _, r := range v.Unbound {
-					fmt.Printf("unbound    %s\n", r.Name)
-				}
-				fmt.Printf("verify(%s): %d passed, %d failed, %d unjoinable, %d dangling, %d unbound; %d locked\n",
-					platform, len(v.Passed), len(v.Failed), len(v.Unjoinable), len(v.Dangling), len(v.Unbound), len(locked))
+				fmt.Println(renderVerify(v, locked, platform))
 			}
 			if !v.Green() {
 				os.Exit(1) // SPEC: scenario.engine.verify.* — a non-green verify exits non-zero
@@ -341,13 +310,7 @@ func parityCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				for _, cell := range report.Cells {
-					if cell.Reason != "" {
-						fmt.Printf("%-18s %s (%s)\n", cell.State, cell.Scenario, cell.Reason)
-					} else {
-						fmt.Printf("%-18s %s\n", cell.State, cell.Scenario)
-					}
-				}
+				fmt.Println(renderParity(report))
 			}
 			if gate && report.Gated() {
 				os.Exit(1) // SPEC: scenario.engine.parity.suspect-lying-marker
@@ -465,18 +428,10 @@ func changedFiles(against string) ([]string, error) {
 
 // reportGate prints gate findings and exits non-zero if any.
 func reportGate(findings []engine.GateFinding) error {
-	if len(findings) == 0 {
-		fmt.Println("gate: clean")
-		return nil
+	fmt.Println(renderGate(findings))
+	if len(findings) > 0 {
+		os.Exit(1)
 	}
-	for _, f := range findings {
-		if f.Path != "" {
-			fmt.Printf("%s  %s  %s\n", f.Check, f.Path, f.Message)
-		} else {
-			fmt.Printf("%s  %s\n", f.Check, f.Message)
-		}
-	}
-	os.Exit(1)
 	return nil
 }
 
