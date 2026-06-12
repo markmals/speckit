@@ -26,6 +26,6 @@ Run `specify scan`. It enforces the structural contract (frontmatter, ID↔filen
 ## Hand-off
 
 - Clarifications remain → `/speckit.clarify <slug>`.
-- Clean → `/speckit.analyze <slug>`, then `/speckit.plan <slug> <platform>`.
+- Clean → `/speckit.analyze <slug>`, then `/speckit.plan <slug> <target>`.
 
 Commit only after approval, prefix `spec:`, scoped per `specify gate scope`. Never bundle implementation code.

@@ -26,4 +26,4 @@ Findings table (severity **CRITICAL / HIGH / MEDIUM / LOW**, location, what's wr
 
 ## Hand-off
 
-Markers or gaps → `/speckit.clarify`. Clean → `/speckit.plan <feature> <platform>`.
+Markers or gaps → `/speckit.clarify`. Clean → `/speckit.plan <feature> <target>`.

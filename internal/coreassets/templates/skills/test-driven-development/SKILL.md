@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when writing any production code — features, bug fixes, refactors, behavior changes. Write the failing test first, watch it fail, write minimal code to pass, refactor green. Each test is bound to its scenario per the platform's source-binding convention.
+description: Use when writing any production code — features, bug fixes, refactors, behavior changes. Write the failing test first, watch it fail, write minimal code to pass, refactor green. Each test is bound to its scenario per the target's source-binding convention.
 ---
 
 # Test-Driven Development
@@ -33,21 +33,21 @@ If you're thinking "skip TDD just this once" — stop. That's rationalization.
 3. GREEN    Write the minimal code to make it pass.
 4. Verify   Run it. Confirm it passes; confirm other tests still pass.
 5. Refactor Clean up while staying green.
-6. LOCK     `specify verify <platform>` — joins the test to its scenario and
-            records the spec as verified-green (the lock) on this platform.
+6. LOCK     `specify verify <target>` — joins the test to its scenario and
+            records the spec as verified-green (the lock) on this target.
 7. Repeat   Next failing test for the next behavior.
 ```
 
 ### RED — write one failing test
 
 - One behavior per test.
-- **Bind it to its scenario in source**, using the platform's native affordance — never by polluting the test description. See `specs/CONVENTIONS.md`:
+- **Bind it to its scenario in source**, using the target's native affordance — never by polluting the test description. See `specs/CONVENTIONS.md`:
   - **Swift Testing:** `@Test(.scenario("scenario.items.list.empty"))` on a raw-identifier func.
   - **kotlin.test:** `@Tag("scenario:items.list.empty")`.
   - **MSTest:** `[TestProperty("scenario", "items.list.empty")]`.
   - **Vitest / Rust / Go:** a `// [scenario.items.list.empty]` comment directly above the test.
 - Test real code; mock only what you can't control (network, time, randomness).
-- **Example or invariant?** A `domain.<entity>` spec's **Invariants** section that says "always / never / for all" earns a **property-based test**, not just hand-picked examples — `adversarial-review` hunts exactly the inputs your examples skipped. Per-platform runners: fast-check (web), SwiftCheck / `@Test(arguments:)` (Apple), kotest-property (Android), FsCheck (C#), proptest (Rust). Keep the example tests too; the property is the net underneath them.
+- **Example or invariant?** A `domain.<entity>` spec's **Invariants** section that says "always / never / for all" earns a **property-based test**, not just hand-picked examples — `adversarial-review` hunts exactly the inputs your examples skipped. Per-target runners: fast-check (web), SwiftCheck / `@Test(arguments:)` (Apple), kotest-property (Android), FsCheck (C#), proptest (Rust). Keep the example tests too; the property is the net underneath them.
 
 ### Verify RED — watch it fail
 
@@ -63,7 +63,7 @@ It passes, all other tests still pass, and the output is pristine — no warning
 
 ### Refactor, then Lock
 
-Clean up while green (no new behavior), then run `specify verify <platform>`: it runs the suite, joins each result to its scenario, and writes the lock for the specs that are fully green. From then on `specify drift`/`cover`/`parity` track that fact. A scenario with no bound test, or a test bound to a scenario that doesn't exist, **fails the verify loudly** — fix the binding.
+Clean up while green (no new behavior), then run `specify verify <target>`: it runs the suite, joins each result to its scenario, and writes the lock for the specs that are fully green. From then on `specify drift`/`cover`/`parity` track that fact. A scenario with no bound test, or a test bound to a scenario that doesn't exist, **fails the verify loudly** — fix the binding.
 
 ## Why order matters
 
@@ -85,7 +85,7 @@ Code before the test · test added "after we ship" · test passes immediately ·
 
 ## Verification checklist
 
-Before marking work complete: every behavior has a test · every "always / for all" invariant has a property test · watched each test fail for the expected reason · minimal code to pass · all tests pass · output pristine · real code (mocks only when unavoidable) · each test is **bound to its scenario** in source · `specify verify <platform>` is green and the lock is written.
+Before marking work complete: every behavior has a test · every "always / for all" invariant has a property test · watched each test fail for the expected reason · minimal code to pass · all tests pass · output pristine · real code (mocks only when unavoidable) · each test is **bound to its scenario** in source · `specify verify <target>` is green and the lock is written.
 
 Can't tick every box? You skipped TDD. Start over.
 

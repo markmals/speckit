@@ -11,7 +11,7 @@ Confirmatory review checks the code against the spec's explicit clauses and the 
 
 ## When to use
 
-- The final stage before declaring any spec done on any platform — after the code matches the spec and `specify verify <platform>` is green.
+- The final stage before declaring any spec done on any target — after the code matches the spec and `specify verify <target>` is green.
 - Any time code "looks correct, tests pass" but no one has tried to break it.
 - Standalone, against an existing implementation you distrust.
 
@@ -57,7 +57,7 @@ Hallucination-based termination. You are done when, and only when, you are **red
 ## Output format
 
 ```
-ADVERSARIAL REVIEW — <spec-id> on <platform>
+ADVERSARIAL REVIEW — <spec-id> on <target>
 
 DEFECTS (must fix):
   1. <location> — <what's wrong> — repro: <exact input/action> — got <X>, spec requires <Y>

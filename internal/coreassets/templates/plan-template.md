@@ -26,7 +26,7 @@
 
 **Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
 
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Target Target**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 
 **Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
 
@@ -97,7 +97,7 @@ api/
 └── [same as backend above]
 
 ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+└── [target-specific structure: feature modules, UI flows, target tests]
 ```
 
 **Structure Decision**: [Document the selected structure and reference the real

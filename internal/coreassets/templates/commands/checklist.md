@@ -10,7 +10,7 @@ Generate a checklist that tests the **quality of the requirements**, not the beh
 
 ## Workflow
 
-1. Read the feature folder (and `plans/<platform>.md` if relevant to the domain) and the constitution if present. Ask up to 3 clarifying questions to calibrate **scope**, **depth**, and **audience** — only if the feature's signals leave them genuinely open.
+1. Read the feature folder (and `plans/<target>.md` if relevant to the domain) and the constitution if present. Ask up to 3 clarifying questions to calibrate **scope**, **depth**, and **audience** — only if the feature's signals leave them genuinely open.
 2. Generate items across the quality taxonomy as it applies to the domain: **completeness · clarity · consistency · measurability · coverage · edge cases · non-functional requirements · dependencies · ambiguities & conflicts**.
 3. Write `features/<NNNN>-<slug>/checklists/<domain>.md`. If the file exists, **append**, continuing the `CHK###` numbering — don't replace.
 

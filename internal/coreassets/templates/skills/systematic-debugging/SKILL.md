@@ -73,7 +73,7 @@ You leave Phase 2 knowing what's different between working and broken.
 1. **Write a failing test** — the simplest reproduction of the bug. Use `test-driven-development`; if the bug is a missed spec scenario, tag the regression test with the scenario's source binding so `specify verify` covers it going forward.
 2. **Verify it fails for the right reason.** Same red-green discipline as TDD.
 3. **Implement a single fix.** One change. No "while I'm here" improvements, no bundled refactors.
-4. **Verify.** Test passes? Suite still green? `specify verify <platform>` green and re-locked? Use `verification-before-completion`.
+4. **Verify.** Test passes? Suite still green? `specify verify <target>` green and re-locked? Use `verification-before-completion`.
 
 ### When 3+ fixes have failed: question the architecture
 

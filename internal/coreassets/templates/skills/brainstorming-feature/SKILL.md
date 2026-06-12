@@ -78,7 +78,7 @@ Iterate until approved. Only then commit.
 ### 8. Hand-off
 
 - Markers remain → `/speckit.clarify <slug>`.
-- Otherwise → `/speckit.analyze <slug>` for cross-artifact consistency, then `/speckit.plan <slug> <platform>`.
+- Otherwise → `/speckit.analyze <slug>` for cross-artifact consistency, then `/speckit.plan <slug> <target>`.
 
 ### 9. Commit
 
@@ -86,7 +86,7 @@ After approval, commit the spec content under the scoped-commits convention (`sp
 
 ## Key principles
 
-One question at a time · multiple-choice when possible · **YAGNI ruthlessly** (no scenarios/fields/errors the capability doesn't need) · **mark, don't guess** · web is the reference platform when behavior is unclear across platforms.
+One question at a time · multiple-choice when possible · **YAGNI ruthlessly** (no scenarios/fields/errors the capability doesn't need) · **mark, don't guess** · web is the reference target when behavior is unclear across targets.
 
 ## Red flags — stop and re-scope
 

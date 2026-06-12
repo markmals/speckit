@@ -36,9 +36,9 @@ Skip any step = lying.
 | Tests pass | Test command output: 0 failures, this turn | "Last run was clean", "Should pass now" |
 | Build succeeds | Build command exit 0, this turn | Linter passed, types passed |
 | Spec library well-formed | `specify scan` exits 0, this turn | "I didn't change the frontmatter" |
-| Spec verified on a platform | `specify verify <platform>` green for the spec | "Code looks right", "tests pass locally" |
-| Nothing drifted | `specify drift <platform>` clean | "I only touched one file" |
-| Parity clean | `specify parity <platform>` all-conforming | "the deviation is intentional" (that's `suspect` until signed off) |
+| Spec verified on a target | `specify verify <target>` green for the spec | "Code looks right", "tests pass locally" |
+| Nothing drifted | `specify drift <target>` clean | "I only touched one file" |
+| Parity clean | `specify parity <target>` all-conforming | "the deviation is intentional" (that's `suspect` until signed off) |
 | Bug fixed | The failing reproduction now passes | Code changed, "I think it's fixed" |
 | Regression test works | Red → green → revert → red → restore → green | Test passes once on the fixed code |
 | Subagent finished | `git status` / `git diff` shows the changes | The subagent's own success report |

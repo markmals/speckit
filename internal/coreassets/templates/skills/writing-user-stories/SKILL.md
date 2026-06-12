@@ -7,7 +7,7 @@ description: Use when writing or reviewing user stories and Gherkin acceptance c
 
 A user story describes **one user-observable capability** in plain language, paired with **Gherkin acceptance criteria** that are externally testable. The story is the _what and why_; the criteria are the _contract_. In SpecKit each scenario carries a stable sub-ID that a test binds to (the join the engine verifies), so the criteria you write here are what `specify verify` later proves.
 
-**Core principle:** _Imagine it's 1922._ Most software does something a person could do manually, just less efficiently. If your story or scenarios depend on a particular UI, framework, endpoint, or database, you've written implementation, not a user story — and you've coupled a cross-platform spec to one platform's mechanics.
+**Core principle:** _Imagine it's 1922._ Most software does something a person could do manually, just less efficiently. If your story or scenarios depend on a particular UI, framework, endpoint, or database, you've written implementation, not a user story — and you've coupled a cross-target spec to one target's mechanics.
 
 ## Story file shape (per `specs/CONVENTIONS.md`)
 
@@ -43,7 +43,7 @@ A story delivers one user-observable capability. If criteria branch into unrelat
 
 ## Avoid the "how"
 
-Never reference frameworks, components, endpoints, routes, status codes, data models, tables, or named UI elements (buttons, dialogs, dropdowns). Those live in `/speckit.plan` output or design, applied evenly across platforms.
+Never reference frameworks, components, endpoints, routes, status codes, data models, tables, or named UI elements (buttons, dialogs, dropdowns). Those live in `/speckit.plan` output or design, applied evenly across targets.
 
 ## The three steps
 

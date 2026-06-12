@@ -13,7 +13,7 @@ This file is derived from the Workbench conventions and amended per the fork pla
 
 ## Why specs at all
 
-Native, idiomatic implementations on every platform mean the _behavior_ must converge even though the _code_ won't. Specs are the only artifact shared across platforms — they are the contract. Everything else (the web app, the UIKit app, the Convex schema) is a regeneration target. Specs describe **what** must hold; tests prove it; implementations satisfy it. None of the three is the source of truth on its own.
+Native, idiomatic implementations on every target mean the _behavior_ must converge even though the _code_ won't. Specs are the only artifact shared across targets — they are the contract. Everything else (the web app, the UIKit app, the Convex schema) is a regeneration target. Specs describe **what** must hold; tests prove it; implementations satisfy it. None of the three is the source of truth on its own.
 
 SpecKit is its own first user: the engine's behavior is specified here under `features/` and `specs/models/`, and its tests carry the same reverse pointers any product would.
 
@@ -85,7 +85,7 @@ IDs are dotted, lowercase, hierarchical, and stable. The first segment is the ki
 
 - IDs are immutable once an implementation references them. Renaming is a deliberate migration: update the spec ID, every `// SPEC:` reference, and every test tag in one commit.
 - IDs do not change on promotion from `features/` to `specs/`.
-- IDs do not encode platform — they describe abstract behavior.
+- IDs do not encode target — they describe abstract behavior.
 
 ### Filename = ID stem
 
@@ -120,7 +120,7 @@ The engine joins a scenario to the test that proves it. The binding is **declare
 | --- | --- |
 | **Swift Testing** (apple) | Custom traits: `@Suite(.spec("<id>"))` + `@Test(.scenario("<sub-id>"))` (shipped as `SpecTraits.swift`), with **raw-identifier** function names for the human description. The dotted ID lives in the trait. |
 | **MSTest** (C# / Windows) | Attributes: `[TestProperty("spec", "<id>")]` and `[TestProperty("scenario", "<sub-id>")]` (or `[TestCategory]`) — metadata, not the method name. |
-| **kotlin.test** (android, JUnit-platform) | Annotations: `@Tag("spec:<id>")` and `@Tag("scenario:<sub-id>")` — metadata, not the `@DisplayName`. |
+| **kotlin.test** (android, JUnit-target) | Annotations: `@Tag("spec:<id>")` and `@Tag("scenario:<sub-id>")` — metadata, not the `@DisplayName`. |
 | **Vitest** (web) | No native trait — a `// [scenario.<sub-id>]` comment directly above the `it(...)`, keeping the title clean. (A `[scenario.…]`-prefixed title is also accepted.) |
 | **cargo-nextest** (Rust) | No native trait — a `// [scenario.<sub-id>]` comment above the `#[test]` fn (fn names can't hold dots/brackets). |
 | **go test** | No native trait — a `// [scenario.<sub-id>]` comment above the test func / `t.Run`. |
@@ -149,14 +149,14 @@ Do not silently guess. Mark gaps inline with `[NEEDS CLARIFICATION: <question>]`
 
 ## Deviation marker (D11)
 
-When a platform must diverge — constraint, idiom, or deliberate UX choice — annotate it so the pointer stays live:
+When a target must diverge — constraint, idiom, or deliberate UX choice — annotate it so the pointer stays live:
 
 ```swift
 // SPEC: vm.items.list (deviates: iOS uses pull-to-refresh; web uses a button)
 ```
 
 ```ts
-// SPEC: manual — platform-specific code with no spec
+// SPEC: manual — target-specific code with no spec
 ```
 
 `(deviates: <reason>)` keeps drift detection flagging spec changes. Per **D11** a deviation is a **human attestation the engine cannot verify**: `specify parity` surfaces every marker in a stale-deviation audit and treats a deviation cell as "needs sign-off," never as green. `// SPEC: manual` opts out entirely, used sparingly.
@@ -171,18 +171,18 @@ The engine crosses deviation-presence with the joined test outcome on **independ
 
 ## Drift detection (D7 — acknowledgment lock, not mtime)
 
-A spec and its implementation on a platform are **in sync** when:
+A spec and its implementation on a target are **in sync** when:
 
-1. Every spec has at least one reverse pointer on that platform (or is intentionally not yet implemented).
-2. The platform's lock shard for the spec records the **content hash of the spec version last verified green**, and that hash matches the spec's current content.
-3. Tests tagged with the spec's scenarios exist on the platform and passed at that verified-green hash.
+1. Every spec has at least one reverse pointer on that target (or is intentionally not yet implemented).
+2. The target's lock shard for the spec records the **content hash of the spec version last verified green**, and that hash matches the spec's current content.
+3. Tests tagged with the spec's scenarios exist on the target and passed at that verified-green hash.
 
-The lock lives at `.speckit/lock/<platform>/<spec-id>` — sharded per spec so parallel worktree agents never merge-conflict. `specify lock` is the **only** writer, invoked by `specify verify` on green; the path is covered by the generated-file gate. `specify drift` reports any spec whose current hash differs from its locked hash (or has no lock) — hash-mismatch-or-missing, with no reliance on filesystem mtimes (which git does not preserve).
+The lock lives at `.speckit/lock/<target>/<spec-id>` — sharded per spec so parallel worktree agents never merge-conflict. `specify lock` is the **only** writer, invoked by `specify verify` on green; the path is covered by the generated-file gate. `specify drift` reports any spec whose current hash differs from its locked hash (or has no lock) — hash-mismatch-or-missing, with no reliance on filesystem mtimes (which git does not preserve).
 
 ## Reconciliation
 
-When one platform's implementation diverges from the spec (usually a direct bug fix), `specify reconcile <platform>` reads the platform's impl + tests, diffs against the spec, and proposes updates to the spec and the other platforms. Reconciliation is **not automatic** — the agent proposes; a human approves.
+When one target's implementation diverges from the spec (usually a direct bug fix), `specify reconcile <target>` reads the target's impl + tests, diffs against the spec, and proposes updates to the spec and the other targets. Reconciliation is **not automatic** — the agent proposes; a human approves.
 
 ## What is NOT a spec
 
-Reference material an agent may read but must not place under `specs/` or a feature's spec subdirectories: wireframes/Figma URLs, prototype code, meeting notes/RFCs (use `docs/`), analytics/telemetry, and platform-local cosmetic defects (those go in `apps/<platform>/DEFECTS.md`). The test: **could a different platform realize this differently and still be correct?** If no, it's implementation, not spec.
+Reference material an agent may read but must not place under `specs/` or a feature's spec subdirectories: wireframes/Figma URLs, prototype code, meeting notes/RFCs (use `docs/`), analytics/telemetry, and target-local cosmetic defects (those go in `apps/<target>/DEFECTS.md`). The test: **could a different target realize this differently and still be correct?** If no, it's implementation, not spec.

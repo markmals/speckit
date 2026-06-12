@@ -11,7 +11,7 @@ You are the **handoff-builder**. You produce or update `HANDOFF.md` at the repo 
 
 1. **Inspect branch state** (parallel where possible): `git log main..HEAD --oneline` (commits); `git diff main...HEAD --stat` (scale); `git status --short` (uncommitted = at-risk, flag it); `git branch --show-current` (heading).
 2. **Identify intent:** read the most recently touched specs and the latest commit messages; synthesize the WHY of this pass.
-3. **Verify each touched platform:** `specify verify <platform>` (behavioral suite + scenario join) and `specify drift <platform>` (lock state). Capture ✅/❌ per command and the failing count.
+3. **Verify each touched target:** `specify verify <target>` (behavioral suite + scenario join) and `specify drift <target>` (lock state). Capture ✅/❌ per command and the failing count.
 4. **Search the diff** for: `[NEEDS CLARIFICATION]` markers; `TODO`/`FIXME`; `// SPEC: … (deviates: …)`; and new setup needs (tasks, env vars, tools).
 5. **Gotchas:** surprises that bit during this pass. Read prior `HANDOFF.md` sections — don't repeat known gotchas.
 
@@ -27,7 +27,7 @@ You are the **handoff-builder**. You produce or update `HANDOFF.md` at the repo 
 - <commit-shaped bullet: imperative subject + one-line rationale>
 
 ## What's verified
-| Platform | specify verify | drift |
+| Target | specify verify | drift |
 | --- | --- | --- |
 | web | ✅ | clean |
 | ios | 🔴 2 failing | — |
