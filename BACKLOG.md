@@ -82,12 +82,14 @@ First slice = **web** end-to-end (green on `specify verify` immediately), then *
 **Resolved:** plain `specs.json` (so the merge is a trivial load→add→write), keep `{{ }}` with escaping,
 and `target add` runs the install (`--no-install` to skip). Folded into the design doc.
 
-**Web scaffold spec'd** ([web preview](docs/design/scaffolds/web.md), per detailed direction): **TanStack
-Start** (React 19 + React Compiler) + **Mise** (env/tasks/toolchain) driving **raw Oxfmt/Oxlint/Vite/Vitest/
-tsdown** (no vite-plus) + **Tailwind v4** + **React Aria** + the **`foundation`** component lib (copied from
-`trove`); data **`--data drizzle|convex`** (trove main/convex branches); **SSR/server matrix** (`--ssr/--no-ssr`
-× `--server/--no-server` → SSR app | SPA+server | static SPA); Clerk optional. Defaults: `--ssr --server`,
-cloudflare, convex. Pack refresh to this stack is a follow-up. **Lesson: read a real shipping repo before each preview.**
+**Web scaffold ✅ approved** ([web preview](docs/design/scaffolds/web.md)): **TanStack Start** (React 19 +
+React Compiler, `app/` dir + virtual file routes) + **Mise** (env/tasks/toolchain, monorepo = root + per-target
+config, `_.path = node_modules/.bin` for bare binaries) driving **raw Oxfmt/Oxlint/Vite/Vitest/tsdown** (Mise
+chosen for polyglot Node/Go/Swift + Astro, which vp doesn't do) + **Tailwind v4** + **React Aria**; data
+**`--data drizzle|convex`**; **SSR/server matrix** (SSR app | SPA+server | static SPA = Trove's daemon pattern);
+Clerk optional. Defaults `--ssr --server`/cloudflare/convex. **No bundled components** — Foundation is
+Catalyst-derived (paid/closed-source); encourage DIY Tailwind+React-Aria; **future:** a shadcn registry backed
+by React Aria (not Radix). Pack refresh = follow-up.
 
 ## Coverage gap — libraries / Swift packages / CLIs / extensions (from the ~/Developer sweep)
 

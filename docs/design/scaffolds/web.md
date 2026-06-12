@@ -1,50 +1,83 @@
 # Web scaffold — tooling preview
 
-**Status:** revised per detailed direction (2026-06-12), grounded in
-`trove/apps/trove` + `tanstack-react-start-contacts`. For sign-off.
+**Status:** ✅ approved (2026-06-12) with the corrections below baked in. Grounded
+in `trove/apps/trove` + `tanstack-react-start-contacts`.
 
 ## The stack
 
-Copy `trove/apps/trove`'s TanStack setup, with two deliberate changes: **Mise**
-replaces `vite-plus` for tooling, and the **`foundation`** component library is
-baked in.
-
 | layer | choice |
 | --- | --- |
-| **framework** | **TanStack Start** (React 19 + **React Compiler**) — `react-start`, `react-router` (file routes), `react-query`/`form`/`table` |
-| **tooling** | **Mise** for env + tasks + toolchain (node version), driving **raw** tools — **Vite**, **Vitest**, **Oxfmt**, **Oxlint**, **tsdown** (libs). **No vite-plus / `vp`.** |
-| **styling** | **Tailwind v4** (`@tailwindcss/vite`, lightningcss) + `cva` (the `cx` helper) |
-| **components** | **`foundation`** — the Catalyst-style set on **React Aria** (`react-aria-components`) + Tailwind + `motion` (badge, button, calendar, input, navbar, select, table, …). Shared across all web apps. |
-| **data** | **`--data drizzle`** (`drizzle-orm` + `drizzle-kit`; trove's `main`) · **`--data convex`** (hosted; trove's `convex` branch) |
+| **framework** | **TanStack Start** (React 19 + **React Compiler**) — `react-start`, `react-router` with **virtual file routes**, `react-query`/`form`/`table` |
+| **tooling** | **Mise** for env + tasks + toolchain, driving **raw** tools — **Vite**, **Vitest**, **Oxfmt**, **Oxlint**, **tsdown** (libs). **No vite-plus / `vp`.** |
+| **styling** | **Tailwind v4** (`@tailwindcss/vite`, lightningcss) + `cva` |
+| **components** | **Not bundled** — see *Components* below (Foundation is paid/closed-source). The scaffold encourages Tailwind-styled **React Aria** components. |
+| **data** | **`--data drizzle`** (trove `main`) · **`--data convex`** (hosted; trove `convex` branch) |
 | **auth** *(optional)* | **Clerk** (`@clerk/tanstack-react-start`) via `--with clerk` |
 | **TS** | **tsgo** (`@typescript/native-preview`) |
 | **testing** | **Vitest** (raw) → `junit`, run via the Mise `test` task |
 
-## SSR / server matrix (the new affordance)
+## Why Mise (not vite-plus)
 
-TanStack Start can render server-side or not, and can ship with a server or not.
+Mise lets a single-language app **grow into a polyglot monorepo** without
+re-tooling: Node + Go + Swift toolchains side by side, per-platform `fmt`/`lint`
+commands (oxfmt for TS, gofmt for Go, swift-format for Swift) behind one task
+interface — and it works with **Astro** (which `vp` doesn't). It's also what
+SpecKit itself uses.
+
+**Monorepo layout** — a root config plus one per target:
+
+```
+mise.toml                 # root: shared tools/env + cross-target tasks
+apps/web/mise.toml        # the web target's toolchain + tasks + env
+…                         # apps/<go-daemon>/mise.toml, apps/<swift>/…, etc.
+```
+
+**The bare-binary trick** — so tasks call `vite`/`vitest`/`oxlint` directly, no `npx`:
+
+```toml
+[env]
+_.path = ['{{config_root}}/node_modules/.bin']
+```
+
+Tasks: `dev` (vite) · `test` (vitest → junit) · `build` (vite; tsdown for lib
+output) · `fmt` (oxfmt) · `lint` (oxlint) · Drizzle's db tasks.
+
+## Folder layout & routing
+
+- **`app/`** is the source dir — customized in the TanStack Start plugin
+  (`tanstackStart({ srcDirectory: "app" })`), not the default `src/`.
+- **Virtual file routes:** `app/routes.ts` declares the route tree →
+  `routes.gen.ts` (TanStack Router's virtual-file-routes), not filesystem routing.
+
+## SSR / server matrix
+
 Two flags, three valid modes:
 
-| `--ssr` | `--server` | mode | host |
+| `--ssr` | `--server` | mode | what it means / host |
 | --- | --- | --- | --- |
-| on | on | **SSR app** (server-rendered) | Cloudflare Workers / Node |
-| off | on | **SPA + server** (client-rendered, server owns data/API — Trove's daemon pattern, `spa:{enabled:true}`) | Workers / a daemon |
-| off | off | **Static SPA** (no server, no SSR) | Cloudflare Pages / any static host |
+| on | on | **SSR app** | server-renders JSX **and** runs middleware / server functions. CF Workers / Node. |
+| off | on | **SPA + server** | client-renders the JSX (no SSR) **but keeps** middleware + server functions. CF Workers / Node. |
+| off | off | **static SPA** | no server at all — a static host (CF Pages), or served by a non-JS daemon via `go:embed` (**Trove's pattern**). |
 
-`--ssr --no-server` is rejected (SSR needs a server). Defaults: **`--ssr --server`**
-(production), with **Cloudflare Workers** the default runtime. Static SPA pairs
-naturally with `--data convex` (hosted backend, no server of your own).
+`--ssr --no-server` is rejected (SSR needs a server). Defaults: **`--ssr --server`**,
+runtime **cloudflare**, **`--data convex`**.
 
-## Tooling via Mise (replaces `vp` tasks)
+## Components (no bundled library)
 
-The scaffold's `mise.toml` carries the toolchain + tasks; `package.json` carries
-the deps. Tasks: `dev` (vite) · `test` (vitest → junit) · `build` (vite; tsdown
-for any lib output) · `fmt` (oxfmt) · `lint` (oxlint) · the db tasks for Drizzle.
+The `foundation` set in `trove` is **adapted from the paid, closed-source Catalyst
+components — it can't ship in this MIT repo.** Instead the scaffold:
+
+- ships **no** component library, and **encourages users to build their own** by
+  styling **React Aria Components** with Tailwind (the same recipe `foundation`
+  uses: `react-aria-components` + `cva` + `motion`);
+- **Future direction:** a SpecKit **shadcn registry** that serves shadcn-style
+  components which use **React Aria Components under the hood instead of Radix**,
+  so users can `shadcn add` them. (Not in the first slice.)
 
 ## The binding harness (green on `specify verify web`)
 
-The `test` task runs Vitest with a **`junit` reporter** → the `report` path; one
-example story under `features/` + a bound `*.test.ts` with **`// [scenario.<id>]`**
+The Mise `test` task runs Vitest with a **`junit` reporter** → the `report` path;
+one example story under `features/` + a bound `*.test.ts` with **`// [scenario.<id>]`**
 and a `// SPEC:` pointer.
 
 ```json
@@ -57,17 +90,17 @@ and a `// SPEC:` pointer.
 }
 ```
 
-## Defaults (adjust at will)
+## Defaults
 
-`--ssr --server`, runtime **cloudflare**, **`--data convex`**, auth off, `foundation`
-+ Tailwind + React Aria always in.
+`--ssr --server`, runtime **cloudflare**, **`--data convex`**, auth off; Tailwind +
+React Aria wired, **no** bundled components.
 
 ## References (inspected)
 
-`trove/apps/trove` (TanStack Start + foundation + Drizzle, SPA+daemon) ·
+`trove/apps/trove` (TanStack Start + Drizzle, static SPA via daemon) ·
 `trove/apps/tangerine-dashboard` (SSR + Cloudflare + Clerk) ·
-`tanstack-react-start-contacts` (SSR-on-Cloudflare config) · trove `main` (Drizzle)
-vs `convex` branch (Convex).
+`tanstack-react-start-contacts` (SSR-on-Cloudflare config) ·
+`trove/app/components/foundation` (the Catalyst-derived set — *pattern* only, not copied).
 
 ## Method note
 
