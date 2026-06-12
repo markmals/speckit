@@ -97,6 +97,31 @@ func TestInitProjectsSkills(t *testing.T) {
 	}
 }
 
+// SPEC: story.init.projection — claude gets the review subagents (the
+// claude-pack); codex/generic/copilot have no projectable subagent dir.
+func TestInitProjectsSubagents(t *testing.T) {
+	claude := t.TempDir()
+	if _, err := Init(claude, coreassets.FS, Options{Integration: "claude"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range []string{"spec-reviewer", "test-gap-finder", "drift-hunter", "handoff-builder"} {
+		mustExist(t, filepath.Join(claude, ".claude", "agents", a+".md"))
+	}
+
+	for _, integ := range []string{"codex", "generic", "copilot"} {
+		dir := t.TempDir()
+		if _, err := Init(dir, coreassets.FS, Options{Integration: integ}); err != nil {
+			t.Fatal(err)
+		}
+		_ = filepath.WalkDir(dir, func(p string, _ os.DirEntry, _ error) error {
+			if strings.Contains(p, "spec-reviewer.md") {
+				t.Errorf("%s must not get review subagents: %s", integ, p)
+			}
+			return nil
+		})
+	}
+}
+
 func mustExist(t *testing.T, p string) {
 	t.Helper()
 	if _, err := os.Stat(p); err != nil {

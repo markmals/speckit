@@ -70,6 +70,22 @@ func Init(root string, assets fs.FS, opts Options) ([]string, error) {
 			written = append(written, w)
 		}
 	}
+
+	// Project the review subagents into the agent's agents dir (the claude-pack),
+	// where the agent has one.
+	if dir := adapter.AgentsDir(); dir != "" {
+		subs, err := loadSubagents(assets)
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range subs {
+			w, err := writeFile(filepath.Join(root, dir, s.Name+".md"), []byte(s.Content))
+			if err != nil {
+				return nil, err
+			}
+			written = append(written, w)
+		}
+	}
 	return written, nil
 }
 

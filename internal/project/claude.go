@@ -18,6 +18,8 @@ func (claudeAdapter) ID() string { return "claude" }
 
 func (claudeAdapter) SkillsDir() string { return ".claude/skills" }
 
+func (claudeAdapter) AgentsDir() string { return ".claude/agents" }
+
 func (claudeAdapter) Project(root string, commands []Command) ([]string, error) {
 	var written []string
 	for _, c := range commands {

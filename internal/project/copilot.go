@@ -20,6 +20,10 @@ func (copilotAdapter) ID() string { return "copilot" }
 // Copilot's cloud agent reads skills from .github/skills/.
 func (copilotAdapter) SkillsDir() string { return ".github/skills" }
 
+// .github/agents/ holds Copilot's command chat-modes, not dispatched reviewers;
+// the review subagents are a Claude Code dispatch concept, so Copilot gets none.
+func (copilotAdapter) AgentsDir() string { return "" }
+
 func (copilotAdapter) Project(root string, commands []Command) ([]string, error) {
 	agentsDir := filepath.Join(root, ".github", "agents")
 	promptsDir := filepath.Join(root, ".github", "prompts")

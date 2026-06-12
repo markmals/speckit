@@ -71,11 +71,14 @@ the feature folder; `plan` and `tasks` become **per-platform layers on top** —
 
 ---
 
-## Subagents (5) — claude-pack
+## Subagents — claude-pack
 
-⬜ `spec-reviewer` · `test-gap-finder` · `drift-hunter` · `handoff-builder` · `visual-verifier` →
-project into `.claude/agents/` (+ equivalents). They mechanize the review stages that `implementing-a-spec`
-and `adversarial-review` describe.
+- ✅ `spec-reviewer` · `test-gap-finder` · `drift-hunter` · `handoff-builder` ported and projected into
+  `.claude/agents/` (claude-only — codex/generic/copilot have no projectable subagent-dispatch dir). Each
+  leans on the engine: spec-reviewer → `specify scan`; the rest → `specify verify`/`drift`/`parity`.
+- 🔒 `visual-verifier` — deferred to the **platform packs**: it drives Chrome DevTools / iOS sim / Android
+  emulator, bridges that arrive with the platform verification skills (blocked on the targets config).
+- ⬜ codex/copilot review-equivalents — open question; their delegation models differ from Claude's dispatch.
 
 ---
 

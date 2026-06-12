@@ -21,6 +21,10 @@ func (a agentsAdapter) ID() string { return a.id }
 
 func (agentsAdapter) SkillsDir() string { return ".agents/skills" }
 
+// Codex/generic have no projectable subagent-dir convention; the review pack is
+// Claude-only for now.
+func (agentsAdapter) AgentsDir() string { return "" }
+
 func (a agentsAdapter) Project(root string, commands []Command) ([]string, error) {
 	var written []string
 	for _, c := range commands {

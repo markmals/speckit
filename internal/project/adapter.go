@@ -15,6 +15,10 @@ type Adapter interface {
 	// process-discipline skills are projected, or "" if the agent has no skills
 	// concept.
 	SkillsDir() string
+	// AgentsDir is the directory (relative to root, slash-separated) where review
+	// subagents are projected, or "" if the agent has no subagent concept. Today
+	// subagents are a Claude Code feature (the claude-pack).
+	AgentsDir() string
 }
 
 var adapters = map[string]Adapter{}
