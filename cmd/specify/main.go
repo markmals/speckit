@@ -12,7 +12,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -41,11 +43,11 @@ func rootCmd() *cobra.Command {
 	root.SetErrPrefix("specify:")
 	root.AddCommand(
 		versionCmd(), kindsCmd(), initCmd(), scanCmd(),
-		lockCmd(), driftCmd(), coverCmd(), verifyCmd(), parityCmd(),
+		lockCmd(), driftCmd(), coverCmd(), verifyCmd(), parityCmd(), gateCmd(),
 	)
 	// Planned-but-unimplemented commands (D5): registered so they report intent
 	// rather than "unknown command".
-	for _, name := range []string{"gate", "ledger", "apply", "reconcile", "extension", "preset", "work", "bench", "issues"} {
+	for _, name := range []string{"ledger", "apply", "reconcile", "extension", "preset", "work", "bench", "issues"} {
 		root.AddCommand(&cobra.Command{
 			Use:    name,
 			Short:  "(planned — not implemented yet)",
@@ -356,6 +358,126 @@ func parityCmd() *cobra.Command {
 	c.Flags().BoolVar(&jsonOut, "json", false, "emit output as JSON")
 	c.Flags().BoolVar(&gate, "gate", false, "exit non-zero unless every cell is conforming")
 	return c
+}
+
+// SPEC: story.engine.gate
+func gateCmd() *cobra.Command {
+	g := &cobra.Command{
+		Use:   "gate",
+		Short: "Enforcement subchecks for git/CI (D8)",
+	}
+	g.AddCommand(gateFirewallCmd(), gateGeneratedCmd(), gateScopeCmd())
+	return g
+}
+
+func gateFirewallCmd() *cobra.Command {
+	var against string
+	c := &cobra.Command{
+		Use:   "firewall",
+		Short: "Block a scenario-tagged test change whose spec didn't change",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			changed, err := changedFiles(against)
+			if err != nil {
+				return err
+			}
+			f, err := engine.TestEditFirewall(".", changed)
+			if err != nil {
+				return err
+			}
+			return reportGate(f)
+		},
+	}
+	c.Flags().StringVar(&against, "against", "", "diff against this ref (default: staged changes)")
+	return c
+}
+
+func gateGeneratedCmd() *cobra.Command {
+	var against string
+	c := &cobra.Command{
+		Use:   "generated",
+		Short: "Block edits to generated paths",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			changed, err := changedFiles(against)
+			if err != nil {
+				return err
+			}
+			return reportGate(engine.GeneratedBlock(changed))
+		},
+	}
+	c.Flags().StringVar(&against, "against", "", "diff against this ref (default: staged changes)")
+	return c
+}
+
+func gateScopeCmd() *cobra.Command {
+	var msgFile string
+	c := &cobra.Command{
+		Use:   "scope [subject]",
+		Short: "Validate a commit subject's scope",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var subject string
+			switch {
+			case msgFile != "":
+				data, err := os.ReadFile(msgFile)
+				if err != nil {
+					return err
+				}
+				subject = strings.SplitN(strings.TrimSpace(string(data)), "\n", 2)[0]
+			case len(args) > 0:
+				subject = args[0]
+			default:
+				return fmt.Errorf("provide a subject or --message <file>")
+			}
+			scopes, err := engine.DefinedScopes(".")
+			if err != nil {
+				return err
+			}
+			return reportGate(engine.ScopedCommit(subject, scopes))
+		},
+	}
+	c.Flags().StringVar(&msgFile, "message", "", "read the subject from a commit-message file (first line)")
+	return c
+}
+
+// changedFiles lists repo-relative paths changed in the staged set (default) or
+// against a ref.
+func changedFiles(against string) ([]string, error) {
+	var c *exec.Cmd
+	if against == "" {
+		c = exec.Command("git", "diff", "--cached", "--name-only")
+	} else {
+		c = exec.Command("git", "diff", "--name-only", against)
+	}
+	out, err := c.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git diff: %w", err)
+	}
+	var files []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line != "" {
+			files = append(files, line)
+		}
+	}
+	return files, nil
+}
+
+// reportGate prints gate findings and exits non-zero if any.
+func reportGate(findings []engine.GateFinding) error {
+	if len(findings) == 0 {
+		fmt.Println("gate: clean")
+		return nil
+	}
+	for _, f := range findings {
+		if f.Path != "" {
+			fmt.Printf("%s  %s  %s\n", f.Check, f.Path, f.Message)
+		} else {
+			fmt.Printf("%s  %s\n", f.Check, f.Message)
+		}
+	}
+	os.Exit(1)
+	return nil
 }
 
 // loadVerifyConfig reads a platform's verify adapter config (.speckit/verify/<platform>.json).
