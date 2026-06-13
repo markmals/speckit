@@ -31,6 +31,46 @@ func TestEndpoints(t *testing.T) {
 	}
 }
 
+func TestParseRepo(t *testing.T) {
+	cases := []struct {
+		in          string
+		owner, name string
+		wantErr     bool
+	}{
+		{"octocat/hello", "octocat", "hello", false},
+		{"github.com/octocat/hello", "octocat", "hello", false}, // host dropped
+		{" octocat/hello ", "octocat", "hello", false},          // trimmed
+		{"hello", "", "", true},
+		{"a/b/c/d", "", "", true},
+		{"/hello", "", "", true},
+		{"octocat/", "", "", true},
+		{"", "", "", true},
+	}
+	for _, tc := range cases {
+		r, err := ParseRepo(tc.in)
+		if (err != nil) != tc.wantErr {
+			t.Errorf("ParseRepo(%q) err=%v, wantErr=%v", tc.in, err, tc.wantErr)
+			continue
+		}
+		if !tc.wantErr && (r.Owner != tc.owner || r.Name != tc.name) {
+			t.Errorf("ParseRepo(%q) = %+v, want %s/%s", tc.in, r, tc.owner, tc.name)
+		}
+	}
+}
+
+func TestCurrentRepoHonorsGHRepoEnv(t *testing.T) {
+	// GH_REPO short-circuits before any `gh` shell-out, so this resolves the
+	// override even on a fork (where `gh repo view` would pick the parent).
+	t.Setenv("GH_REPO", "markmals/speckit")
+	r, err := CurrentRepo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Owner != "markmals" || r.Name != "speckit" {
+		t.Errorf("CurrentRepo() with GH_REPO = %+v", r)
+	}
+}
+
 func TestTokenFromEnv(t *testing.T) {
 	t.Setenv("GH_TOKEN", "from-env")
 	tok, err := Token()

@@ -24,7 +24,7 @@ func protectCmd() *cobra.Command {
 		Short: "Provision the branch-protection ruleset (require the gate, require a PR, block force-push)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, repo, err := resolveGitHub()
+			client, repo, err := resolveGitHub(repoFlag(cmd))
 			if err != nil {
 				return err
 			}
@@ -58,6 +58,7 @@ func protectCmd() *cobra.Command {
 			return nil
 		},
 	}
+	addRepoFlag(c.Flags())
 	c.Flags().StringVar(&name, "name", "speckit-gate", "ruleset name")
 	c.Flags().IntVar(&reviews, "reviews", 0, "required approving reviews on a PR")
 	c.Flags().StringArrayVar(&contexts, "require", nil, "required status check context (repeatable; default: quality + verify / verify)")

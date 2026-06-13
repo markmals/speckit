@@ -36,6 +36,7 @@ func workCmd() *cobra.Command {
 		Use:   "work",
 		Short: "Drive the agent's GitHub Projects board (Pillar 3)",
 	}
+	addRepoFlag(c.PersistentFlags())
 	c.AddCommand(workReadyCmd(), workClaimCmd(), workMoveCmd(), workDiscoverCmd())
 	return c
 }
@@ -49,7 +50,7 @@ func workReadyCmd() *cobra.Command {
 		Short: "List the actionable column (the ready queue)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, repo, err := resolveGitHub()
+			client, repo, err := resolveGitHub(repoFlag(cmd))
 			if err != nil {
 				return err
 			}
@@ -106,7 +107,7 @@ func workClaimCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("claim: %q is not an issue number", args[0])
 			}
-			client, repo, err := resolveGitHub()
+			client, repo, err := resolveGitHub(repoFlag(cmd))
 			if err != nil {
 				return err
 			}
@@ -178,7 +179,7 @@ func workMoveCmd() *cobra.Command {
 			if to == "" {
 				return fmt.Errorf("move: --to <column> required")
 			}
-			client, repo, err := resolveGitHub()
+			client, repo, err := resolveGitHub(repoFlag(cmd))
 			if err != nil {
 				return err
 			}
@@ -234,7 +235,7 @@ func workDiscoverCmd() *cobra.Command {
 			if from <= 0 {
 				return fmt.Errorf("discover: --from <issue#> required (the issue this was discovered from)")
 			}
-			client, repo, err := resolveGitHub()
+			client, repo, err := resolveGitHub(repoFlag(cmd))
 			if err != nil {
 				return err
 			}

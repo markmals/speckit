@@ -86,12 +86,17 @@ func Token() (string, error) {
 	return tok, nil
 }
 
-// CurrentRepo resolves the repo from gh's context (which honors the current
-// directory and any GH_REPO override), so callers need no config block.
+// CurrentRepo resolves the repo to operate on: the GH_REPO env override first
+// (so callers — and `gh` extensions — can target explicitly), else `gh repo
+// view`. Note `gh repo view` resolves a fork's PARENT, so on a fork checkout set
+// GH_REPO or pass --repo to hit your own fork rather than upstream.
 func CurrentRepo() (Repo, error) {
+	if v := strings.TrimSpace(os.Getenv("GH_REPO")); v != "" {
+		return ParseRepo(v)
+	}
 	out, err := exec.Command("gh", "repo", "view", "--json", "owner,name").Output()
 	if err != nil {
-		return Repo{}, fmt.Errorf("not in a GitHub repo (or gh unauthenticated): %w", err)
+		return Repo{}, fmt.Errorf("not in a GitHub repo (set --repo / GH_REPO, or run from a repo): %w", err)
 	}
 	var v struct {
 		Owner struct {
@@ -106,6 +111,23 @@ func CurrentRepo() (Repo, error) {
 		return Repo{}, fmt.Errorf("could not resolve owner/name from gh")
 	}
 	return Repo{Owner: v.Owner.Login, Name: v.Name}, nil
+}
+
+// ParseRepo parses an OWNER/REPO (or HOST/OWNER/REPO — the host is ignored here;
+// endpoints come from GH_HOST) string into a Repo.
+func ParseRepo(s string) (Repo, error) {
+	parts := strings.Split(strings.TrimSpace(s), "/")
+	switch len(parts) {
+	case 3:
+		parts = parts[1:] // drop host
+		fallthrough
+	case 2:
+		if parts[0] == "" || parts[1] == "" {
+			break
+		}
+		return Repo{Owner: parts[0], Name: parts[1]}, nil
+	}
+	return Repo{}, fmt.Errorf("invalid repo %q (want OWNER/REPO)", s)
 }
 
 // REST performs a REST call: method + path (e.g. "/repos/o/r/issues"), an optional
