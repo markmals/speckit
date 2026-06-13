@@ -274,6 +274,30 @@ func TestWebScaffold(t *testing.T) {
 		t.Errorf("posthog feature did not wire PostHogProvider into providers.tsx:\n%s", pp)
 	}
 
+	// the email --with feature is additive: it adds resend + react-email (v6) and
+	// ships a React Email template + a server-only send helper, overwriting no
+	// shared file.
+	email, ok := m.Features["email"]
+	if !ok || len(email.Add) != 3 {
+		t.Errorf("web scaffold missing the email feature with its 3 deps: %+v", m.Features)
+	}
+	emDir := t.TempDir()
+	if _, err := Render(sub, emDir, data); err != nil {
+		t.Fatal(err)
+	}
+	emRootBefore, _ := os.ReadFile(filepath.Join(emDir, "app/root.tsx"))
+	if _, err := RenderFeature(sub, email, emDir, data); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"app/emails/welcome.tsx", "app/server/send-email.tsx"} {
+		if _, err := os.Stat(filepath.Join(emDir, filepath.FromSlash(p))); err != nil {
+			t.Errorf("email feature missing %s: %v", p, err)
+		}
+	}
+	if emRootAfter, _ := os.ReadFile(filepath.Join(emDir, "app/root.tsx")); string(emRootAfter) != string(emRootBefore) {
+		t.Error("email feature must not overwrite the shared app/root.tsx (it must stay additive)")
+	}
+
 	// a second target must not clobber an existing ci.yml
 	if err := os.WriteFile(ciPath, []byte("sentinel"), 0o644); err != nil {
 		t.Fatal(err)

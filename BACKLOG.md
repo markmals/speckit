@@ -162,10 +162,18 @@ Ready) and baked in as `specify work`'s defaults.
     (`dangerouslyAllowAllBuilds`) so node+none can add build-script deps (posthog → core-js) — previously
     the one combo without it. Verified green-on-arrival for real across 6 combos: node×{none,convex}×{±posthog},
     cloudflare+convex (default), and node+none+**clerk+posthog** (both providers wired at once).
-  - ⬜ Remaining `--with` add-ons: **sentry** (next — now unblocked: client provider rides the same
+  - ✅ **Slice 4d — `--with email` (Resend + React Email).** Additive: ships `app/emails/welcome.tsx`
+    (a React Email template) + `app/server/send-email.tsx` (a server-only Resend send helper, key via
+    `process.env.RESEND_API_KEY`), overwriting no shared file. Deps `resend` + **`react-email` (v6)** +
+    `@react-email/render` — note the standalone `@react-email/components` is EOL/deprecated; v6 consolidated
+    the components into the `react-email` umbrella (clean, zero deprecated transitives). Green-on-arrival
+    verified for real (fmt:check/lint/typecheck/test/build + `specify verify`). ⚠️ `resend` is a Node SDK;
+    on the Cloudflare Workers runtime a user wiring the helper into a Worker may need node-compat (the
+    helper is additive/unimported, so the scaffold itself stays green).
+  - ⬜ Remaining `--with` add-ons: **sentry** (now unblocked: client provider rides the same
     `Wrap`/`providers.tsx` seam; note it also adds a vite plugin, which touches `vite.config.ts` — the
-    *runtime* axis — so handle that overlap), then stripe / email (Resend + React Email) / tanstack-db /
-    electron (mostly additive: server fns + new routes).
+    *runtime* axis — so handle that overlap), then stripe (checkout route + server fns) / tanstack-db /
+    electron.
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
