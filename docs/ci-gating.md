@@ -23,14 +23,17 @@ The `verify` job delegates to SpecKit's reusable workflow, which installs
    a scenario-tagged test that changed without its spec changing is blocked, and
    annotated inline on the offending test file in the PR's Files-changed view.
    This is the demo — *you cannot merge a test that silently drifted from its spec.*
-3. `specify verify <target>` — run the tests, join each scenario to its test, lock what passes.
-4. `specify parity <target> --gate` — every scenario must conform (a `suspect` or
-   `drifted` cell fails the check).
+3. `specify verify <target> --format github` — run the tests, join each scenario
+   to its test, lock what passes; an unjoinable scenario is annotated at its spec
+   line and a dangling test binding at the test line.
+4. `specify parity <target> --gate --format github` — every scenario must conform
+   (a `suspect`/`drifted`/`missing` cell fails the check, annotated at its spec line).
 
 `--format github` makes `specify` emit [GitHub Actions workflow-command
 annotations](https://docs.github.com/actions/reference/workflow-commands-for-github-actions#setting-an-error-message)
-(the same mechanism `oxlint --format github` uses), so a failed gate shows up as
-an inline error, not just a red ✗.
+(the same mechanism `oxlint --format github` uses), so every gate failure — a
+drifted test, an unjoinable scenario, a dangling binding — shows up as an inline
+error at its exact `file:line`, not just a red ✗.
 
 > **`gate generated` / `gate scope` are git hooks, not PR checks.** `verify`
 > legitimately rewrites the committed locks under `.speckit/lock/` on green, so a
