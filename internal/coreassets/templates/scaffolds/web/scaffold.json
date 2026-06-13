@@ -5,7 +5,7 @@
       "phase": 0,
       "commands": [
         "pnpm add react react-dom @tanstack/react-router @tanstack/react-start",
-        "pnpm add -D vite vitest typescript @vitejs/plugin-react @tailwindcss/vite tailwindcss @types/react @types/react-dom",
+        "pnpm add -D vite vitest @typescript/native-preview@latest @vitejs/plugin-react @tailwindcss/vite tailwindcss @types/react @types/react-dom",
         "pnpm install"
       ]
     }
