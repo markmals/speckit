@@ -193,22 +193,20 @@ Ready) and baked in as `specify work`'s defaults.
 
 ## P5 · Docs decisions & minor cleanups
 
-- ⬜ **Harness & usage guides (`docs/`).** Extensive, kept-current markdown — the onboarding
-  surface, linked from the README. Two axes:
-  - **Per supported harness** — one guide each for **Claude Code**, **Codex**, **Generic**
-    (`AGENTS.md`), **Copilot**: what `init` projects for that agent (commands/skills/rules/review
-    subagents/`memory/` + the orientation file and its loading mechanism), how to drive the
-    `/speckit.*` commands there, and the per-agent differences (Claude gets review subagents +
-    `@import` memory; Codex/Generic use `AGENTS.md` read-at-start directives; Copilot uses
-    `.github/agents` + `.prompts` + `copilot-instructions.md`). Source of truth = the
-    `internal/project` adapters — keep in lockstep.
-  - **With vs. without GitHub** — using `specify` **GitHub-native** (PR gate, Issues defect intake,
-    the Projects board via `specify issues`/`work`, `deploy`/`secrets`/`protect`, branch protection)
-    **and** **offline** (the engine alone: `scan`/`verify`/`lock`/`drift`/`cover`/`parity`/`gate` +
-    git hooks — no `gh`, no network). Make the determinism line explicit: nothing GitHub is required
-    for correctness. Likely `docs/harnesses/<agent>.md` + `docs/usage/{github,offline}.md`. Substantial
-    deliverable, not a cleanup; reflects the shipped P2 surface ([docs/design/agent-memory.md](docs/design/agent-memory.md),
-    [docs/design/github-integration.md](docs/design/github-integration.md)).
+- ✅ **Harness & usage guides (`docs/`).** Shipped the onboarding surface, linked from the README's
+  new **Guides** section. Both axes, fact-checked against the `internal/project` adapters + the golden
+  init manifests (the source of truth, kept in lockstep):
+  - **Per harness** — [`docs/harnesses/{claude,codex,generic,copilot}.md`](docs/harnesses/): what `init`
+    projects for each agent (exact paths for commands/skills/rules/subagents/`memory/` + the orientation
+    file and its loading mechanism), how the `/speckit.*` commands are invoked there, and the per-agent
+    differences (Claude: user-invocable skills + the 5 review subagents + `CLAUDE.md` native `@import`;
+    Codex/Generic: the shared `.agents/` + `AGENTS.md` read-at-start projection, byte-identical to each
+    other, no subagents; Copilot: dual `.github/agents`+`.prompts` command projection under `.github/`).
+  - **With vs. without GitHub** — [`docs/usage/offline.md`](docs/usage/offline.md) (the engine alone:
+    `scan`/`verify`/`lock`/`drift`/`cover`/`parity`/`gate` + git hooks, determinism line as the spine,
+    no `gh`/network) and [`docs/usage/github.md`](docs/usage/github.md) (the optional shell: PR gate +
+    `protect`, Issues/`taskstoissues`, the `work` board, `deploy`/`secrets` — every command marked
+    optional). Reflects the shipped P2 surface.
 - ⬜ **Decision — historical-doc vocab.** `FORK.md` / `FORK-PLAN.md` still use engine-key
   `platform` (~100× in FORK-PLAN) as dated planning records. Migrate to `target`, or leave as
   pinned artifacts? (Untouched for now.)

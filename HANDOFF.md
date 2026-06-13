@@ -18,8 +18,12 @@ SpecKit is a spec-driven framework: a Go binary (`specify`) that is both the eng
 - **P3 web scaffold ✅ through Slice 4** (PRs #5–#9): a green-on-arrival TanStack
   Start app across `{cloudflare,node} × {convex,drizzle,none}` + `--with clerk`.
 
-**Your job:** go down the remaining BACKLOG priorities in order — **P5 docs → finish
-P3 web scaffold → P3 new stacks → P6 release.** Details per item below.
+- **P5 docs ✅** — the harness & usage guides (`docs/harnesses/{claude,codex,generic,copilot}.md`
+  + `docs/usage/{offline,github}.md`), fact-checked against the `internal/project` adapters and
+  linked from the README's new **Guides** section.
+
+**Your job:** go down the remaining BACKLOG priorities in order — **finish P3 web
+scaffold → P3 new stacks → P6 release.** Details per item below.
 
 ## Read these first
 
@@ -75,19 +79,15 @@ P3 web scaffold → P3 new stacks → P6 release.** Details per item below.
 
 ## The work, in priority order
 
-### 1. P5 — Harness & usage docs  ← start here
-- **Deliverable:** `docs/harnesses/{claude,codex,generic,copilot}.md` + `docs/usage/{github,offline}.md`,
-  linked from the README. (See the BACKLOG P5 lead item for the full scope.)
-- **Source of truth = the `internal/project` adapters** (`claude.go`/`agents.go`/`copilot.go`)
-  — keep docs in lockstep. Per-agent differences: Claude gets review subagents + a CLAUDE.md
-  `@import` of memory; Codex/Generic use an `AGENTS.md` read-at-start directive; Copilot uses
-  `.github/agents` + `.prompts` + `copilot-instructions.md`.
-- **With-GitHub** doc: the PR gate, `specify issues`/`work`/`deploy`/`secrets`/`protect`.
-  **Offline** doc: the engine alone (scan/verify/lock/drift/cover/parity/gate + git hooks,
-  no `gh`, no network). Make the determinism line explicit: nothing GitHub is required for
-  correctness.
+### 1. P5 — Harness & usage docs  ✅ DONE
+- **Shipped:** `docs/harnesses/{claude,codex,generic,copilot}.md` + `docs/usage/{offline,github}.md`,
+  linked from the README's **Guides** section. Drafted + adversarially fact-checked against the
+  `internal/project` adapters and the golden init manifests (the source of truth — kept in lockstep).
+  Per-agent differences captured: Claude gets review subagents + a `CLAUDE.md` `@import` of rules+memory;
+  Codex/Generic share the `.agents/` + `AGENTS.md` read-at-start projection (byte-identical, no subagents);
+  Copilot dual-projects each command as a `.github/agents` chat-mode + a `.github/prompts` slash-prompt.
 
-### 2. P3 — Finish the web scaffold
+### 2. P3 — Finish the web scaffold  ← start here
 - Remaining `--with` add-ons: stripe / email (Resend + React Email) / tiptap / tanstack-db /
   electron / sentry / posthog. The `--ssr`/`--server` **spa/static** modes. **Varlock + `.vscode`**.
   The **web-development pack refresh** to this stack.

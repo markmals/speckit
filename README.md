@@ -307,6 +307,22 @@ A few commands are designed but not built yet: `extension`, `preset`, `apply`, `
 
 Coming: a `triaging-defects` skill (reframed around Issues) and lifecycle **hooks** (format-on-edit, reconcile reminders).
 
+## Guides
+
+Deeper, kept-current walkthroughs live in [`docs/`](docs/). Two axes — pick your agent, then your workflow.
+
+**Per harness** — what `init` projects for your agent, and how to drive the `/speckit.*` commands there:
+
+- [Claude Code](docs/harnesses/claude.md) — user-invocable skills, native `@import` orientation, and the Claude-only review subagents.
+- [Codex](docs/harnesses/codex.md) — the `AGENTS.md` projection under `.agents/` (byte-for-byte identical to the generic adapter).
+- [Generic (AGENTS.md)](docs/harnesses/generic.md) — the portable fallback for any `AGENTS.md`-aware agent that isn't one of the named three.
+- [GitHub Copilot](docs/harnesses/copilot.md) — everything under `.github/`, each command projected as both a chat-mode and a slash-prompt.
+
+**By workflow** — the same engine, with or without GitHub:
+
+- [Offline](docs/usage/offline.md) — the engine alone: `scan` / `verify` / `lock` / `drift` / `cover` / `parity` / `gate` plus git hooks, no network.
+- [With GitHub](docs/usage/github.md) — the optional shell on top: PR gating, Issues, the Projects board, deploys, and secrets.
+
 ## Concepts
 
 - **The lock.** `.speckit/lock/<target>/<spec-id>.json` holds the spec content hash last verified green, sharded per spec so parallel worktrees never conflict. `verify` is the only writer; drift is hash-mismatch-or-missing — never file timestamps (git doesn't preserve them).
