@@ -27,6 +27,8 @@ func (agentsAdapter) AgentsDir() string { return "" }
 
 func (agentsAdapter) RulesDir() string { return ".agents/rules" }
 
+func (agentsAdapter) MemoryDir() string { return ".agents/memory" }
+
 func (a agentsAdapter) Project(root string, commands []Command) ([]string, error) {
 	var written []string
 	for _, c := range commands {
@@ -59,4 +61,11 @@ Follow the conventions in ` + "`.agents/rules/`" + `: ` + "`code-quality.md`" + 
 ` + "`commit-discipline.md`" + `, and ` + "`spec-conventions.md`" + ` apply to
 every change; ` + "`enforcement-hierarchy.md`" + ` is the standard for where a new
 convention lives.
+
+## Project memory
+
+At the start of a session, read the project memory index —
+` + "`.agents/memory/MEMORY.md`" + ` — and any topic files it points to. It's
+durable, agent-owned working knowledge about this repo (not spec truth; the engine
+never reads it). Maintain it with the ` + "`managing-memory`" + ` skill.
 `

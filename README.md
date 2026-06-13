@@ -181,7 +181,7 @@ The unit of work is "satisfy spec X on target Y." For parallel work — one agen
 git worktree add ../app-items-web feat/items-web
 ```
 
-The lock is **sharded per spec** (`.speckit/lock/<target>/<spec-id>.json`), so worktrees verifying different specs never collide in it. (`specify work start <spec> <target>` will automate this — planned.)
+The lock is **sharded per spec** (`.speckit/lock/<target>/<spec-id>.json`), so worktrees verifying different specs never collide in it. (Worktree setup is still manual; `specify work` drives the GitHub-side board — see below.)
 
 ### Pull requests
 
@@ -195,7 +195,13 @@ The pre-commit `gate` checks keep each commit honest before it's pushed (see bel
 
 ### Issues and Projects
 
-You'll likely need fewer of these than usual: **the spec library is the source of work.** `specify drift` and `specify cover` derive the "ready" queue — specs that exist but aren't implemented, or that have drifted — straight from the repo, so a spec ID is already a stable, greppable work item. Use GitHub **Issues** for cross-cutting or non-spec work, and **Projects** for a board view if you want one; SpecKit doesn't require either. (Materializing specs/scenarios as issues via `specify issues` is planned.)
+GitHub holds the **process**; the repo holds the **truth**. Issues are *ephemeral defect intake* and Projects are an *ephemeral work board* — you could delete the whole board and lose nothing the engine verifies. The durable artifacts (specs, scenarios, locks) stay in the repo. The GitHub commands inherit `gh`'s auth (`gh auth token`), so there's no token to configure; outward actions confirm first (`--yes` to skip).
+
+- **Issues = defect intake** (`specify issues`). A defect filed via the scaffolded `defect.yml` form becomes a regression scenario + a bound test; the issue closes on a green `verify` (the lock is the proof). `specify issues list|create|close`.
+- **Projects = the work board** (`specify work`, Pillar 3, Beads-informed). A kanban where **"ready" is just a column**, not a computed field. `specify work ready` lists the actionable column; `specify work claim <issue>` assigns you and moves the card to In Progress (one atomic claim); `specify work move <issue> --to <column>`; `specify work discover --from <issue>` files a mid-task follow-up with `discovered-from` provenance. Column names are `--column`/`--status-field` flags; the defaults match the canonical board (Backlog → **Ready** → In Progress → On Hold → Cancelled → Closed, where **Ready** is the actionable column).
+- **Spec-derived work still works offline:** `specify drift`/`cover` derive un-implemented or drifted specs straight from the repo, so a spec ID is already a stable, greppable work item — no board required.
+
+Make the gate bite with `specify protect`, which provisions the branch-protection ruleset (require `quality` + `verify / verify`, require a PR, block force-pushes) via the GitHub API.
 
 ### Actions (CI/CD)
 
@@ -223,7 +229,7 @@ specify gate scope --message "$1"
 specify gate firewall && specify gate generated
 ```
 
-Deploys run on merge to `main` however you like — SpecKit doesn't prescribe a target.
+Deploys are optional and none are required. `specify deploy add <kind>` drops a `.github/workflows/deploy.yml` for a target (`cloudflare-workers-ssr`, `cloudflare-workers-spa`, `railway`, `github-pages-spa`) and records the manifest. Secrets are **1Password references** (`op://…`) in the manifest — never values — and `specify secrets sync` resolves them through your local `op` straight into GitHub Actions secrets (`gh secret set`) and the platform store (`wrangler secret put` / `railway variables`), never echoing or writing them to disk. (`CLOUDFLARE_ACCOUNT_ID` is a committed identifier in `wrangler.jsonc`, not a secret.)
 
 ## The `specify` command reference
 
@@ -264,25 +270,42 @@ Run `specify <command>`. Reporting commands print a styled summary by default an
 
 Each `gate` check takes `--against <ref>` (diff against a ref instead of the staged set) and `--format text\|json\|github`; `--format github` emits CI annotations on the offending file (see [docs/ci-gating.md](docs/ci-gating.md)).
 
+### Work on GitHub (Issues, Projects, deploys)
+
+These inherit `gh`'s auth (`gh auth token`); no token or config block. Outward actions confirm first (`--yes` skips). They never run in the offline engine path.
+
+| Command | What it does |
+| --- | --- |
+| `specify issues list\|create\|close` | Defect intake (Pillar 2). List/open/close issues; close-on-green is the discipline (the lock is the proof). `--label`, `--type`, `--json`. |
+| `specify work ready` | List the actionable column — the ready queue. `--project`, `--column`, `--status-field`, `--json`. |
+| `specify work claim <issue#>` | Atomic claim: assign yourself + move the card to In Progress. `--project`, `--column`. |
+| `specify work move <issue#> --to <column>` | Move a card to a column. `--project`. |
+| `specify work discover --from <issue#> --title …` | File a mid-task follow-up issue with `discovered-from` provenance (label + #N backlink); `--project` also adds it to the board. |
+| `specify deploy add <kind> [target]` | Add a deploy workflow + record the manifest. `--ci`/`--runtime NAME=op://…`, `--dir`, `--force`. |
+| `specify secrets sync [target]` | Resolve the manifest's `op://` references and push them to GitHub Actions + the platform store. `--dry-run`, `--yes`. |
+| `specify protect` | Provision the branch-protection ruleset (require the gate, require a PR, block force-push). Re-runnable. `--require`, `--reviews`. |
+
 ### Other
 
 | Command | What it does |
 | --- | --- |
 | `specify version` · `specify help` | Print the version; show help for any command. |
 
-A few commands are designed but not built yet: `extension`, `preset`, `apply`, `reconcile`, `ledger`, `work`, `bench`, `issues`. They report intent if you run them. (`check` and `self upgrade` are specified but not yet wired up.)
+A few commands are designed but not built yet: `extension`, `preset`, `apply`, `reconcile`, `ledger`, `bench`. They report intent if you run them. (`check` and `self upgrade` are specified but not yet wired up.)
 
 ## What `init` installs
 
 | In the project | What it is |
 | --- | --- |
 | `/speckit.*` commands | The authoring/implementation prompts, projected for your agent — Claude skills under `.claude/skills/`, Codex/`generic` skills under `.agents/skills/`, Copilot under `.github/`. |
-| Process-discipline skills | `test-driven-development` (RED/GREEN), `verification-before-completion`, `adversarial-review` — the VSDD discipline, projected into the agent's skills dir (claude/codex/generic). |
+| Process-discipline skills | `test-driven-development` (RED/GREEN), `verification-before-completion`, `adversarial-review`, `systematic-debugging`, `implementing-a-spec`, `brainstorming-feature`, `writing-user-stories`, `managing-memory` — projected into the agent's skills dir (claude/codex/generic). |
+| Review subagents (claude-pack) | `spec-reviewer`, `test-gap-finder`, `drift-hunter`, `handoff-builder`, `visual-verifier` — projected into `.claude/agents/` (Claude Code only). |
 | Rules | `code-quality`, `commit-discipline`, `spec-conventions`, `enforcement-hierarchy` — the always-loaded conventions, projected into the agent's rules dir (`.claude/rules/` · `.agents/rules/` · `.github/rules/`) and referenced from the orientation file. |
+| Project memory | A seed `MEMORY.md` index in the agent's `memory/` dir (`.claude/memory/` · `.agents/memory/` · `.github/memory/`) — committed, repo-local working knowledge the engine never reads. Loaded each session (Claude `@import`; a read-at-start directive for the others). Maintain it with the `managing-memory` skill. |
 | `.speckit/` | The runtime: the constitution, spec/plan/tasks/checklist templates, and (after `verify`) the lock. No shell scripts. |
-| Orientation file | `CLAUDE.md` / `AGENTS.md` / `.github/copilot-instructions.md` for the agent — wires in the rules. |
+| Orientation file | `CLAUDE.md` / `AGENTS.md` / `.github/copilot-instructions.md` for the agent — wires in the rules and the memory index. |
 
-Coming (the rest of the process-pack / **claude-pack**): more skills (`systematic-debugging`, `triaging-defects`, `implementing-a-spec`), review **subagents** (`spec-reviewer`, `test-gap-finder`, `drift-hunter`), and lifecycle **hooks** (format-on-edit, reconcile reminders).
+Coming: a `triaging-defects` skill (reframed around Issues) and lifecycle **hooks** (format-on-edit, reconcile reminders).
 
 ## Concepts
 

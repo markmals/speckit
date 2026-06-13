@@ -3,6 +3,7 @@
 .claude/agents/spec-reviewer.md
 .claude/agents/test-gap-finder.md
 .claude/agents/visual-verifier.md
+.claude/memory/MEMORY.md
 .claude/rules/code-quality.md
 .claude/rules/commit-discipline.md
 .claude/rules/enforcement-hierarchy.md
@@ -10,6 +11,7 @@
 .claude/skills/adversarial-review/SKILL.md
 .claude/skills/brainstorming-feature/SKILL.md
 .claude/skills/implementing-a-spec/SKILL.md
+.claude/skills/managing-memory/SKILL.md
 .claude/skills/speckit-analyze/SKILL.md
 .claude/skills/speckit-checklist/SKILL.md
 .claude/skills/speckit-clarify/SKILL.md

@@ -1,6 +1,12 @@
 [tools]
 node = "24"
 pnpm = "11"
+# gh drives the GitHub-native surface (`specify`/`gh specify`: issues, projects,
+# secrets) and supplies the token the binary inherits. 2.94 is the floor for the
+# --type/--parent/--blocked-by automation.
+gh = "2.94"
+# op (1Password CLI) resolves op:// secret references for `specify secrets sync`.
+op = "2"
 
 # Call npm binaries (vite, vitest, tsgo, oxlint, oxfmt) by bare name — no npx.
 [env]

@@ -93,6 +93,37 @@ func TestWebScaffold(t *testing.T) {
 	if strings.Contains(string(ci), `{{ "`) || strings.Contains(string(ci), `.Name`) {
 		t.Errorf("ci.yml has unrendered template syntax:\n%s", ci)
 	}
+
+	// Pillar 2: the github/ subtree also drops the defect-intake surface. Every
+	// file must land at its double-nested .github/ path.
+	for _, p := range []string{
+		".github/PULL_REQUEST_TEMPLATE.md",
+		".github/ISSUE_TEMPLATE/defect.yml",
+		".github/ISSUE_TEMPLATE/config.yml",
+		".github/CODEOWNERS",
+		".github/dependabot.yml",
+	} {
+		if _, err := os.Stat(filepath.Join(proj, filepath.FromSlash(p))); err != nil {
+			t.Errorf("RenderGitHub did not write %s: %v", p, err)
+		}
+	}
+	// the defect form stamps the Bug issue type; CODEOWNERS gates the spec library.
+	defect, _ := os.ReadFile(filepath.Join(proj, ".github/ISSUE_TEMPLATE/defect.yml"))
+	if !strings.Contains(string(defect), "type: Bug") {
+		t.Errorf("defect.yml missing `type: Bug`:\n%s", defect)
+	}
+	owners, _ := os.ReadFile(filepath.Join(proj, ".github/CODEOWNERS"))
+	if !strings.Contains(string(owners), "/features/") || !strings.Contains(string(owners), "/specs/") {
+		t.Errorf("CODEOWNERS must route /features and /specs:\n%s", owners)
+	}
+	// dependabot.yml is templated: the npm ecosystem points at the app dir.
+	dep, _ := os.ReadFile(filepath.Join(proj, ".github/dependabot.yml"))
+	if !strings.Contains(string(dep), "directory: /apps/web") {
+		t.Errorf("dependabot.yml npm directory not substituted to the app dir:\n%s", dep)
+	}
+	if strings.Contains(string(dep), "{{") {
+		t.Errorf("dependabot.yml has unrendered template syntax:\n%s", dep)
+	}
 	// a second target must not clobber an existing ci.yml
 	if err := os.WriteFile(ciPath, []byte("sentinel"), 0o644); err != nil {
 		t.Fatal(err)

@@ -1,0 +1,29 @@
+# Deploy [[.Name]] to Railway on push to the default branch.
+#
+# Set RAILWAY_TOKEN with `specify secrets sync` (resolved from 1Password). The
+# --service name defaults to the target name; adjust if your Railway service
+# differs. Alternatively, use Railway's own GitHub auto-deploy and delete this file.
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-[[.Name]]
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
+      - run: npm i -g @railway/cli
+      - run: railway up --service [[.Name]] --ci
+        working-directory: [[.Dir]]

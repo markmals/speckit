@@ -64,3 +64,19 @@ func writeFile(path string, data []byte) (string, error) {
 	}
 	return path, nil
 }
+
+// writeFileIfAbsent writes data only when path does not already exist, returning
+// "" (and no error) when it leaves an existing file untouched. Used for the
+// memory seed: re-running init (even with --force, which clobbers generated
+// files) must never overwrite an agent's accumulated memory. A Stat error other
+// than "not exist" is returned rather than risking a clobbering write.
+func writeFileIfAbsent(path string, data []byte) (string, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return "", nil // exists — preserve
+	}
+	if !os.IsNotExist(err) {
+		return "", err // unstattable for some other reason — don't risk overwriting
+	}
+	return writeFile(path, data)
+}

@@ -1,3 +1,4 @@
+.agents/memory/MEMORY.md
 .agents/rules/code-quality.md
 .agents/rules/commit-discipline.md
 .agents/rules/enforcement-hierarchy.md
@@ -5,6 +6,7 @@
 .agents/skills/adversarial-review/SKILL.md
 .agents/skills/brainstorming-feature/SKILL.md
 .agents/skills/implementing-a-spec/SKILL.md
+.agents/skills/managing-memory/SKILL.md
 .agents/skills/speckit-analyze/SKILL.md
 .agents/skills/speckit-checklist/SKILL.md
 .agents/skills/speckit-clarify/SKILL.md

@@ -205,6 +205,27 @@ func RenderFeature(src fs.FS, f Feature, destDir string, data Data) ([]string, e
 	return renderSubtree(src, f.Files, destDir, data, false)
 }
 
+// RenderDeploy renders the deploy workflow for a kind —
+// templates/deploy/<kind>/deploy.yml.tmpl — against data. It uses [[ ]] delimiters
+// (not {{ }}) so a deploy workflow's many GitHub ${{ … }} expressions pass through
+// verbatim while SpecKit's own [[.Dir]]/[[.Name]] vars are substituted. Returns a
+// clear error for an unknown kind.
+func RenderDeploy(assets fs.FS, kind string, data Data) ([]byte, error) {
+	b, err := fs.ReadFile(assets, "templates/deploy/"+kind+"/deploy.yml.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("unknown deploy kind %q: %w", kind, err)
+	}
+	t, err := template.New(kind).Delims("[[", "]]").Funcs(funcs).Parse(string(b))
+	if err != nil {
+		return nil, fmt.Errorf("deploy/%s: %w", kind, err)
+	}
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("deploy/%s: %w", kind, err)
+	}
+	return buf.Bytes(), nil
+}
+
 // RenderTarget resolves the manifest's target fields against data.
 func RenderTarget(m Manifest, data Data) (RenderedTarget, error) {
 	var rt RenderedTarget
