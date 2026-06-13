@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "paths": {
+    "specs": "specs",
+    "features": "features"
+  },
+  "targets": {
+    "app": {
+      "stack": "node",
+      "command": "cd app && mise run test",
+      "format": "junit",
+      "report": "app/junit.xml",
+      "source": "app/src"
+    }
+  }
+}
