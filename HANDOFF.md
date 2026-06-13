@@ -88,14 +88,27 @@ scaffold → P3 new stacks → P6 release.** Details per item below.
   Copilot dual-projects each command as a `.github/agents` chat-mode + a `.github/prompts` slash-prompt.
 
 ### 2. P3 — Finish the web scaffold  ← start here
-- Remaining `--with` add-ons: stripe / email (Resend + React Email) / tiptap / tanstack-db /
-  electron / sentry / posthog. The `--ssr`/`--server` **spa/static** modes. **Varlock + `.vscode`**.
-  The **web-development pack refresh** to this stack.
-- **Variant mechanism** (already built): `scaffold.Variant` (data + runtime axes) and
-  `Feature` (`--with`) both carry `Files`/`Add`/`AddDev`/`Scripts`; `Variant.RuntimeFiles`
-  is a runtime-keyed overlay (how drizzle ships D1 vs node:sqlite). `RenderVariant` /
-  `RenderFeature`. Features render LAST (opt-ins win).
-- Prototype-first; verify each new combination green-on-arrival.
+- **Shipped this session:** `--with tiptap` (#12), the **provider `Wrap` seam** + `--with posthog`
+  (#13), `--with email` (#14), `--with stripe` (#15). The `--with` set is now clerk · tiptap ·
+  posthog · email · stripe. See [`.claude/memory/web-scaffold.md`](.claude/memory/web-scaffold.md)
+  for the composition model + gotchas (the provider seam, the JSX-`{{` vs Go-template trap, the base
+  `pnpm-workspace.yaml` build-gate fix, oxfmt-clean-both-modes, prefer-let).
+- **Remaining `--with` add-ons:**
+  - **sentry** ← next. Its client provider rides the existing `Wrap`/`providers.tsx` seam for free,
+    BUT `@sentry/vite-plugin` touches `vite.config.ts` — owned by the **runtime axis** (cloudflare/node
+    each ship their own). Mirror the provider-seam fix on that axis: a `{{if .Features.sentry}}` block in
+    *each* runtime's `vite.config.ts` (prototype the exact Sentry-for-TanStack-Start API first).
+  - **tanstack-db** (intersects the `--data` axis — decide how it composes with convex/drizzle/none) ·
+    **electron** (a bigger shell change).
+- The `--ssr`/`--server` **spa/static** modes. **Varlock + `.vscode`**. The **web-development pack refresh**.
+- **Variant/Feature mechanism** (built): `scaffold.Variant` (data+runtime) + `Feature` (`--with`) carry
+  `Files`/`Add`/`AddDev`/`Scripts`; `Variant.RuntimeFiles` is a runtime-keyed overlay. Features render
+  LAST. **Provider composition** goes through the base `app/providers.tsx` (Go-template conditionals on
+  `.Features`, both `router.tsx`es delegate `Wrap` to `<Providers>`) — additive features just ship files.
+- **Prototype-first; verify each combination green-on-arrival for real** — never assert. The model: build
+  the app in a throwaway `mktemp -d` (NOT the repo; never `cd` in a `$()` subshell), run the quality trio +
+  build + `specify verify`, then add a `web_test.go` render-test. Provider features → verify ±feature ×
+  {none,convex}, the cloudflare+convex default, and stacked with clerk.
 
 ### 3. P3 — New stack coverage
 - **apple next** (Swift — exercises the `swift` report format + `SpecTraits.swift` harness),
