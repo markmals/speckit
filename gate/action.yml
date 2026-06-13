@@ -31,7 +31,7 @@ runs:
   using: composite
   steps:
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ inputs.go_version }}
 
@@ -44,7 +44,7 @@ runs:
         echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
     - name: Set up mise
-      uses: jdx/mise-action@v3
+      uses: jdx/mise-action@v4
 
     - name: Install target toolchain & deps
       shell: bash

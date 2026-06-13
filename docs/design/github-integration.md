@@ -115,8 +115,8 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: jdx/mise-action@v3
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
       - run: mise run -C apps/web fmt:check
       - run: mise run -C apps/web lint
       - run: mise run -C apps/web typecheck

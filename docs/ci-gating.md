@@ -54,7 +54,7 @@ Prefer the gate as a step inside your own job? Check out with full history, then
 run the composite action directly:
 
 ```yaml
-- uses: actions/checkout@v5
+- uses: actions/checkout@v6
   with: { fetch-depth: 0 }
 - uses: markmals/speckit/gate@v1
   with:
