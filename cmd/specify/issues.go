@@ -20,6 +20,7 @@ func issuesCmd() *cobra.Command {
 		Use:   "issues",
 		Short: "Defect intake on GitHub Issues (Pillar 2)",
 	}
+	addRepoFlag(c.PersistentFlags())
 	c.AddCommand(issuesListCmd(), issuesCreateCmd(), issuesCloseCmd())
 	return c
 }
@@ -33,7 +34,7 @@ func issuesListCmd() *cobra.Command {
 		Short: "List issues (defect intake), optionally filtered by label",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, repo, err := resolveGitHub()
+			client, repo, err := resolveGitHub(repoFlag(cmd))
 			if err != nil {
 				return err
 			}
@@ -80,7 +81,7 @@ func issuesCreateCmd() *cobra.Command {
 			if strings.TrimSpace(title) == "" {
 				return fmt.Errorf("issues create: --title required")
 			}
-			client, repo, err := resolveGitHub()
+			client, repo, err := resolveGitHub(repoFlag(cmd))
 			if err != nil {
 				return err
 			}
@@ -124,7 +125,7 @@ func issuesCloseCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("close: %q is not an issue number", args[0])
 			}
-			client, repo, err := resolveGitHub()
+			client, repo, err := resolveGitHub(repoFlag(cmd))
 			if err != nil {
 				return err
 			}

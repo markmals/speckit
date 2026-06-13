@@ -104,7 +104,7 @@ func secretsSyncCmd() *cobra.Command {
 				return nil
 			}
 
-			repo, err := resolveGitHubRepoForSecrets(plan)
+			repo, err := resolveGitHubRepoForSecrets(plan, repoFlag(cmd))
 			if err != nil {
 				return err
 			}
@@ -131,6 +131,7 @@ func secretsSyncCmd() *cobra.Command {
 			return nil
 		},
 	}
+	addRepoFlag(c.Flags())
 	c.Flags().StringVar(&dir, "dir", "", "app directory for the platform CLI (default: the target's source parent)")
 	c.Flags().BoolVar(&dryRun, "dry-run", false, "print the plan (env → reference) without resolving any value")
 	c.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt")
@@ -139,10 +140,10 @@ func secretsSyncCmd() *cobra.Command {
 
 // resolveGitHubRepoForSecrets resolves the repo only when a CI (GitHub Actions)
 // secret is in the plan — a runtime-only sync needs no GitHub context.
-func resolveGitHubRepoForSecrets(plan []secretOp) (string, error) {
+func resolveGitHubRepoForSecrets(plan []secretOp, repoOverride string) (string, error) {
 	for _, op := range plan {
 		if op.Dest == destGitHubActions {
-			repo, err := resolveGitHubRepo()
+			repo, err := resolveGitHubRepo(repoOverride)
 			if err != nil {
 				return "", err
 			}
