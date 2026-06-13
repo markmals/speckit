@@ -223,6 +223,49 @@ branch (or on release), and lists the secrets to set (via `gh secret set` or the
 
 These are independent of the gate (deploy on push/release; gate on PR).
 
+## Secrets — 1Password (`op`) as the source of truth
+
+Same discipline as specs: **one source of truth, projected outward.** Secrets live
+in **1Password**; SpecKit wires them into the places that need them via the `op`
+CLI. Values are **never committed and never printed** — the repo holds only `op://`
+*references* (pointers like `op://Private/Cloudflare/api_token`), which are safe to
+commit: they name a vault/item/field, not a value (the same way the project already
+stores the Homebrew tap PAT as a 1Password reference).
+
+Two destinations, both sourced from `op`:
+
+1. **GitHub Actions secrets** — the CI deploy credentials:
+   `gh secret set CLOUDFLARE_API_TOKEN --body "$(op read op://Private/Cloudflare/api_token)"`.
+2. **The deploy platform's own secret store** — the app's *runtime* secrets:
+   - Cloudflare: `op read op://… | wrangler secret put NAME`
+   - Railway: `railway variables --set "NAME=$(op read op://…)"`
+
+Declarative — the deploy manifest maps each secret to its reference (committable):
+
+```jsonc
+"deploy": {
+  "kind": "cloudflare-workers-ssr",
+  "ci":      { "CLOUDFLARE_API_TOKEN": "op://Private/Cloudflare/api_token",
+               "CLOUDFLARE_ACCOUNT_ID": "op://Private/Cloudflare/account_id" },
+  "runtime": { "DATABASE_URL": "op://Private/app-db/url" }
+}
+```
+
+`specify deploy add <kind>` (and a re-runnable `specify secrets sync`) reads each
+reference through the developer's locally-authenticated `op` and pushes it to GitHub
+/ the platform. Values are **piped straight from `op` into `gh` / `wrangler` /
+`railway`** — never echoed, logged, or written to disk.
+
+**Optional upgrade — runtime load (no copies anywhere).** For CI deploy credentials,
+instead of `gh secret set`-ing copies, store a single `OP_SERVICE_ACCOUNT_TOKEN` in
+GitHub and have `deploy.yml` resolve the `op://` references at deploy time via
+`1password/load-secrets-action`. Then 1Password is the *only* place the secret
+exists and rotation is one edit. Recommended once a deploy is real; the `gh secret
+set` sync is the simpler default (open decision 7).
+
+`op` is pinned alongside `gh` in `mise.toml`. Local use relies on the 1Password
+desktop-app integration; CI runtime-load uses a service-account token.
+
 ## GitHub features we lean on, and version pins
 
 | Feature | Status (2026-06) | We use it for |
@@ -234,8 +277,8 @@ These are independent of the gate (deploy on push/release; gate on PR).
 | Issue forms (auto type/label/project) | GA | the `defect.yml` intake |
 | Projects GraphQL item/field CRUD; built-in automations | GA | board sync + free status transitions |
 
-Pin `gh` as a peer dependency in **`mise.toml`** (repo and scaffolds), so the right
-`gh` is present wherever `specify` runs. Preview — **don't depend on yet:** org-wide
+Pin `gh` **and `op`** (the 1Password CLI) as peer dependencies in **`mise.toml`**
+(repo and scaffolds), so both are present wherever `specify` runs. Preview — **don't depend on yet:** org-wide
 Issue Fields (preview); multi-select Project fields (not shipped).
 
 ## Future Directions
@@ -266,3 +309,7 @@ them, not MCP or GitHub-hosted orchestration.)
 6. **Deploy command ergonomics** — `init --deploy` + `specify deploy add`; is deploy
    project-level or per-target/app? Lean per-target (an app deploys), with `init`
    sugar for the primary app. (Open.)
+7. **Default secret mode** — `gh secret set` sync (simpler; copies into GitHub) vs
+   runtime-load via `OP_SERVICE_ACCOUNT_TOKEN` + `1password/load-secrets-action` (no
+   copies; one-place rotation). Lean: sync as the default, runtime-load as a
+   documented upgrade. (Open.)

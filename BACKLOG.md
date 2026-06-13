@@ -98,8 +98,14 @@ no truth).
   couldn't read; token lacks `read:project`).
 - ⬜ **Deploy workflows (optional, none required).** `deploy.yml` for `cloudflare-workers-ssr`,
   `cloudflare-workers-spa` (assets), `railway`, `github-pages-spa`. Chosen at `specify init --deploy`,
-  addable later (`specify deploy add`); per-target vs project-level ergonomics open. Each lists its
-  secrets (`gh secret set`).
+  addable later (`specify deploy add`); per-target vs project-level ergonomics open.
+- ⬜ **Secrets via 1Password (`op`).** 1Password is the single source of truth; repo holds only
+  `op://` references (committable pointers, like the existing tap-PAT reference), never values.
+  `specify deploy add` / `specify secrets sync` resolve via local `op` and push to **GitHub Actions
+  secrets** (`gh secret set`) and the **platform store** (`wrangler secret put` / `railway variables`),
+  piping op→consumer (never echoed/logged). Optional upgrade: runtime-load via
+  `OP_SERVICE_ACCOUNT_TOKEN` + `1password/load-secrets-action` (no copies; one-place rotation). Pin
+  `op` alongside `gh` in `mise.toml`.
 - ⬜ **Future:** VS Code extension (codelens on `// SPEC:`, parity tree, board view); Discussions for
   spec RFCs (maybe). **Not pursuing:** GitHub MCP toolset, GitHub Agentic Workflows.
 
