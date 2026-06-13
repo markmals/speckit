@@ -36,4 +36,4 @@ A **reverse pointer** is a `// SPEC: <id>` comment in implementation or test cod
 
 ## Notes
 
-Platform is **not** part of the model: a `SpecID` describes abstract behavior, and platform divergence is captured only in reverse pointers via `(deviates:)`. The lock and parity state (D7/D11) are keyed by `(platform, SpecID, content-hash)` but live outside the spec file, under `.speckit/`.
+Target is **not** part of the model: a `SpecID` describes abstract behavior, and target divergence is captured only in reverse pointers via `(deviates:)`. The lock and parity state (D7/D11) are keyed by `(target, SpecID, content-hash)` but live outside the spec file, under `.speckit/`.

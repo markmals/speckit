@@ -4,11 +4,11 @@ kind: story
 depends-on: [story.engine.verify, story.engine.drift, domain.ledger]
 ---
 
-# Story: Apply a spec to a platform
+# Story: Apply a spec to a target
 
 As a developer or agent,
-I want `apply <spec-id> <platform>` to regenerate a spec's tests and implementation on a platform,
-So that bringing a platform in line with a spec is one command that ends in a verified-green lock (D9).
+I want `apply <spec-id> <target>` to regenerate a spec's tests and implementation on a target,
+So that bringing a target in line with a spec is one command that ends in a verified-green lock (D9).
 
 # Acceptance Criteria
 
@@ -16,7 +16,7 @@ So that bringing a platform in line with a spec is one command that ends in a ve
 
 <!-- id: scenario.lifecycle.apply.tests-first -->
 
-- Given a spec to apply on a platform
+- Given a spec to apply on a target
 - When `apply` runs
 - Then it writes the scenario-tagged tests first and observes them fail, before writing the implementation that makes them pass (the `fail_first_observed` ledger signal)
 
@@ -25,7 +25,7 @@ So that bringing a platform in line with a spec is one command that ends in a ve
 <!-- id: scenario.lifecycle.apply.disposable-artifacts -->
 
 - Given `apply` generates `plan.md`/`tasks.md` as execution scaffolding
-- When the platform reaches green and the lock is written
+- When the target reaches green and the lock is written
 - Then those artifacts are deleted or archived — they are never the durable record (D9)
 
 ## Scenario 3: Ends in a verified-green lock
@@ -33,8 +33,8 @@ So that bringing a platform in line with a spec is one command that ends in a ve
 <!-- id: scenario.lifecycle.apply.green-lock -->
 
 - Given `apply` completes successfully
-- Then `specify verify <platform>` passes for the spec and a lock shard is written (`story.engine.lock`)
-- And `specify drift <platform>` is clean for that spec immediately after
+- Then `specify verify <target>` passes for the spec and a lock shard is written (`story.engine.lock`)
+- And `specify drift <target>` is clean for that spec immediately after
 
 ## Scenario 4: A wrong spec stops the loop
 

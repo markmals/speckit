@@ -8,7 +8,7 @@ depends-on: [domain.specmodel, conventions]
 
 As a developer or agent working in a SpecKit repo,
 I want `specify scan` to validate the whole spec library against the model invariants,
-So that a malformed spec is caught before it forks across platforms or feeds a bad join.
+So that a malformed spec is caught before it forks across targets or feeds a bad join.
 
 # Acceptance Criteria
 

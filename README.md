@@ -13,7 +13,7 @@ There are two halves to working in SpecKit, and the README covers both:
 
 ## Status
 
-Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`) and the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`). In progress: a published release (and the Homebrew/Mise install that depends on it), the `check`/`self upgrade`/`extension`/`preset` commands, the ready-made target setups that let `verify` drive a real web/Apple test suite out of the box, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
+Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`), the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`), and stack scaffolding (`target add`) — the **web** stack (TanStack Start + Vitest) lands green on `verify` out of the box. In progress: a published release (and the Homebrew/Mise install that depends on it), the remaining stack scaffolds (Apple next), the `check`/`self upgrade`/`extension`/`preset` commands, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
 
 ## Install
 
@@ -86,7 +86,15 @@ This is where the leverage is — the clearer the spec, the cleaner every target
 
 ### 3. Build it on your first target (web)
 
-Have your agent plan and implement the feature natively, **tests first**, with each test bound to the scenario it proves:
+First scaffold the target. `target add` lays down a runnable starter on the recommended stack, registers the target in `.speckit/specs.json`, projects the stack's skill pack, and installs dependencies — resolving each package to its current version by running the package manager rather than hardcoding versions:
+
+```sh
+specify target add web --stack web   # TanStack Start + Vitest, green on `verify` immediately
+```
+
+It arrives green on purpose: the scaffold seeds one example spec, one bound test, and a `// SPEC:` pointer, so your agent extends a working spec→test→verify loop instead of wiring one from scratch. (`--dir` to place it, `--product` to label it, `--no-install` to skip the install.)
+
+Then have your agent plan and implement the feature natively, **tests first**, with each test bound to the scenario it proves:
 
 ```text
 /speckit.plan      "Web: React + TanStack, tests in Vitest"
@@ -230,6 +238,7 @@ Run `specify <command>`. Reporting commands print a styled summary by default an
 | Command | What it does |
 | --- | --- |
 | `specify init [name] --integration <agent>` | Create a project wired for your agent (`claude`, `codex`, `copilot`, `generic`). `--here` sets up the current directory; `--force` merges into a non-empty one. |
+| `specify target add <name> --stack <stack>` | Scaffold a runnable starter for a target on its stack, register it in `.speckit/specs.json`, project the stack's pack, and install deps (versions resolved by running the package manager). `--dir`, `--product`, `--with <feature>`, `--no-install`. |
 
 ### Work with the spec library
 
@@ -263,7 +272,7 @@ Run `specify <command>`. Reporting commands print a styled summary by default an
 | --- | --- |
 | `specify version` · `specify help` | Print the version; show help for any command. |
 
-A few commands are designed but not built yet: `check`, `self upgrade`, `extension`, `preset`, `apply`, `reconcile`, `ledger`, `work`, `bench`, `issues`. They report intent if you run them.
+A few commands are designed but not built yet: `extension`, `preset`, `apply`, `reconcile`, `ledger`, `work`, `bench`, `issues`. They report intent if you run them. (`check` and `self upgrade` are specified but not yet wired up.)
 
 ## What `init` installs
 

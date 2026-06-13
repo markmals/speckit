@@ -4,29 +4,29 @@ kind: story
 depends-on: [story.lifecycle.apply]
 ---
 
-# Story: Reconcile a platform that raced ahead
+# Story: Reconcile a target that raced ahead
 
 As a developer,
-I want `reconcile <platform>` to fold a platform's direct change back into the spec and the other platforms,
+I want `reconcile <target>` to fold a target's direct change back into the spec and the other targets,
 So that a fix or change made straight in code becomes the shared contract instead of silent drift.
 
 # Acceptance Criteria
 
-## Scenario 1: Proposes spec updates from the lead platform
+## Scenario 1: Proposes spec updates from the lead target
 
 <!-- id: scenario.lifecycle.reconcile.proposes-spec -->
 
-- Given a platform whose implementation/tests changed behavior beyond what the spec says
-- When the user runs `reconcile <platform>`
-- Then it reads that platform's impl + tests, diffs against the spec, and proposes spec updates
+- Given a target whose implementation/tests changed behavior beyond what the spec says
+- When the user runs `reconcile <target>`
+- Then it reads that target's impl + tests, diffs against the spec, and proposes spec updates
 
 ## Scenario 2: Proposes cross-platform updates
 
 <!-- id: scenario.lifecycle.reconcile.proposes-others -->
 
-- Given the spec is updated to match the lead platform
+- Given the spec is updated to match the lead target
 - When `reconcile` runs
-- Then it proposes the corresponding updates to the other platforms' implementations and tests
+- Then it proposes the corresponding updates to the other targets' implementations and tests
 
 ## Scenario 3: Nothing lands without human approval
 
@@ -40,6 +40,6 @@ So that a fix or change made straight in code becomes the shared contract instea
 
 <!-- id: scenario.lifecycle.reconcile.bugfix-not-reconcile -->
 
-- Given a platform change that merely *corrects* the platform to match the existing spec (a bug fix)
+- Given a target change that merely *corrects* the target to match the existing spec (a bug fix)
 - When deciding what to do
 - Then it is handled by `verify`, not `reconcile` — reconcile is for *changed* behavior the spec doesn't yet state

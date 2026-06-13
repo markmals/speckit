@@ -2,17 +2,15 @@
 
 ## How to get help
 
-Please search existing [issues](https://github.com/github/spec-kit/issues) and [discussions](https://github.com/github/spec-kit/discussions) before creating new ones to avoid duplicates.
+Please search existing [issues](https://github.com/markmals/speckit/issues)
+before opening a new one, to avoid duplicates.
 
-- Review the [README](./README.md) for getting started instructions and troubleshooting tips
-- Check the [comprehensive guide](./spec-driven.md) for detailed documentation on the Spec-Driven Development process
-- Ask in [GitHub Discussions](https://github.com/github/spec-kit/discussions) for questions about using Spec Kit or the Spec-Driven Development methodology
-- Open a [GitHub issue](https://github.com/github/spec-kit/issues/new) for bug reports and feature requests
+- Review the [README](./README.md) for getting-started instructions and the full command reference.
+- Read [spec-driven.md](./spec-driven.md) for the Spec-Driven Development methodology behind this tool.
+- Browse [docs/](./docs/) for configuration (`.speckit/specs.json`) and design notes.
+- Open a [GitHub issue](https://github.com/markmals/speckit/issues/new) for bug reports and feature requests.
 
-## Project Status
+## Project status
 
-**Spec Kit** is under active development and maintained by GitHub staff and the community. We will do our best to respond to support, feature requests, and community questions as time permits.
-
-## GitHub Support Policy
-
-Support for this project is limited to the resources listed above.
+SpecKit is a community-maintained fork of `github/spec-kit`, under active
+development. Support is best-effort, as time permits.

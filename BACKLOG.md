@@ -60,8 +60,8 @@ discipline with spec-kit's rigor:
 **Folder-layout decision: resolved.** The Workbench data model (`features/<NNNN>/` with ID'd
 `stories/`/`models/`/`view-models/`, `// SPEC:` pointers, scenario sub-IDs) is canonical per
 `specs/CONVENTIONS.md` (mechanized in `specmodel`). spec-kit's monolithic `spec.md` is replaced by
-the feature folder; `plan` and `tasks` become **per-platform layers on top** —
-`features/<NNNN>/plans/<platform>.md` and `tasks/<platform>.md`.
+the feature folder; `plan` and `tasks` become **per-target layers on top** —
+`features/<NNNN>/plans/<target>.md` and `tasks/<target>.md`.
 
 ---
 
@@ -142,7 +142,7 @@ bleeding-edge tooling is **previewed for Mark's sign-off before its scaffold is 
 ## Config system — `.speckit/specs.json`
 
 - ✅ **targets** — `.speckit/specs.json` (plain JSON) with version/agent/paths/targets;
-  each target's verify wiring inline, retiring `.speckit/verify/<platform>.json`. The engine keys on
+  each target's verify wiring inline, retiring `.speckit/verify/<target>.json`. The engine keys on
   **target** (lock `.speckit/lock/<target>/`); `scan` validates the config. Products are an optional
   label; the `products` collection and `contracts` are documented as futures in [docs/config.md](docs/config.md).
 - ⬜ **product-rollup render** — `cover`/`parity` grouping + per-product verdict. The label and
@@ -180,8 +180,30 @@ Currently the scanner reads only Swift traits + Vitest titles.
 
 ## Docs
 
-⬜ Rewrite `spec-driven.md` — it's the stale upstream essay; make it reflect SpecKit (the fork's
-data model, the engine, the discipline).
+✅ **Repo-wide prose sweep** (platform→target + de-upstream). Migrated the engine-key
+`platform`→`target` vocabulary across the spec library (engine + lifecycle stories/NARRATIVE/README,
+`specs/models/{lock,ledger,specmodel}.md`) — scenario IDs left frozen, `scan` clean. Added `specify target add`
+coverage + a refreshed Status line to the README. De-upstreamed the inherited GitHub community files
+(SECURITY, SUPPORT, PR template, CODE_OF_CONDUCT contact). Fixed the botched `Target Target` in plan-template.
+
+✅ Rewrote `spec-driven.md` — replaced the upstream Python/branch/Nine-Articles essay with the fork's model
+(targets, the source-bound join, verify→lock→drift→cover→parity→gate, trunk-based).
+
+⬜ **Decision — historical-doc vocab.** `FORK.md` / `FORK-PLAN.md` still use engine-key `platform` (~100
+occurrences in FORK-PLAN) as dated planning records. Decide: migrate to `target` for consistency, or leave as
+pinned historical artifacts. (Left untouched for now.)
+
+⬜ **Decision — `init --platforms` / `extension add` vs `target add --stack`.** The `features/0002-init`
+extension stories spec a `--platforms`/`specify extension add` surface that overlaps the shipped
+`specify target add --stack` + `specify packs`. Reconcile the planned design (or relabel the stories as a
+deferred Phase-4 surface).
+
+⬜ **Legacy whole-file templates.** `plan-template.md` / `tasks-template.md` / `checklist-template.md` still use
+the upstream `spec.md`/`plan.md`/`tasks.md` artifact model and carry unrendered `__SPECKIT_COMMAND_*__` tokens
+(no Go-side substitution). At odds with the feature-folder model the commands/skills now use.
+
+⬜ **Minor (code):** `cmd/specify/render.go` prints a `PLATFORM` column header in the cover/parity/gate state
+table — rename to `TARGET` to match the rest of the CLI.
 
 ---
 
