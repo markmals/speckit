@@ -13,8 +13,11 @@ func TestRenderAndTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.Stack != "fixture" || m.Install != "echo installed" {
+	if m.Stack != "fixture" {
 		t.Errorf("manifest = %+v", m)
+	}
+	if len(m.Scripts) != 1 || len(m.Scripts[0].Commands) != 1 || m.Scripts[0].Commands[0] != "echo installed" {
+		t.Errorf("scripts = %+v", m.Scripts)
 	}
 
 	data := Data{Name: "My App", Dir: "apps/web"}
@@ -68,6 +71,32 @@ func TestCasingHelpers(t *testing.T) {
 		if got := camel(c.in); got != c.camel {
 			t.Errorf("camel(%q) = %q, want %q", c.in, got, c.camel)
 		}
+	}
+}
+
+func TestPhasedScripts(t *testing.T) {
+	m := Manifest{Scripts: []Script{
+		{Phase: 2, Commands: []string{"build"}},
+		{Phase: 0, Commands: []string{"pnpm add {{kebab .Name}}-core"}, Silent: true},
+		{Phase: 1, Commands: []string{"codegen"}},
+	}}
+	got, err := m.PhasedScripts(Data{Name: "My App"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 || got[0].Phase != 0 || got[1].Phase != 1 || got[2].Phase != 2 {
+		t.Fatalf("phase order = %+v", got)
+	}
+	// commands are rendered through the template engine (FuncMap + Data)
+	if got[0].Commands[0] != "pnpm add my-app-core" {
+		t.Errorf("rendered command = %q", got[0].Commands[0])
+	}
+	if !got[0].Silent {
+		t.Error("Silent flag lost in ordering")
+	}
+	// the source manifest must be untouched (PhasedScripts works on a copy)
+	if m.Scripts[1].Commands[0] != "pnpm add {{kebab .Name}}-core" {
+		t.Error("PhasedScripts mutated the source manifest")
 	}
 }
 

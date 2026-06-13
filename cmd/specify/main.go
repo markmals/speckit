@@ -260,10 +260,27 @@ func targetAddCmd() *cobra.Command {
 				}
 			}
 
-			if m.Install != "" && !noInstall {
-				fmt.Printf("running install: %s\n", m.Install)
-				if err := runIn(dir, m.Install); err != nil {
-					return fmt.Errorf("install %q failed: %w", m.Install, err)
+			// Post-render setup: run the scaffold's phased scripts in the target
+			// dir. This is where versions are resolved by running the tool (e.g.
+			// `pnpm add`, which pins each dependency to its current latest) rather
+			// than frozen into a template. Phases run in order; a Silent step's
+			// failure is logged and skipped.
+			if !noInstall {
+				scripts, err := m.PhasedScripts(data)
+				if err != nil {
+					return err
+				}
+				for _, s := range scripts {
+					for _, command := range s.Commands {
+						fmt.Printf("running: %s\n", command)
+						if err := runIn(dir, command, s.Silent); err != nil {
+							if s.Silent {
+								fmt.Fprintf(os.Stderr, "specify: step failed (ignored): %v\n", err)
+								continue
+							}
+							return fmt.Errorf("scaffold step %q failed: %w", command, err)
+						}
+					}
 				}
 			}
 
@@ -275,7 +292,7 @@ func targetAddCmd() *cobra.Command {
 	c.Flags().StringVar(&dir, "dir", "", "where to scaffold (default apps/<name>)")
 	c.Flags().StringVar(&product, "product", "", "product label for the target")
 	c.Flags().StringArrayVar(&with, "with", nil, "optional scaffold features (repeatable)")
-	c.Flags().BoolVar(&noInstall, "no-install", false, "skip the scaffold's install command")
+	c.Flags().BoolVar(&noInstall, "no-install", false, "skip the scaffold's post-render scripts (dependency install, codegen)")
 	return c
 }
 
@@ -289,9 +306,10 @@ func featuresEmpty(root string) bool {
 	return len(es) == 0
 }
 
-// runIn runs the scaffold's install (a developer/SpecKit-controlled shell string
-// from the embedded manifest — same trust boundary as a verify command) in dir.
-func runIn(dir, command string) error {
+// runIn runs one scaffold script command (a developer/SpecKit-controlled shell
+// string from the embedded manifest — same trust boundary as a verify command)
+// in dir. A silent step's output is discarded; otherwise it streams.
+func runIn(dir, command string, silent bool) error {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/c", command)
@@ -299,7 +317,9 @@ func runIn(dir, command string) error {
 		cmd = exec.Command("sh", "-c", command)
 	}
 	cmd.Dir = dir
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if !silent {
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	}
 	return cmd.Run()
 }
 

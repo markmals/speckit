@@ -95,10 +95,16 @@ by React Aria (not Radix). Pack refresh = follow-up.
     (manifest, `.tmpl` handling, FuncMap casings, `--with` features, `RenderTarget`); `specify target add <name>
     --stack <stack> [--dir --product --with --no-install]` — wired + tested (fixture). Runs the install, registers
     the target, projects the pack.
-  - ✅ **Build Part B (web scaffold) — green end-to-end:** `templates/scaffolds/web/` (TanStack Start 1.168 +
+  - ✅ **Build Part B (web scaffold) — green end-to-end:** `templates/scaffolds/web/` (TanStack Start +
     React 19 + Vite 8 + Tailwind 4 + Vitest 4 + Mise) seeds an example feature at the project root + a bound
-    test. Proven in a temp project: `target add web` → `pnpm install` (clean) → `mise run test` →
+    test. Proven in a temp project: `target add web` → `pnpm add`/`pnpm install` → `mise run test` →
     **`specify verify web` green + locked**. The scaffold `root/` subtree + `featuresEmpty` seeding are wired.
+  - ✅ **Align with create-sprinkles (resolve-by-running):** the manifest's single `install` string became a
+    phased **`scripts`** list (`{commands, phase, silent}` + `Manifest.PhasedScripts`). Dependency versions are
+    no longer hardcoded in `package.json.tmpl` (which carried floating `"latest"` that `pnpm install` never
+    pins); a phase-0 `pnpm add …` resolves + pins each dep at scaffold time (verified: `"vite": "^8.0.16"`,
+    `"@tanstack/react-router": "^1.170.15"`, …). Phases 1–3 (codegen/format/feature-setup) plug into the same
+    runner for the flesh-out. Documented in [stack-scaffolding.md](docs/design/stack-scaffolding.md).
   - ⬜ **Web scaffold — flesh out:** the full default deps (React Compiler, React Aria, Motion, Zod, TanStack
     Query/Table/Form/Hotkeys), the `app/` router structure, `--data convex|drizzle`, the SSR/server variants,
     the `--with` features (clerk/stripe/…), Varlock + GitHub Actions + `.vscode`. Pack refresh to this stack.

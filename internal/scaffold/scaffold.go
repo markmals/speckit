@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 	"unicode"
@@ -19,10 +20,28 @@ import (
 // Manifest is a scaffold's scaffold.json.
 type Manifest struct {
 	Stack     string             `json:"stack"`
-	Install   string             `json:"install,omitempty"`
+	Scripts   []Script           `json:"scripts,omitempty"`
 	Target    ManifestTarget     `json:"target"`
 	Variables []Variable         `json:"variables,omitempty"`
 	Features  map[string]Feature `json:"features,omitempty"`
+}
+
+// Script is a phase of post-render setup: shell commands the CLI runs in the
+// scaffolded target dir after its files are written. Phases run in ascending
+// order; commands within a script run in sequence. A Silent script's failures
+// (and output) are swallowed — for best-effort steps like a codegen that needs
+// a prior login.
+//
+// This is the mechanism that lets a scaffold resolve values by *running a tool*
+// instead of freezing them into a template: the canonical case is `pnpm add`,
+// which makes the package manager resolve each dependency to its latest version
+// and pin it into package.json at scaffold time — so templates never hardcode a
+// version. The same mechanism carries framework codegen (router/wrangler/convex
+// typegen) and formatting. Modeled on create-sprinkles' phased runScripts.
+type Script struct {
+	Commands []string `json:"commands"`
+	Phase    int      `json:"phase"`
+	Silent   bool     `json:"silent,omitempty"`
 }
 
 // ManifestTarget holds the specs.json target fields as text/template strings
@@ -78,6 +97,28 @@ func LoadManifest(src fs.FS) (Manifest, error) {
 		return Manifest{}, fmt.Errorf("scaffold.json: %w", err)
 	}
 	return m, nil
+}
+
+// PhasedScripts returns the manifest's scripts in ascending phase order (stable
+// within a phase), with every command rendered against data through the same
+// text/template engine the files use. The CLI runs them in the scaffolded
+// target dir after Render — see cmd/specify targetAddCmd.
+func (m Manifest) PhasedScripts(data Data) ([]Script, error) {
+	ordered := make([]Script, len(m.Scripts))
+	copy(ordered, m.Scripts)
+	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].Phase < ordered[j].Phase })
+	for si := range ordered {
+		cmds := make([]string, len(ordered[si].Commands))
+		for ci, c := range ordered[si].Commands {
+			r, err := renderString("script", c, data)
+			if err != nil {
+				return nil, err
+			}
+			cmds[ci] = r
+		}
+		ordered[si].Commands = cmds
+	}
+	return ordered, nil
 }
 
 // Render walks the scaffold's files/ subtree, renders *.tmpl through

@@ -1,6 +1,6 @@
 {
   "stack": "fixture",
-  "install": "echo installed",
+  "scripts": [{ "phase": 0, "commands": ["echo installed"] }],
   "target": {
     "command": "mise run -C {{.Dir}} test",
     "format": "junit",

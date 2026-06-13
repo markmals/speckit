@@ -1,8 +1,9 @@
 # Design — stack scaffolding
 
-**Status:** proposal. The three sub-decisions — plain `specs.json` (no JSONC),
-keep `{{ }}` with escaping, and run the install — are resolved into this doc.
-Awaiting final go-ahead to build.
+**Status:** built (web stack green end-to-end). The sub-decisions — plain
+`specs.json` (no JSONC), keep `{{ }}` with escaping, and **phased post-render
+scripts that resolve versions by running `pnpm add` rather than hardcoding
+them** — are resolved into this doc and implemented.
 
 ## Motivation
 
@@ -46,7 +47,7 @@ What it does, in order:
 3. Render the template tree into `--dir`.
 4. Compute the target's `specs.json` entry from the manifest and add it (load → add → write; see *specs.json merge* below).
 5. Project the stack's pack (`specify packs`).
-6. Run the scaffold's install (unless `--no-install`).
+6. Run the scaffold's phased setup scripts (unless `--no-install`) — see *Post-render scripts* below.
 7. Print next steps (`specify verify <name>`).
 
 ## Template layout (embedded in coreassets)
@@ -69,12 +70,21 @@ run through `text/template` (so `{{.Dir}}` etc. resolve):
 ```json
 {
   "stack": "web",
-  "install": "pnpm install",
+  "scripts": [
+    {
+      "phase": 0,
+      "commands": [
+        "pnpm add react react-dom @tanstack/react-router @tanstack/react-start",
+        "pnpm add -D vite vitest typescript @vitejs/plugin-react @tailwindcss/vite tailwindcss",
+        "pnpm install"
+      ]
+    }
+  ],
   "target": {
-    "command": "pnpm -C {{.Dir}} test --run",
+    "command": "cd {{.Dir}} && mise run test",
     "format": "junit",
-    "report": "{{.Dir}}/report.junit.xml",
-    "source": "{{.Dir}}/src"
+    "report": "{{.Dir}}/junit.xml",
+    "source": "{{.Dir}}/app"
   },
   "variables": [
     { "name": "Module", "default": "{{.Name}}", "from": "flag" },
@@ -146,12 +156,39 @@ cleanly — there are no comments to preserve. `target add` loads the config
 No print-to-paste, no CST round-trip. (Key order isn't preserved across a
 rewrite — fine for a generated config.)
 
-## Dependency install
+## Post-render scripts (resolve by running — don't freeze versions)
 
-`target add` **runs** the scaffold's install (declared in the manifest —
-`pnpm install`, `swift build`, …) so the target is ready to `specify verify`
-immediately. It's slow and network-dependent, so a `--no-install` flag skips it
-for offline / CI use.
+After the file tree is written, `target add` runs the manifest's **`scripts`** in
+the freshly-rendered target dir, so the target is ready to `specify verify`
+immediately. Each script is `{ "commands": [...], "phase": N, "silent": bool }`;
+phases run in ascending order, commands within a script in sequence, and a
+`silent` step's failure (and output) is swallowed — for best-effort steps like a
+codegen that needs a prior login. A `--no-install` flag skips the whole run for
+offline / CI use.
+
+The load-bearing principle (borrowed from create-sprinkles): **resolve values by
+running the tool, never hardcode them into a template.** The canonical case is
+dependency versions. The template's `package.json` carries *no* dependency
+block; a phase-0 `pnpm add …` makes the package manager resolve each dependency
+to its current latest and pin it (`"vite": "^8.0.16"`) into `package.json` at
+scaffold time. A template that hardcoded `"latest"` would be worse than useless:
+`pnpm install` does **not** rewrite `"latest"`, so the project would float on
+every future install. The same mechanism carries framework codegen
+(`react-router typegen`, `wrangler types`, `convex dev --once`) and formatting —
+anything whose correct value depends on the installed toolchain or the registry,
+not on the template author.
+
+Phases, by convention (mirrors create-sprinkles):
+
+| phase | purpose | example |
+| --- | --- | --- |
+| 0 | resolve + install dependencies | `pnpm add …`, then `pnpm install` |
+| 1 | codegen that needs the deps | `wrangler types`, route-tree typegen |
+| 2 | format the generated code | the stack's formatter |
+| 3 | feature-specific setup (often `silent`) | `convex dev --once` |
+
+Non-JS stacks use the same shape with their own tools (`swift build`,
+`./gradlew build`, …).
 
 ## Other open decisions
 
@@ -159,13 +196,15 @@ for offline / CI use.
   convention note in `docs/config.md` once it lands.
 - **Interactivity.** Flags only for v1; TTY prompts later.
 
-## First slice (when we build)
+## Build status & next slices
 
-1. The `target add` command + the manifest/loader + the `text/template` renderer
-   (FuncMap, `.tmpl` handling, escape literal `{{`) + the specs.json load→add→write + run-install.
-2. The **web** scaffold end-to-end: a target that's green on `specify verify`
-   the moment it's created.
-3. Then **apple** — it exercises the other report format (`swift`) and the most
+1. ✅ The `target add` command + the manifest/loader + the `text/template`
+   renderer (FuncMap, `.tmpl` handling, escape literal `{{`) + the specs.json
+   load→add→write + the phased post-render script runner.
+2. ✅ The **web** scaffold end-to-end: `target add web` → `pnpm add` (resolves +
+   pins real versions) → `pnpm install` → `mise run test` → `specify verify web`
+   green + locked, the moment it's created.
+3. Next: **apple** — it exercises the other report format (`swift`) and the most
    distinct harness (`SpecTraits.swift`), proving the contract generalizes.
 
 The remaining stacks follow one at a time — each gated on its tooling preview
