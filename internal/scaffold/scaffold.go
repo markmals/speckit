@@ -92,10 +92,14 @@ type Variable struct {
 	From    string `json:"from,omitempty"` // "flag" | "git"
 }
 
-// Feature is an optional --with add-on: an extra files subtree + vars.
+// Feature is an optional --with add-on: an extra files subtree (rendered over the
+// base), optional vars, and — like a Variant — its own deps + scripts.
 type Feature struct {
-	Files string            `json:"files,omitempty"`
-	Vars  map[string]string `json:"vars,omitempty"`
+	Files   string            `json:"files,omitempty"`
+	Vars    map[string]string `json:"vars,omitempty"`
+	Add     []string          `json:"add,omitempty"`
+	AddDev  []string          `json:"addDev,omitempty"`
+	Scripts []Script          `json:"scripts,omitempty"`
 }
 
 // Data is the text/template context every scaffold sees.

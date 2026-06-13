@@ -17,6 +17,12 @@
       ]
     }
   ],
+  "features": {
+    "clerk": {
+      "files": "features/clerk/files",
+      "add": ["@clerk/tanstack-react-start"]
+    }
+  },
   "dataDefault": "convex",
   "data": {
     "convex": {
