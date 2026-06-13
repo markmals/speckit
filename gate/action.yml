@@ -22,6 +22,21 @@ inputs:
     description: The `specify` version/ref installed via `go install` (a tag, branch, or SHA).
     required: false
     default: v1
+  specify_source:
+    description: >-
+      Where `specify` comes from. `release` (default) installs it with
+      `go install …@<specify_version>`; `local` builds it from a checkout of
+      this repo at `$GITHUB_WORKSPACE/cmd/specify` — used by the action's own
+      self-test, where the released version does not exist yet.
+    required: false
+    default: release
+  project_dir:
+    description: >-
+      The SpecKit project root (where `.speckit/specs.json` lives) when it is
+      not the repository root — e.g. a test fixture or a project nested in a
+      monorepo. The scan / firewall / verify / parity steps run here.
+    required: false
+    default: "."
   go_version:
     description: The Go toolchain used to build `specify`.
     required: false
@@ -39,8 +54,13 @@ runs:
       shell: bash
       env:
         SPECIFY_VERSION: ${{ inputs.specify_version }}
+        SPECIFY_SOURCE: ${{ inputs.specify_source }}
       run: |
-        go install "github.com/markmals/speckit/cmd/specify@${SPECIFY_VERSION}"
+        if [ "$SPECIFY_SOURCE" = "local" ]; then
+          ( cd "$GITHUB_WORKSPACE" && go build -o "$(go env GOPATH)/bin/specify" ./cmd/specify )
+        else
+          go install "github.com/markmals/speckit/cmd/specify@${SPECIFY_VERSION}"
+        fi
         echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
     - name: Set up mise
@@ -62,10 +82,12 @@ runs:
 
     - name: Lint the spec library (scan)
       shell: bash
+      working-directory: ${{ inputs.project_dir }}
       run: specify scan
 
     - name: Test-edit firewall
       shell: bash
+      working-directory: ${{ inputs.project_dir }}
       env:
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
       run: |
@@ -77,12 +99,14 @@ runs:
 
     - name: Verify (run tests, join scenarios to specs)
       shell: bash
+      working-directory: ${{ inputs.project_dir }}
       env:
         TARGET: ${{ inputs.target }}
       run: specify verify "$TARGET"
 
     - name: Parity gate
       shell: bash
+      working-directory: ${{ inputs.project_dir }}
       env:
         TARGET: ${{ inputs.target }}
       run: specify parity "$TARGET" --gate
