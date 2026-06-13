@@ -58,3 +58,9 @@ touch the gate.
 - Projection changes are covered by golden trees under
   `internal/project/testdata/goldens/` — regenerate with
   `go test ./internal/project -run TestInitGoldenTrees -update`.
+- **Scaffolds ship only original, MIT-clean code.** Never vendor paid or
+  closed-source code into `internal/coreassets/templates/scaffolds/` — in
+  particular **not** Tailwind Plus / Catalyst, which is the basis of Trove's
+  `foundation` set. The web scaffold's `foundation` example is written fresh on
+  React Aria Components + Tailwind + `cva`; keep any component examples original.
+  (See `docs/design/scaffolds/web.md` → "Components".)
