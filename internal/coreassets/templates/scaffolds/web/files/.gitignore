@@ -11,3 +11,9 @@ worker-configuration.d.ts
 # Local env
 .env
 .env.local
+
+# Local SQLite (node:sqlite drizzle on the node runtime) + Cloudflare local state
+.data/
+*.sqlite
+*.sqlite3
+.wrangler/
