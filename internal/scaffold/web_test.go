@@ -31,7 +31,7 @@ func TestWebScaffold(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, p := range []string{
-		"package.json", "mise.toml", "vite.config.ts", "tsconfig.json", "vitest.config.ts",
+		"package.json", "mise.toml", "tsconfig.json", "vitest.config.ts",
 		"tsr.config.json", ".oxlintrc.json", ".oxfmtrc.json",
 		"app/root.tsx", "app/router.tsx", "app/routes.ts", "app/routes/home.tsx",
 		"app/styles/tailwind.css", "app/styles/cva.ts", "app/components/foundation/button.tsx",
@@ -52,12 +52,36 @@ func TestWebScaffold(t *testing.T) {
 			t.Errorf("package.json missing %q:\n%s", want, pkg)
 		}
 	}
-	// vite.config wires TanStack Start (srcDirectory app) + the React Compiler pass + Tailwind.
-	vite, _ := os.ReadFile(filepath.Join(app, "vite.config.ts"))
-	for _, want := range []string{"tanstackStart(", `srcDirectory: "app"`, "reactCompilerPreset(", "tailwindcss("} {
-		if !strings.Contains(string(vite), want) {
-			t.Errorf("vite.config.ts missing %q", want)
+	// vite.config.ts is runtime-specific (the cloudflare runtime is the default).
+	// Render it over the base and assert TanStack Start + React Compiler + Tailwind
+	// + the cloudflare() plugin, plus wrangler.jsonc and the pnpm build allowlist.
+	if m.RuntimeDefault != "cloudflare" {
+		t.Errorf("web runtimeDefault = %q, want cloudflare", m.RuntimeDefault)
+	}
+	for _, k := range []string{"cloudflare", "node"} {
+		if _, ok := m.Runtime[k]; !ok {
+			t.Errorf("web scaffold missing --runtime %q", k)
 		}
+	}
+	if _, err := RenderVariant(sub, m.Runtime["cloudflare"], app, data); err != nil {
+		t.Fatal(err)
+	}
+	vite, _ := os.ReadFile(filepath.Join(app, "vite.config.ts"))
+	for _, want := range []string{"tanstackStart(", `srcDirectory: "app"`, "reactCompilerPreset(", "tailwindcss(", "cloudflare("} {
+		if !strings.Contains(string(vite), want) {
+			t.Errorf("cloudflare vite.config.ts missing %q", want)
+		}
+	}
+	wrangler, _ := os.ReadFile(filepath.Join(app, "wrangler.jsonc"))
+	if !strings.Contains(string(wrangler), `"name": "web"`) || strings.Contains(string(wrangler), "{{") {
+		t.Errorf("wrangler.jsonc name not substituted:\n%s", wrangler)
+	}
+	if _, err := os.Stat(filepath.Join(app, "pnpm-workspace.yaml")); err != nil {
+		t.Errorf("cloudflare runtime missing pnpm-workspace.yaml (build allowlist): %v", err)
+	}
+	// the node runtime ships a plain (non-cloudflare) vite.config.
+	if nv := m.Runtime["node"]; nv.Files == "" {
+		t.Error("node runtime variant has no files")
 	}
 	// the quality CI job calls these standard task names — they must exist.
 	mise, err := os.ReadFile(filepath.Join(app, "mise.toml"))
@@ -161,7 +185,7 @@ func TestWebScaffold(t *testing.T) {
 	if _, err := Render(sub, dataDir, data); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RenderData(sub, cvx, dataDir, data); err != nil {
+	if _, err := RenderVariant(sub, cvx, dataDir, data); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range []string{"convex/schema.ts", "convex/messages.ts", "app/data/convex.ts", "pnpm-workspace.yaml"} {

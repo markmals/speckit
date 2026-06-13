@@ -32,7 +32,35 @@
         }
       ]
     },
+    "drizzle": {
+      "files": "data/drizzle/files",
+      "add": ["drizzle-orm"],
+      "addDev": ["drizzle-kit"],
+      "requiresRuntime": "cloudflare",
+      "scripts": [
+        {
+          "phase": 3,
+          "commands": ["pnpm exec drizzle-kit generate"]
+        }
+      ]
+    },
     "none": {}
+  },
+  "runtimeDefault": "cloudflare",
+  "runtime": {
+    "cloudflare": {
+      "files": "runtime/cloudflare/files",
+      "addDev": ["@cloudflare/vite-plugin", "wrangler"],
+      "scripts": [
+        {
+          "phase": 3,
+          "commands": ["pnpm exec wrangler types"]
+        }
+      ]
+    },
+    "node": {
+      "files": "runtime/node/files"
+    }
   },
   "target": {
     "command": "cd {{.Dir}} && mise run test",

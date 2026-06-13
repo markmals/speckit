@@ -131,8 +131,14 @@ Ready) and baked in as `specify work`'s defaults.
       native-build gate. Client/provider wiring from the contacts@convex delta.
     - ⬜ **`--data drizzle` (D1)** — folds into the Cloudflare runtime slice below (D1 is reached
       via `cloudflare:workers`, so it needs that runtime).
-  - ⬜ **Slice 3 — runtime/SSR matrix + Drizzle+D1** (`--ssr`/`--server`, Cloudflare runtime via
-    `@cloudflare/vite-plugin` + `wrangler.jsonc`, the static-SPA mode; Drizzle+D1 lands here).
+  - ✅ **Slice 3 — runtime axis + Drizzle+D1.** A `--runtime` flag + a generalized variant
+    mechanism (`scaffold.Variant`, `RenderVariant`, cross-axis `requiresRuntime`). **Cloudflare SSR
+    is the default** (per web.md): `@cloudflare/vite-plugin` + `cloudflare()` + `wrangler.jsonc` +
+    `wrangler types` codegen; `--runtime node` is the lighter (no-Cloudflare) variant. **`--data
+    drizzle` (D1)** lands here (schema + `drizzle.config` + `env.DB` module + `drizzle-kit generate`),
+    constrained to `--runtime cloudflare`. All of `{cloudflare,node}×{convex,drizzle,none}` verified
+    green-on-arrival; `--data drizzle --runtime node` errors. ⬜ Deferred: the `--ssr`/`--server`
+    spa/static modes (refs are all SSR).
   - ⬜ **Slice 4 — `--with clerk`** (auth, from tangerine-dashboard) + the other `--with` add-ons.
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.

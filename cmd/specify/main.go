@@ -197,7 +197,7 @@ func targetCmd() *cobra.Command {
 // targetAddCmd scaffolds a stack's starter into <dir>, registers the target in
 // .speckit/specs.json, projects the stack's pack, and runs the install.
 func targetAddCmd() *cobra.Command {
-	var stack, dir, product, dataKind string
+	var stack, dir, product, dataKind, runtimeKind string
 	var with []string
 	var noInstall bool
 	c := &cobra.Command{
@@ -230,20 +230,18 @@ func targetAddCmd() *cobra.Command {
 				}
 				features[f] = true
 			}
-			// Resolve the data layer (--data, else the stack's default).
-			var variant scaffold.DataVariant
-			if len(m.Data) > 0 {
-				kind := dataKind
-				if kind == "" {
-					kind = m.DataDefault
-				}
-				v, ok := m.Data[kind]
-				if !ok {
-					return fmt.Errorf("stack %q has no --data %q (have: %s)", stack, kind, strings.Join(m.DataKinds(), ", "))
-				}
-				variant = v
-			} else if dataKind != "" {
-				return fmt.Errorf("stack %q has no data layers (--data not supported)", stack)
+			// Resolve the runtime + data axes (--runtime/--data, else the stack
+			// defaults). drizzle's D1 driver, e.g., requires the cloudflare runtime.
+			runtimeVariant, resolvedRuntime, err := resolveVariant(stack, "runtime", runtimeKind, m.RuntimeDefault, m.Runtime, m.RuntimeKinds())
+			if err != nil {
+				return err
+			}
+			dataVariant, resolvedData, err := resolveVariant(stack, "data", dataKind, m.DataDefault, m.Data, m.DataKinds())
+			if err != nil {
+				return err
+			}
+			if dataVariant.RequiresRuntime != "" && dataVariant.RequiresRuntime != resolvedRuntime {
+				return fmt.Errorf("--data %q requires --runtime %q (got %q)", resolvedData, dataVariant.RequiresRuntime, resolvedRuntime)
 			}
 			data := scaffold.Data{Name: name, Dir: dir, Product: product, Features: features, Vars: map[string]string{}}
 
@@ -258,13 +256,15 @@ func targetAddCmd() *cobra.Command {
 				}
 				written = append(written, w...)
 			}
-			// The data layer renders last among the target's files so it can
-			// overwrite shared base files (e.g. app/router.tsx).
-			dw, err := scaffold.RenderData(sub, variant, dir, data)
-			if err != nil {
-				return err
+			// Runtime + data layers render over the base, overwriting shared files
+			// (the runtime's vite.config.ts, the data layer's router.tsx).
+			for _, v := range []scaffold.Variant{runtimeVariant, dataVariant} {
+				w, err := scaffold.RenderVariant(sub, v, dir, data)
+				if err != nil {
+					return err
+				}
+				written = append(written, w...)
 			}
-			written = append(written, dw...)
 			// Seed the scaffold's example feature into the project root, but only
 			// when the spec library is empty — never clobber existing specs.
 			if featuresEmpty(".") {
@@ -305,8 +305,11 @@ func targetAddCmd() *cobra.Command {
 			// than frozen into a template. Phases run in order; a Silent step's
 			// failure is logged and skipped.
 			if !noInstall {
-				// Base install + the data layer's deps/codegen, phase-ordered together.
-				allScripts := append(append([]scaffold.Script{}, m.Scripts...), dataInstallScripts(variant)...)
+				// Base install + the runtime's and data layer's deps/codegen, all
+				// phase-ordered together.
+				allScripts := append([]scaffold.Script{}, m.Scripts...)
+				allScripts = append(allScripts, variantInstallScripts(runtimeVariant)...)
+				allScripts = append(allScripts, variantInstallScripts(dataVariant)...)
 				scripts, err := scaffold.Manifest{Scripts: allScripts}.PhasedScripts(data)
 				if err != nil {
 					return err
@@ -333,14 +336,36 @@ func targetAddCmd() *cobra.Command {
 	c.Flags().StringVar(&dir, "dir", "", "where to scaffold (default apps/<name>)")
 	c.Flags().StringVar(&product, "product", "", "product label for the target")
 	c.Flags().StringVar(&dataKind, "data", "", "data layer for stacks that offer it (e.g. convex|drizzle|none)")
+	c.Flags().StringVar(&runtimeKind, "runtime", "", "runtime for stacks that offer it (e.g. cloudflare|node)")
 	c.Flags().StringArrayVar(&with, "with", nil, "optional scaffold features (repeatable)")
 	c.Flags().BoolVar(&noInstall, "no-install", false, "skip the scaffold's post-render scripts (dependency install, codegen)")
 	return c
 }
 
-// dataInstallScripts turns a data variant's declared deps into pnpm-add steps
+// resolveVariant picks an axis option (runtime/data): the flag value, else the
+// manifest default. Errors if the stack offers options but the chosen kind is
+// unknown, or if a kind is given for a stack with no such axis.
+func resolveVariant(stack, axis, flag, def string, variants map[string]scaffold.Variant, kinds []string) (scaffold.Variant, string, error) {
+	if len(variants) == 0 {
+		if flag != "" {
+			return scaffold.Variant{}, "", fmt.Errorf("stack %q has no %s layers (--%s not supported)", stack, axis, axis)
+		}
+		return scaffold.Variant{}, "", nil
+	}
+	kind := flag
+	if kind == "" {
+		kind = def
+	}
+	v, ok := variants[kind]
+	if !ok {
+		return scaffold.Variant{}, "", fmt.Errorf("stack %q has no --%s %q (have: %s)", stack, axis, kind, strings.Join(kinds, ", "))
+	}
+	return v, kind, nil
+}
+
+// variantInstallScripts turns a variant's declared deps into pnpm-add steps
 // (phase 2, after the base install) plus the variant's own scripts (e.g. codegen).
-func dataInstallScripts(v scaffold.DataVariant) []scaffold.Script {
+func variantInstallScripts(v scaffold.Variant) []scaffold.Script {
 	var out []scaffold.Script
 	if len(v.Add) > 0 {
 		out = append(out, scaffold.Script{Phase: 2, Commands: []string{"pnpm add " + strings.Join(v.Add, " ")}})
