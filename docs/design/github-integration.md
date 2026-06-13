@@ -86,22 +86,52 @@ An official composite action (`markmals/speckit/gate@v1`) that:
 3. emits **Checks-API annotations** mapping each unjoinable scenario, dangling test
    reference, or drifted spec to its exact file + line.
 
-The scaffolded per-stack workflow is a thin caller. **Workflow files are named for
-what they do** (not `speckit.yml`):
+### Two gates, one workflow, two jobs
+
+A PR run has two distinct concerns, and they get **two parallel jobs in one
+`ci.yml`** — not one crammed job, and not two separate workflow files (same
+trigger → one run to inspect, but independent status checks):
+
+- **`quality`** — the target's fast static checks via its mise tasks:
+  `fmt-check`, `lint`, `typecheck`.
+- **`verify`** — the SpecKit spec gate: `scan` → `verify <target>` → `parity --gate`
+  → `gate firewall`/`generated`/`scope`, with Checks-API annotations.
+
+Crucially, **`specify verify` already runs the target's test suite** (that's how the
+join works), so tests live in the `verify` job — they are *not* run twice. The
+`quality` job is only the static trio. The two jobs run in parallel (a type error
+and a spec drift surface independently and at once), and both are required checks.
+
+**Workflow files are named for what they do** (not `speckit.yml`). The per-stack
+file is a thin caller; the `verify` job delegates to the official reusable workflow
+(so SpecKit owns/updates it via the tag), while `quality` runs the stack's own
+tasks:
 
 ```yaml
-# .github/workflows/verify.yml   (dropped in by `target add`)
+# .github/workflows/ci.yml   (dropped in by `target add`)
 on: { pull_request: {} }
+concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v3
+      - run: mise run -C apps/web fmt-check
+      - run: mise run -C apps/web lint
+      - run: mise run -C apps/web typecheck
   verify:
     uses: markmals/speckit/.github/workflows/gate.yml@v1
     with: { target: web }
 ```
 
-Pure inline `run: specify verify` loses the **annotations** (the killer feature —
-inline PR comments on the exact scenario), duplicates logic across stacks, and
-forces a re-scaffold to update. The action earns its keep via annotations + setup +
-single-source updates; the thin caller keeps it transparent.
+Pure inline `run: specify verify` for the spec gate loses the **annotations** (the
+killer feature — inline PR comments on the exact scenario), duplicates logic across
+stacks, and forces a re-scaffold to update. The reusable workflow earns its keep via
+annotations + setup + single-source updates; the thin caller keeps it transparent.
+This works stack-agnostically because every scaffold exposes the **standard mise
+task names** (`test`, `fmt-check`, `lint`, `typecheck`); a stack without one simply
+omits that step.
 
 ### Branch protection / rulesets
 
@@ -142,7 +172,7 @@ the same hierarchy Beads gets from parent-child. *Caveat:* Issue Types are an
 
 | File | Purpose |
 | --- | --- |
-| `workflows/verify.yml` | the gate (thin caller of the official reusable workflow) |
+| `workflows/ci.yml` | PR checks — a `quality` job (fmt-check/lint/typecheck) + a `verify` job (the spec gate, which also runs tests) |
 | `workflows/deploy.yml` | *optional* deploy (see below); only if a deploy target was chosen |
 | `PULL_REQUEST_TEMPLATE.md` | spec-touch checklist (specs changed? scenarios bound? `verify` green? `drift` clean?) |
 | `ISSUE_TEMPLATE/defect.yml` | a defect form — stamps `type: Bug`, a label, the project; prompts for repro + the target |
