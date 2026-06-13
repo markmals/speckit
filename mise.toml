@@ -45,9 +45,10 @@ run = ["go build ./...", "go vet ./...", "go test ./..."]
 
 [tasks.act]
 description = "run the gate self-test workflow locally via act (boots colima if needed)"
+# Note: the socket path is hard-coded rather than read from `docker context
+# inspect -f '{{…}}'` because mise parses {{ }} as a Tera template.
 run = '''
 colima status >/dev/null 2>&1 || colima start
-DOCKER_HOST="$(docker context inspect colima -f '{{.Endpoints.docker.Host}}')"
-export DOCKER_HOST
+export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 act workflow_dispatch -W .github/workflows/gate-selftest.yml
 '''

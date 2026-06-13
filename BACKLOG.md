@@ -117,12 +117,13 @@ stay in the repo; defects/work/gating are **ephemeral** on GitHub.
 
 ## P4 · Engine & workflow enhancements
 
-- ⬜ **Richer CI annotations (P1 fast-follow).** Extend `--format github` past the firewall:
-  thread the spec/test **file path** (and line) into `VerifyResult` (unjoinable → spec file,
-  dangling → test file) and `ParityCell` (drifted/suspect → spec file), then add `--format
-  github` to `verify`/`parity` so every gate failure annotates to **file:line** in the PR.
-  Also give `bindingsInContent` line numbers so the firewall annotation points at the exact
-  `it(...)`/`@Test` line. Today only the firewall annotates, at file level.
+- ✅ **Richer CI annotations (P1 fast-follow).** `--format github` now extends past the
+  firewall: `verify` annotates unjoinable scenarios at their spec line + dangling bindings at
+  the test line; `parity` annotates each non-conforming cell at its spec line; the firewall
+  points at the exact `it(...)`/`@Test` line. `bindingsInContent` carries file+line,
+  `specmodel.Scenario` carries its line, and `engine.SpecLocations` maps scenarios → spec
+  file:line. The gate action runs `verify`/`parity --format github`. (Verified: a repro with
+  an unjoinable scenario + a dangling binding emits the expected `::error file=…,line=…::`.)
 - ⬜ **Scanner — multi-framework bindings.** Support the forms `CONVENTIONS.md` documents but
   the scanner doesn't yet read: MSTest `[TestProperty("scenario", …)]`, kotlin
   `@Tag("scenario:…")`, generic `// [scenario.id]` comment. (Today: Swift traits + Vitest

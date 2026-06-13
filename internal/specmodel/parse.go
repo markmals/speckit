@@ -14,10 +14,13 @@ type Spec struct {
 }
 
 // Scenario is a Gherkin scenario heading and its declared sub-ID (empty if the
-// sub-ID is missing — an I6 violation).
+// sub-ID is missing — an I6 violation). Line is the 1-based line of the sub-ID
+// declaration (the heading line if the sub-ID is absent) — used to point CI
+// annotations at the scenario.
 type Scenario struct {
 	Heading string
 	SubID   string
+	Line    int
 }
 
 var scenarioSubID = regexp.MustCompile(`<!--\s*id:\s*(scenario\.[a-z0-9.\-]+)\s*-->`)
@@ -77,13 +80,14 @@ func parseScenarios(content string) []Scenario {
 		if !strings.HasPrefix(line, "## Scenario") {
 			continue
 		}
-		sc := Scenario{Heading: strings.TrimSpace(strings.TrimPrefix(line, "##"))}
+		sc := Scenario{Heading: strings.TrimSpace(strings.TrimPrefix(line, "##")), Line: i + 1}
 		for j := i + 1; j < len(lines); j++ {
 			if strings.HasPrefix(lines[j], "## ") {
 				break
 			}
 			if m := scenarioSubID.FindStringSubmatch(lines[j]); m != nil {
 				sc.SubID = m[1]
+				sc.Line = j + 1 // point annotations at the sub-id declaration
 				break
 			}
 		}

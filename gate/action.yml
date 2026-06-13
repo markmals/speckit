@@ -102,11 +102,11 @@ runs:
       working-directory: ${{ inputs.project_dir }}
       env:
         TARGET: ${{ inputs.target }}
-      run: specify verify "$TARGET"
+      run: specify verify "$TARGET" --format github
 
     - name: Parity gate
       shell: bash
       working-directory: ${{ inputs.project_dir }}
       env:
         TARGET: ${{ inputs.target }}
-      run: specify parity "$TARGET" --gate
+      run: specify parity "$TARGET" --gate --format github

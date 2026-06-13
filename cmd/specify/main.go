@@ -454,11 +454,16 @@ func coverCmd() *cobra.Command {
 // SPEC: story.engine.verify
 func verifyCmd() *cobra.Command {
 	var jsonOut bool
+	var format string
 	c := &cobra.Command{
 		Use:   "verify <target> [path]",
 		Short: "Run a target's tests and lock what passes",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			fmtv, err := resolveFormat(format, jsonOut)
+			if err != nil {
+				return err
+			}
 			target, root := args[0], "."
 			if len(args) > 1 {
 				root = args[1]
@@ -471,11 +476,20 @@ func verifyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if jsonOut {
+			switch fmtv {
+			case formatJSON:
 				if err := writeJSON(os.Stdout, map[string]any{"result": v, "locked": locked}); err != nil {
 					return err
 				}
-			} else {
+			case formatGitHub:
+				locs, err := engine.SpecLocations(root)
+				if err != nil {
+					return err
+				}
+				for _, line := range verifyAnnotations(v, locs) {
+					fmt.Println(line)
+				}
+			default:
 				fmt.Println(renderVerify(v, locked, target))
 			}
 			if !v.Green() {
@@ -484,18 +498,24 @@ func verifyCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&jsonOut, "json", false, "emit output as JSON")
+	c.Flags().BoolVar(&jsonOut, "json", false, "emit output as JSON (alias for --format json)")
+	c.Flags().StringVar(&format, "format", "text", "output format: text|json|github (github emits CI annotations)")
 	return c
 }
 
 // SPEC: story.engine.parity
 func parityCmd() *cobra.Command {
 	var jsonOut, gate bool
+	var format string
 	c := &cobra.Command{
 		Use:   "parity <target> [path]",
 		Short: "The five-state parity matrix",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			fmtv, err := resolveFormat(format, jsonOut)
+			if err != nil {
+				return err
+			}
 			target, root := args[0], "."
 			if len(args) > 1 {
 				root = args[1]
@@ -508,11 +528,20 @@ func parityCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if jsonOut {
+			switch fmtv {
+			case formatJSON:
 				if err := writeJSON(os.Stdout, report); err != nil {
 					return err
 				}
-			} else {
+			case formatGitHub:
+				locs, err := engine.SpecLocations(root)
+				if err != nil {
+					return err
+				}
+				for _, line := range parityAnnotations(report, locs) {
+					fmt.Println(line)
+				}
+			default:
 				fmt.Println(renderParity(report))
 			}
 			if gate && report.Gated() {
@@ -521,8 +550,9 @@ func parityCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&jsonOut, "json", false, "emit output as JSON")
+	c.Flags().BoolVar(&jsonOut, "json", false, "emit output as JSON (alias for --format json)")
 	c.Flags().BoolVar(&gate, "gate", false, "exit non-zero unless every cell is conforming")
+	c.Flags().StringVar(&format, "format", "text", "output format: text|json|github (github emits CI annotations)")
 	return c
 }
 
@@ -658,7 +688,7 @@ func reportGate(findings []engine.GateFinding, format outputFormat) error {
 		}
 	case formatGitHub:
 		for _, f := range findings {
-			fmt.Println(ghCommand("error", f.Path, f.Message))
+			fmt.Println(ghCommand("error", f.Path, f.Line, f.Message))
 		}
 	default:
 		fmt.Println(renderGate(findings))

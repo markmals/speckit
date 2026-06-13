@@ -3,6 +3,7 @@ package engine
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/markmals/speckit/internal/reports"
@@ -22,7 +23,7 @@ func TestJoinGreen(t *testing.T) {
 	v := Join(
 		decl("scenario.a", "scenario.b"),
 		[]reports.Result{{Name: "test a", Pass: true}, {Name: "test b", Pass: true}},
-		[]Binding{{"scenario.a", "test a"}, {"scenario.b", "test b"}},
+		[]Binding{{Scenario: "scenario.a", Identity: "test a"}, {Scenario: "scenario.b", Identity: "test b"}},
 	)
 	if !v.Green() {
 		t.Fatalf("expected green, got %+v", v)
@@ -36,7 +37,7 @@ func TestJoinFailing(t *testing.T) {
 	v := Join(
 		decl("scenario.a"),
 		[]reports.Result{{Name: "test a", Pass: false}},
-		[]Binding{{"scenario.a", "test a"}},
+		[]Binding{{Scenario: "scenario.a", Identity: "test a"}},
 	)
 	if v.Green() || len(v.Failed) != 1 {
 		t.Errorf("expected one failure, not green: %+v", v)
@@ -48,7 +49,7 @@ func TestJoinUnjoinable(t *testing.T) {
 	v := Join(
 		decl("scenario.a", "scenario.b"),
 		[]reports.Result{{Name: "test a", Pass: true}},
-		[]Binding{{"scenario.a", "test a"}},
+		[]Binding{{Scenario: "scenario.a", Identity: "test a"}},
 	)
 	if v.Green() {
 		t.Error("a declared scenario with no test must fail (D12)")
@@ -63,7 +64,7 @@ func TestJoinDangling(t *testing.T) {
 	v := Join(
 		decl("scenario.a"),
 		[]reports.Result{{Name: "test a", Pass: true}, {Name: "ghost", Pass: true}},
-		[]Binding{{"scenario.a", "test a"}, {"scenario.ghost", "ghost"}},
+		[]Binding{{Scenario: "scenario.a", Identity: "test a"}, {Scenario: "scenario.ghost", Identity: "ghost"}},
 	)
 	if v.Green() {
 		t.Error("a binding to an undeclared scenario must fail (D12)")
@@ -81,7 +82,7 @@ func TestJoinUnbound(t *testing.T) {
 	v := Join(
 		decl("scenario.a"),
 		[]reports.Result{{Name: "test a", Pass: true}, {Name: "orphan", Pass: true}},
-		[]Binding{{"scenario.a", "test a"}},
+		[]Binding{{Scenario: "scenario.a", Identity: "test a"}},
 	)
 	if v.Green() {
 		t.Error("a test with no scenario binding must fail (D12)")
@@ -111,6 +112,46 @@ func TestScanBindings(t *testing.T) {
 	}
 	if got["scenario.todo.toggle.reactivate"] != "[scenario.todo.toggle.reactivate] reactivates a completed todo" {
 		t.Errorf("vitest binding: %v", got)
+	}
+}
+
+// TestBindingFileAndLine checks bindings carry their source file and 1-based
+// line, so CI annotations can point at the exact test.
+func TestBindingFileAndLine(t *testing.T) {
+	dir := t.TempDir()
+	writeSpecFile(t, dir, "web/a.test.ts",
+		"import { it } from \"vitest\";\n\nit(\"[scenario.x.one] one\", () => {});\nit(\"[scenario.x.two] two\", () => {});\n")
+	bs, err := ScanBindings(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byScen := map[specmodel.SpecID]Binding{}
+	for _, b := range bs {
+		byScen[b.Scenario] = b
+	}
+	if one := byScen["scenario.x.one"]; one.Line != 3 || !strings.HasSuffix(one.File, "web/a.test.ts") {
+		t.Errorf("one: file=%q line=%d, want suffix web/a.test.ts at line 3", one.File, one.Line)
+	}
+	if two := byScen["scenario.x.two"]; two.Line != 4 {
+		t.Errorf("two: line=%d, want 4", two.Line)
+	}
+}
+
+// TestSpecLocations checks a scenario resolves to its spec file + sub-id line.
+func TestSpecLocations(t *testing.T) {
+	dir := t.TempDir()
+	writeSpecFile(t, dir, "features/0001-x/stories/x.md",
+		"---\nid: story.x\nkind: story\n---\n# AC\n\n## Scenario 1: one\n\n<!-- id: scenario.x.one -->\n\n- Given\n")
+	locs, err := SpecLocations(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loc, ok := locs["scenario.x.one"]
+	if !ok {
+		t.Fatal("scenario.x.one not located")
+	}
+	if loc.File != "features/0001-x/stories/x.md" || loc.Line != 9 {
+		t.Errorf("loc = %+v, want features/0001-x/stories/x.md line 9", loc)
 	}
 }
 
