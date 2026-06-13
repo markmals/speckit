@@ -278,8 +278,9 @@ A few commands are designed but not built yet: `extension`, `preset`, `apply`, `
 | --- | --- |
 | `/speckit.*` commands | The authoring/implementation prompts, projected for your agent — Claude skills under `.claude/skills/`, Codex/`generic` skills under `.agents/skills/`, Copilot under `.github/`. |
 | Process-discipline skills | `test-driven-development` (RED/GREEN), `verification-before-completion`, `adversarial-review` — the VSDD discipline, projected into the agent's skills dir (claude/codex/generic). |
+| Rules | `code-quality`, `commit-discipline`, `spec-conventions`, `enforcement-hierarchy` — the always-loaded conventions, projected into the agent's rules dir (`.claude/rules/` · `.agents/rules/` · `.github/rules/`) and referenced from the orientation file. |
 | `.speckit/` | The runtime: the constitution, spec/plan/tasks/checklist templates, and (after `verify`) the lock. No shell scripts. |
-| Orientation file | `CLAUDE.md` / `AGENTS.md` / `.github/copilot-instructions.md` for the agent. |
+| Orientation file | `CLAUDE.md` / `AGENTS.md` / `.github/copilot-instructions.md` for the agent — wires in the rules. |
 
 Coming (the rest of the process-pack / **claude-pack**): more skills (`systematic-debugging`, `triaging-defects`, `implementing-a-spec`), review **subagents** (`spec-reviewer`, `test-gap-finder`, `drift-hunter`), and lifecycle **hooks** (format-on-edit, reconcile reminders).
 

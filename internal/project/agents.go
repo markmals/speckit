@@ -25,6 +25,8 @@ func (agentsAdapter) SkillsDir() string { return ".agents/skills" }
 // Claude-only for now.
 func (agentsAdapter) AgentsDir() string { return "" }
 
+func (agentsAdapter) RulesDir() string { return ".agents/rules" }
+
 func (a agentsAdapter) Project(root string, commands []Command) ([]string, error) {
 	var written []string
 	for _, c := range commands {
@@ -50,4 +52,11 @@ const agentsOrientation = `# SpecKit
 This project uses SpecKit. The ` + "`/speckit.*`" + ` commands live in
 ` + "`.agents/skills/`" + ` and the runtime state in ` + "`.speckit/`" + `.
 Run ` + "`specify`" + ` for the engine (scan / verify / drift / parity).
+
+## Rules
+
+Follow the conventions in ` + "`.agents/rules/`" + `: ` + "`code-quality.md`" + `,
+` + "`commit-discipline.md`" + `, and ` + "`spec-conventions.md`" + ` apply to
+every change; ` + "`enforcement-hierarchy.md`" + ` is the standard for where a new
+convention lives.
 `

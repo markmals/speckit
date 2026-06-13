@@ -24,6 +24,8 @@ func (copilotAdapter) SkillsDir() string { return ".github/skills" }
 // the review subagents are a Claude Code dispatch concept, so Copilot gets none.
 func (copilotAdapter) AgentsDir() string { return "" }
 
+func (copilotAdapter) RulesDir() string { return ".github/rules" }
+
 func (copilotAdapter) Project(root string, commands []Command) ([]string, error) {
 	agentsDir := filepath.Join(root, ".github", "agents")
 	promptsDir := filepath.Join(root, ".github", "prompts")
@@ -67,4 +69,10 @@ const copilotOrientation = `# SpecKit
 This project uses SpecKit. The ` + "`/speckit.*`" + ` commands live in
 ` + "`.github/agents/`" + ` and ` + "`.github/prompts/`" + `; runtime state in
 ` + "`.speckit/`" + `. Run ` + "`specify`" + ` for the engine (scan / verify / drift / parity).
+
+## Rules
+
+Follow the conventions in ` + "`.github/rules/`" + `: ` + "`code-quality.md`" + `,
+` + "`commit-discipline.md`" + `, and ` + "`spec-conventions.md`" + `;
+` + "`enforcement-hierarchy.md`" + ` governs where a new convention lives.
 `

@@ -19,6 +19,9 @@ type Adapter interface {
 	// subagents are projected, or "" if the agent has no subagent concept. Today
 	// subagents are a Claude Code feature (the claude-pack).
 	AgentsDir() string
+	// RulesDir is the directory (relative to root, slash-separated) where the
+	// always-loaded guidance rules are projected, or "" if the agent has none.
+	RulesDir() string
 }
 
 var adapters = map[string]Adapter{}
