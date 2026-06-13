@@ -219,6 +219,32 @@ func TestWebScaffold(t *testing.T) {
 		t.Errorf("clerk feature missing app/start.ts: %v", err)
 	}
 
+	// the tiptap --with feature is purely additive: it adds the @tiptap deps and a
+	// new foundation editor component, and overwrites no shared file — so it
+	// composes with clerk (which owns root.tsx) and with any data/runtime variant.
+	tiptap, ok := m.Features["tiptap"]
+	if !ok || len(tiptap.Add) != 3 {
+		t.Errorf("web scaffold missing the tiptap feature with its 3 deps: %+v", m.Features)
+	}
+	ttDir := t.TempDir()
+	if _, err := Render(sub, ttDir, data); err != nil {
+		t.Fatal(err)
+	}
+	rootBefore, _ := os.ReadFile(filepath.Join(ttDir, "app/root.tsx"))
+	if _, err := RenderFeature(sub, tiptap, ttDir, data); err != nil {
+		t.Fatal(err)
+	}
+	editor, err := os.ReadFile(filepath.Join(ttDir, "app/components/foundation/editor.tsx"))
+	if err != nil {
+		t.Errorf("tiptap feature missing app/components/foundation/editor.tsx: %v", err)
+	}
+	if !strings.Contains(string(editor), "RichTextEditor") || !strings.Contains(string(editor), "useEditor") {
+		t.Errorf("tiptap editor component missing RichTextEditor/useEditor:\n%s", editor)
+	}
+	if rootAfter, _ := os.ReadFile(filepath.Join(ttDir, "app/root.tsx")); string(rootAfter) != string(rootBefore) {
+		t.Error("tiptap feature must not overwrite the shared app/root.tsx (it must stay additive)")
+	}
+
 	// a second target must not clobber an existing ci.yml
 	if err := os.WriteFile(ciPath, []byte("sentinel"), 0o644); err != nil {
 		t.Fatal(err)

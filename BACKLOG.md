@@ -144,7 +144,19 @@ Ready) and baked in as `specify work`'s defaults.
     (parallel to Variant), and features render LAST. Clerk feature (from tangerine): adds
     `@clerk/tanstack-react-start`, `app/start.ts` (`clerkMiddleware`), and wraps `root.tsx` with
     `ClerkProvider`. Green-on-arrival without live keys (typecheck + build pass; auth resolves at
-    runtime). ⬜ Other `--with` add-ons (stripe/email/tiptap/tanstack-db/electron/sentry/posthog).
+    runtime).
+  - ✅ **Slice 4b — `--with tiptap`.** A purely **additive** feature (the first non-provider one):
+    adds `@tiptap/react`/`@tiptap/starter-kit`/`@tiptap/pm` (v3) + an `app/components/foundation/editor.tsx`
+    `RichTextEditor` (StarterKit, `immediatelyRender: false` for SSR, cva/Tailwind-styled). Overwrites no
+    shared file, so it composes with clerk and any data/runtime variant — render-tested + green-on-arrival
+    verified for real (fmt:check/lint/typecheck/test/build + `specify verify` all pass on a fresh
+    `target add web --with tiptap`).
+  - ⬜ Remaining `--with` add-ons: stripe / email (Resend + React Email) / tanstack-db / electron, plus
+    **sentry** / **posthog**. ⚠️ **Design fork first:** posthog/sentry are *provider* features that must
+    wrap `root.tsx`/`router.tsx`, which today's whole-file-overwrite Feature mechanism can't stack
+    (feature order is a Go map → nondeterministic last-writer-wins). Decide the composition seam (a
+    providers-compose file, conditional templating on `.Features`, or accept mutual-exclusivity) before
+    building them.
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the

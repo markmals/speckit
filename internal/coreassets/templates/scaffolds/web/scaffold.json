@@ -21,6 +21,10 @@
     "clerk": {
       "files": "features/clerk/files",
       "add": ["@clerk/tanstack-react-start"]
+    },
+    "tiptap": {
+      "files": "features/tiptap/files",
+      "add": ["@tiptap/react", "@tiptap/starter-kit", "@tiptap/pm"]
     }
   },
   "dataDefault": "convex",
