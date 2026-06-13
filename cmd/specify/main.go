@@ -8,12 +8,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -33,7 +35,11 @@ import (
 var version = "0.0.0-dev"
 
 func main() {
-	if err := rootCmd().Execute(); err != nil {
+	// Cancel in-flight work (e.g. paginating GitHub calls) on Ctrl-C / SIGTERM;
+	// the offline engine commands ignore it.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	if err := rootCmd().ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }
@@ -49,10 +55,11 @@ func rootCmd() *cobra.Command {
 	root.AddCommand(
 		versionCmd(), kindsCmd(), initCmd(), scanCmd(), packsCmd(), targetCmd(),
 		lockCmd(), driftCmd(), coverCmd(), verifyCmd(), parityCmd(), gateCmd(),
+		issuesCmd(), deployCmd(), secretsCmd(), protectCmd(), workCmd(),
 	)
 	// Planned-but-unimplemented commands (D5): registered so they report intent
 	// rather than "unknown command".
-	for _, name := range []string{"ledger", "apply", "reconcile", "extension", "preset", "work", "bench", "issues"} {
+	for _, name := range []string{"ledger", "apply", "reconcile", "extension", "preset", "bench"} {
 		root.AddCommand(&cobra.Command{
 			Use:    name,
 			Short:  "(planned — not implemented yet)",
@@ -199,6 +206,9 @@ func targetAddCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
+			if !validTargetName(name) {
+				return fmt.Errorf("target add: name %q is not a safe slug (alphanumeric, . _ -); it becomes a path and renders into CI/deploy workflows", name)
+			}
 			if stack == "" {
 				return fmt.Errorf("target add: --stack required")
 			}

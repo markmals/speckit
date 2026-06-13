@@ -22,6 +22,8 @@ func (claudeAdapter) AgentsDir() string { return ".claude/agents" }
 
 func (claudeAdapter) RulesDir() string { return ".claude/rules" }
 
+func (claudeAdapter) MemoryDir() string { return ".claude/memory" }
+
 func (claudeAdapter) Project(root string, commands []Command) ([]string, error) {
 	var written []string
 	for _, c := range commands {
@@ -63,4 +65,14 @@ These always-loaded conventions live in ` + "`.claude/rules/`" + `:
 
 ` + "`.claude/rules/enforcement-hierarchy.md`" + ` is the standard for deciding
 where a new convention lives — read it when you add one.
+
+## Memory
+
+Durable, non-obvious project knowledge lives in ` + "`.claude/memory/`" + `; the
+index is auto-loaded every session:
+
+@.claude/memory/MEMORY.md
+
+Maintain it with the ` + "`managing-memory`" + ` skill — it's agent-owned working
+knowledge, not spec truth, and the engine never reads it.
 `

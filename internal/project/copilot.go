@@ -26,6 +26,8 @@ func (copilotAdapter) AgentsDir() string { return "" }
 
 func (copilotAdapter) RulesDir() string { return ".github/rules" }
 
+func (copilotAdapter) MemoryDir() string { return ".github/memory" }
+
 func (copilotAdapter) Project(root string, commands []Command) ([]string, error) {
 	agentsDir := filepath.Join(root, ".github", "agents")
 	promptsDir := filepath.Join(root, ".github", "prompts")
@@ -75,4 +77,11 @@ This project uses SpecKit. The ` + "`/speckit.*`" + ` commands live in
 Follow the conventions in ` + "`.github/rules/`" + `: ` + "`code-quality.md`" + `,
 ` + "`commit-discipline.md`" + `, and ` + "`spec-conventions.md`" + `;
 ` + "`enforcement-hierarchy.md`" + ` governs where a new convention lives.
+
+## Project memory
+
+At the start of a task, read the project memory index —
+` + "`.github/memory/MEMORY.md`" + ` — and any topic files it points to. It's
+durable, agent-owned working knowledge about this repo (not spec truth; the engine
+never reads it). Maintain it with the ` + "`managing-memory`" + ` skill.
 `

@@ -1,0 +1,12 @@
+# Project memory
+
+Durable, non-obvious knowledge about the SpecKit repo that survives across agent
+sessions. This index is loaded every session; the topic files are read on demand.
+Working knowledge only — required behavior is the spec library (`features/`,
+`specs/`), and the engine never reads this dir. Maintain with the `managing-memory`
+skill.
+
+## Topics
+
+- [Engine boundaries](engine-boundaries.md) — the offline determinism line; where GitHub/network code may live
+- [Dev workflow](dev-workflow.md) — the CI gate, golden regen, the dual exit-code convention, scaffold gotchas

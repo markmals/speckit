@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
+	"strings"
 )
 
 // File is the config path relative to the project root.
@@ -46,6 +48,27 @@ type Target struct {
 	Format   string   `json:"format"` // junit | swift
 	Report   string   `json:"report"`
 	Source   string   `json:"source"`
+	Deploy   *Deploy  `json:"deploy,omitempty"`
+}
+
+// Deploy is a target's optional deploy manifest: which platform it ships to, and
+// the secret references — 1Password op:// pointers, never values — to wire into CI
+// and the platform's own runtime store (`specify deploy add` / `secrets sync`).
+// Non-secret identifiers (e.g. CLOUDFLARE_ACCOUNT_ID) live in the stack's own
+// config such as wrangler.jsonc, not here. See docs/design/github-integration.md.
+type Deploy struct {
+	Kind    string            `json:"kind"`
+	CI      map[string]string `json:"ci,omitempty"`      // GitHub Actions secrets: ENV -> op:// ref
+	Runtime map[string]string `json:"runtime,omitempty"` // platform runtime secrets: ENV -> op:// ref
+}
+
+// DeployKinds are the deploy platforms specify can wire. The matching workflow
+// template lives at templates/deploy/<kind>/deploy.yml.tmpl.
+var DeployKinds = []string{
+	"cloudflare-workers-ssr",
+	"cloudflare-workers-spa",
+	"railway",
+	"github-pages-spa",
 }
 
 // Load reads and parses .speckit/specs.json under root. found is false (with a
@@ -108,6 +131,25 @@ func AddTarget(root, name string, t Target) error {
 	return cfg.Save(root)
 }
 
+// SetDeploy attaches (or replaces) a target's deploy manifest and writes the
+// config back. Errors if the target is unknown. Used by `specify deploy add`.
+func SetDeploy(root, target string, d *Deploy) error {
+	cfg, found, err := Load(root)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("no %s — add the target first (specify target add)", File)
+	}
+	t, ok := cfg.Targets[target]
+	if !ok {
+		return fmt.Errorf("target %q not in %s", target, File)
+	}
+	t.Deploy = d
+	cfg.Targets[target] = t
+	return cfg.Save(root)
+}
+
 // Validate returns every problem with the config (nil = valid). scan surfaces
 // these alongside the spec-library checks.
 func (c Config) Validate() []error {
@@ -129,8 +171,77 @@ func (c Config) Validate() []error {
 		if t.Source == "" {
 			errs = append(errs, fmt.Errorf("target %q: missing source dir", name))
 		}
+		if t.Deploy != nil {
+			errs = append(errs, t.Deploy.Validate(name)...)
+		}
 	}
 	return errs
+}
+
+// Validate checks a deploy manifest: a known kind, and every secret a committable
+// op:// reference (never a raw value). Exported so `specify deploy add` can reject
+// a bad manifest before writing it.
+func (d Deploy) Validate(target string) []error {
+	var errs []error
+	if !slices.Contains(DeployKinds, d.Kind) {
+		errs = append(errs, fmt.Errorf("target %q: unknown deploy kind %q (want one of %s)", target, d.Kind, strings.Join(DeployKinds, ", ")))
+	}
+	for env, ref := range d.CI {
+		errs = append(errs, validateSecretEntry(target, "ci", env, ref)...)
+	}
+	for env, ref := range d.Runtime {
+		errs = append(errs, validateSecretEntry(target, "runtime", env, ref)...)
+	}
+	return errs
+}
+
+// validateSecretEntry checks one ENV→ref pair: a valid env-var name and a
+// committable op:// reference (never a raw value).
+func validateSecretEntry(target, section, env, ref string) []error {
+	var errs []error
+	if !validEnvName(env) {
+		errs = append(errs, fmt.Errorf("target %q: deploy.%s key %q is not a valid env var name", target, section, env))
+	}
+	if !IsOpRef(ref) {
+		errs = append(errs, fmt.Errorf("target %q: deploy.%s[%q] = %q is not an op:// reference (commit references, never secret values)", target, section, env, ref))
+	}
+	return errs
+}
+
+// validEnvName reports whether s is a usable env-var / secret name:
+// [A-Za-z_][A-Za-z0-9_]* (not starting with a digit, no spaces or punctuation).
+func validEnvName(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		ok := r == '_' || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9' && i > 0)
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// IsOpRef reports whether s is a 1Password secret reference: op://vault/item/field
+// or op://vault/item/section/field — 3 or 4 non-empty path segments. Exported so
+// `specify deploy add` can reject a raw value before it ever lands in committed
+// config.
+func IsOpRef(s string) bool {
+	rest, ok := strings.CutPrefix(s, "op://")
+	if !ok {
+		return false
+	}
+	parts := strings.Split(rest, "/")
+	if len(parts) < 3 || len(parts) > 4 {
+		return false
+	}
+	for _, p := range parts {
+		if p == "" {
+			return false
+		}
+	}
+	return true
 }
 
 // ProductTargets maps each product label to the targets that carry it. A target

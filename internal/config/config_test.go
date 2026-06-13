@@ -116,3 +116,84 @@ func TestAddTargetRoundTrips(t *testing.T) {
 		t.Errorf("expected 2 targets, got %d", len(cfg.Targets))
 	}
 }
+
+func TestDeployManifestValidates(t *testing.T) {
+	root := writeConfig(t, `{
+  "targets": {
+    "web": {
+      "format": "junit", "report": "j.xml", "source": "src",
+      "deploy": {
+        "kind": "cloudflare-workers-ssr",
+        "ci": { "CLOUDFLARE_API_TOKEN": "op://Private/Cloudflare/api_token" },
+        "runtime": { "DATABASE_URL": "op://Private/app-db/url" }
+      }
+    }
+  }
+}`)
+	cfg, _, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if errs := cfg.Validate(); len(errs) != 0 {
+		t.Fatalf("valid deploy manifest reported errors: %v", errs)
+	}
+	if cfg.Targets["web"].Deploy.Kind != "cloudflare-workers-ssr" {
+		t.Errorf("deploy kind = %q", cfg.Targets["web"].Deploy.Kind)
+	}
+}
+
+func TestDeployManifestRejectsBadKindAndRawSecret(t *testing.T) {
+	root := writeConfig(t, `{
+  "targets": {
+    "web": {
+      "format": "junit", "report": "j.xml", "source": "src",
+      "deploy": {
+        "kind": "heroku",
+        "ci": { "TOKEN": "sk-this-is-a-raw-secret-value" }
+      }
+    }
+  }
+}`)
+	cfg, _, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	errs := cfg.Validate()
+	// unknown kind + a non-op:// value → at least 2 problems.
+	if len(errs) < 2 {
+		t.Errorf("expected >=2 deploy validation errors, got %d: %v", len(errs), errs)
+	}
+}
+
+func TestIsOpRef(t *testing.T) {
+	for _, s := range []string{"op://Private/Cloudflare/api_token", "op://v/i/f", "op://v/i/section/f"} {
+		if !IsOpRef(s) {
+			t.Errorf("IsOpRef(%q) = false, want true", s)
+		}
+	}
+	for _, s := range []string{"", "raw-value", "op://v/i", "op://", "https://x", "op:///i/f", "op://v/i/section/field/extra"} {
+		if IsOpRef(s) {
+			t.Errorf("IsOpRef(%q) = true, want false", s)
+		}
+	}
+}
+
+func TestDeployRejectsBadEnvName(t *testing.T) {
+	root := writeConfig(t, `{
+  "targets": {
+    "web": {
+      "format": "junit", "report": "j.xml", "source": "src",
+      "deploy": { "kind": "railway", "ci": { "BAD NAME": "op://v/i/f", "": "op://v/i/f" } }
+    }
+  }
+}`)
+	cfg, _, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	errs := cfg.Validate()
+	// "BAD NAME" (space) and "" (empty) are both invalid env names.
+	if len(errs) < 2 {
+		t.Errorf("expected >=2 env-name errors, got %d: %v", len(errs), errs)
+	}
+}

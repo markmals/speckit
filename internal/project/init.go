@@ -103,6 +103,24 @@ func Init(root string, assets fs.FS, opts Options) ([]string, error) {
 			written = append(written, w)
 		}
 	}
+
+	// Seed the agent's repo-local memory/ store (its MEMORY.md index), where the
+	// agent has one. Skip-if-absent so re-init never clobbers accumulated memory;
+	// the orientation file (above) wires loading. Memory is agent-owned working
+	// knowledge — the engine never reads it (docs/design/agent-memory.md).
+	if dir := adapter.MemoryDir(); dir != "" {
+		seed, err := loadMemorySeed(assets)
+		if err != nil {
+			return nil, err
+		}
+		w, err := writeFileIfAbsent(filepath.Join(root, dir, "MEMORY.md"), seed)
+		if err != nil {
+			return nil, err
+		}
+		if w != "" {
+			written = append(written, w)
+		}
+	}
 	return written, nil
 }
 

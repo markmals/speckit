@@ -337,10 +337,10 @@ them, not MCP or GitHub-hosted orchestration.)
 4. **Inline the Projects GraphQL** (lifted from `gh-projects`) **directly in this
    repo** and evolve it internally; no upstream dependency. (Decided.)
 5. **Ready is a board column, not a computed field.** (Decided.)
-6. **Deploy command ergonomics** — `init --deploy` + `specify deploy add`; is deploy
-   project-level or per-target/app? Lean per-target (an app deploys), with `init`
-   sugar for the primary app. (Open.)
-7. **Default secret mode** — `gh secret set` sync (simpler; copies into GitHub) vs
-   runtime-load via `OP_SERVICE_ACCOUNT_TOKEN` + `1password/load-secrets-action` (no
-   copies; one-place rotation). Lean: sync as the default, runtime-load as a
-   documented upgrade. (Open.)
+6. **Deploy command ergonomics** — **deploy is per-target** (`Target.Deploy`); a target
+   opts in with `specify deploy add <kind> [target]`. The `init --deploy` sugar for the
+   primary app is still TODO. (Decided: per-target.)
+7. **Default secret mode** — **`gh secret set` sync is the default** (`specify secrets
+   sync` resolves `op://` refs and pushes copies); runtime-load via
+   `OP_SERVICE_ACCOUNT_TOKEN` + `1password/load-secrets-action` remains a documented
+   upgrade. (Decided: sync default.)

@@ -8,6 +8,7 @@
 .github/agents/speckit.tasks.agent.md
 .github/agents/speckit.taskstoissues.agent.md
 .github/copilot-instructions.md
+.github/memory/MEMORY.md
 .github/prompts/speckit.analyze.prompt.md
 .github/prompts/speckit.checklist.prompt.md
 .github/prompts/speckit.clarify.prompt.md
@@ -24,6 +25,7 @@
 .github/skills/adversarial-review/SKILL.md
 .github/skills/brainstorming-feature/SKILL.md
 .github/skills/implementing-a-spec/SKILL.md
+.github/skills/managing-memory/SKILL.md
 .github/skills/systematic-debugging/SKILL.md
 .github/skills/test-driven-development/SKILL.md
 .github/skills/verification-before-completion/SKILL.md

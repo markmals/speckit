@@ -22,6 +22,11 @@ type Adapter interface {
 	// RulesDir is the directory (relative to root, slash-separated) where the
 	// always-loaded guidance rules are projected, or "" if the agent has none.
 	RulesDir() string
+	// MemoryDir is the directory (relative to root, slash-separated) where the
+	// agent's repo-local memory/ store is projected (its seed MEMORY.md index),
+	// or "" if the agent has none. Memory is agent-owned working knowledge the
+	// engine never reads — see docs/design/agent-memory.md.
+	MemoryDir() string
 }
 
 var adapters = map[string]Adapter{}

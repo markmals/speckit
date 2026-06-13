@@ -48,48 +48,63 @@ Design: [docs/design/github-integration.md](docs/design/github-integration.md).
 
 ---
 
-## P2 · GitHub-native core + agent memory
+## P2 · ✅ Shipped (mostly) — GitHub-native core + agent memory
 
 The pivot's heart. Architecture: a portable spec-integrity core (engine works offline,
 never needs GitHub for correctness) + a GitHub-native workflow shell; the engine
 *projects* repo truth onto GitHub. Determinism line: specs/locks/parity/agent-memory
-stay in the repo; defects/work/gating are **ephemeral** on GitHub.
+stay in the repo; defects/work/gating are **ephemeral** on GitHub. **The whole GitHub
+surface lives in `internal/github`, imported only by `cmd/specify` — never by the engine,
+so the offline guarantee holds structurally.**
 
-- ⬜ **`specify` becomes a `gh` extension** (foundational for Pillars 2–3). One Go binary:
-  standalone `specify` (offline) **and** `gh specify …` (inherits `gh auth token` → zero
-  token plumbing). Inline the Projects GraphQL (lifted from `NSExceptional/gh-projects`)
-  in this repo; GitHub commands un-namespaced; likely **no config block** (auto-detect
-  repo + linked project). **Pin `gh ≥ 2.94.0` via `mise.toml`.**
-- ⬜ **Pillar 2 — Issues as ephemeral defect intake.** Scenario-canonical: defect Issue
-  (org type Bug, via `defect.yml`) → fix adds/updates a scenario + regression test → close
-  on `verify` green (lock = proof). **No durable issue↔scenario link** (rely on GitHub
-  cross-refs). Extend the `github/` scaffold subtree + `scaffold.RenderGitHub` seam (landed
-  in P1, today only `ci.yml`) with the rest of the per-target `.github/`: optional
-  `deploy.yml`, PR template, `defect.yml`, `config.yml`, `CODEOWNERS` for `/features`
-  `/specs`, stack `dependabot.yml`. Org Issue Types (Bug/Feature/Task + custom **Epic**);
-  label fallback off-org.
-- ⬜ **Pillar 3 — Projects as the work surface (Beads-informed, simplified).** Kanban;
-  **"ready" is a Status column, not a computed field**. Epics = Epic-typed issue +
-  sub-issues. Keep from Beads: `discovered-from:#N` provenance (label+backlink — the one
-  GitHub gap), atomic claim, "land the plane" teardown; `blocked-by` as a visual signal
-  only. Mirror Mark's `APL-Innovation-Lab/projects/1` columns (TBD — token lacks
-  `read:project`).
-- ⬜ **Agent memory (per-agent `memory/`).** Projected like skills: `.claude/memory/`,
-  `.agents/memory/`, `.github/memory/`. `MEMORY.md` index loaded every session + topic
-  files; committed. `init` wires loading (Claude `@import`; AGENTS.md/copilot directive);
-  ship a `managing-memory` skill. Agent-owned (not `gate generated`-protected); the engine
-  ignores it. Dogfood: this repo → `.claude/memory/`. Design:
+- ✅ **GitHub foundation + gh-auth inheritance.** New `internal/github` package: a lean
+  REST + GraphQL client that inherits `gh`'s token (`gh auth token`, env fallback) with
+  zero plumbing and contains its own GraphQL queries (the gh-projects *approach*, our
+  queries — no `go-gh` dep, no external extension). Repo auto-detected via `gh repo view`;
+  **no config block.** `gh ≥ 2.94.0` + `op` pinned in `mise.toml` (repo + web scaffold).
+  Fully unit-tested (httptest). **Deferred to release (P6):** the actual `gh extension
+  install markmals/specify` distribution (running *as* `gh specify`) — the binary +
+  commands are ready; only the release-tagged install path is dormant.
+- ✅ **Pillar 2 — Issues as ephemeral defect intake.** `specify issues list|create|close`
+  (confirmation-gated, `--json`); the `github/` scaffold subtree now drops the full
+  per-target `.github/` (`PULL_REQUEST_TEMPLATE.md`, `ISSUE_TEMPLATE/defect.yml` stamping
+  `type: Bug` + label fallback, `config.yml`, `CODEOWNERS` for `/features` `/specs`,
+  `dependabot.yml`). No durable issue↔scenario link (GitHub cross-refs). Close-on-green is
+  the discipline.
+- ✅ **Pillar 3 — Projects board (Beads-informed).** `specify work ready|claim|move|discover`
+  on the inlined Projects v2 GraphQL client (resolve project/fields/options, add item, set
+  single-select, list items, atomic self-claim, `discovered-from` label + #N backlink).
+  **"ready" is a Status column** (a `--column` flag, not a computed field). **Column names
+  are flags** that default to the **confirmed** `APL-Innovation-Lab/projects/1` set —
+  Backlog → **Ready** → In Progress → On Hold → Cancelled → Closed (actionable = **Ready**;
+  "On Hold" is the blocked signal, skipped for free since `ready` lists only the actionable
+  column). 🔄 **Remaining (minor):** `blocked-by`/epics (sub-issue) helpers exist in the
+  client but have no dedicated `work` subcommand yet.
+- ✅ **Agent memory (per-agent `memory/`).** `MemoryDir()` on the adapter →
+  `.claude/memory/` · `.agents/memory/` · `.github/memory/`; `init` seeds `MEMORY.md`
+  (skip-if-exists, so re-init never clobbers), wires loading (Claude `@import`;
+  AGENTS.md/copilot directive), ships the `managing-memory` skill. Engine ignores it.
+  Goldens updated; dogfooded → this repo's `.claude/memory/` + a root `CLAUDE.md`. Design:
   [docs/design/agent-memory.md](docs/design/agent-memory.md).
-- ⬜ **Deploy workflows (optional, none required).** `deploy.yml` for `cloudflare-workers-ssr`,
-  `cloudflare-workers-spa` (assets), `railway`, `github-pages-spa`. Chosen at
-  `specify init --deploy`, addable later (`specify deploy add`); per-target vs project-level
-  ergonomics open. (`CLOUDFLARE_ACCOUNT_ID` is committed in `wrangler.jsonc`, not a secret.)
-- ⬜ **Secrets via 1Password (`op`).** 1Password is the single source of truth; repo holds
-  only `op://` references, never values. `specify` resolves via local `op` and pushes to
-  GitHub Actions secrets (`gh secret set`) + the platform store (`wrangler secret put` /
-  `railway variables`), piping op→consumer (never echoed/logged). Optional upgrade:
-  runtime-load via `OP_SERVICE_ACCOUNT_TOKEN` + `1password/load-secrets-action`. Pin `op`
-  in `mise.toml`.
+- ✅ **Deploy workflows (optional, none required).** `specify deploy add <kind> [target]`
+  renders `deploy.yml` for `cloudflare-workers-ssr` / `cloudflare-workers-spa` / `railway` /
+  `github-pages-spa` (templates use `[[ ]]` delims so `${{ }}` survives) and records the
+  per-target manifest. Per-target (decided). (`init --deploy` sugar still TODO.)
+- ✅ **Secrets via 1Password (`op`).** Manifest holds only `op://` references (validated;
+  raw values rejected at `deploy add` + `scan`). `specify secrets sync` resolves via local
+  `op` and pipes into `gh secret set` (CI) + `wrangler secret put` (cloudflare runtime, via
+  stdin — never argv/log); railway runtime via argv (CLI limitation, noted). `--dry-run`
+  prints the plan without resolving. **Default = `gh secret set` sync** (decided);
+  runtime-load via `1password/load-secrets-action` remains a documented upgrade.
+- ✅ **Branch-protection provisioning** (`specify protect`). Codifies the `docs/ci-gating.md`
+  ruleset (require `quality` + `verify / verify`, require a PR, block force-push) via the
+  GitHub API; re-runnable (updates an existing same-named ruleset in place).
+
+**Resolved open decisions** (from the design doc): no `github` config block (auto-detect via
+`gh`); GitHub commands un-namespaced; deploy is **per-target**; default secret mode is the
+`gh secret set` **sync**; memory frontmatter is optional; **the Pillar 3 column set is
+confirmed** (Backlog → Ready → In Progress → On Hold → Cancelled → Closed, actionable =
+Ready) and baked in as `specify work`'s defaults.
 
 ---
 
