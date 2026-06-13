@@ -65,6 +65,38 @@ the feature folder; `plan` and `tasks` become **per-target layers on top** —
 
 ---
 
+## GitHub-native integration (new direction — design doc landed)
+
+The strategic pivot: SpecKit's banner becomes **GitHub-native** (PRs gate, Issues hold
+defects, Projects hold the agent's work) while staying agent-native/agnostic. Full design in
+[docs/design/github-integration.md](docs/design/github-integration.md). Architecture: a portable
+spec-integrity core (engine never reads GitHub for correctness) + a GitHub-native workflow shell;
+GitHub is the blessed-default-but-overridable path; the engine *projects* repo truth onto GitHub
+surfaces. Determinism line: specs/locks/parity stay in the repo; defects/work/gating move to GitHub.
+
+- ⬜ **Pillar 1 — PR gating (build first).** Official composite Action + reusable workflow
+  (`markmals/speckit/gate@v1`) that installs `specify`, runs `scan`/`verify`/`parity --gate`/`gate *`,
+  and emits **Checks-API annotations** (scenario→file:line). Thin per-stack `workflows/speckit.yml`
+  caller. `specify github protect` (later) to provision the required-check ruleset via `gh api`.
+- ⬜ **Pillar 2 — Issues as defect intake.** Scenario-canonical lifecycle: defect Issue (type Bug,
+  via `defect.yml` form) → fix updates/adds a scenario + regression test → PR links *without
+  auto-close* (GA setting) → close on `verify` green (lock = proof). Link via `<!-- issue: #N -->` in
+  the scenario + lock record. Per-target `.github/`: gate workflow, PR template, `defect.yml`,
+  `config.yml`, `CODEOWNERS` for `/features` `/specs`, stack-ecosystem `dependabot.yml`.
+- ⬜ **Pillar 3 — Projects as work surface (Beads-informed).** Engine→board projection; agent drives
+  via `gh` + the **`NSExceptional/gh-projects`** extension (fork+pin; 2 PRs back: `--json` on writes,
+  generic field query). Borrow from Beads: a computed **`Ready`** Project field (blocks + parent
+  gate readiness — the highest-leverage steal), `discovered-from:#N` provenance (label+backlink — the
+  one GitHub gap), atomic claim, "land the plane" teardown. **Pin `gh ≥ 2.94.0`** (native
+  `--type`/`--parent`/`--blocked-by` + JSON, 2026-06-10).
+- ⬜ **Provider seam (light, v1).** A `"github"` block in `.speckit/specs.json` enables the blessed
+  path; omit it to run `specify` manually elsewhere (GitLab CI) or point the agent at another tracker
+  (linctl/Linear). Don't build the full `"providers"` map until a second blessed provider is real.
+- ⬜ **Future:** VS Code extension (codelens on `// SPEC:`, parity tree, board view); `specify` as a
+  `gh` extension; GitHub MCP `projects` toolset; GitHub Agentic Workflows; Discussions for spec RFCs.
+
+---
+
 ## Stack scaffolding (new — proposed, needs direction)
 
 ⬜ `specify` should **scaffold a target's stack** — the wired-up starter (deps, pinned versions, config,
