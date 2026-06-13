@@ -258,6 +258,15 @@ func targetAddCmd() *cobra.Command {
 				}
 				written = append(written, w...)
 			}
+			// The data layer's runtime-specific overlay (e.g. drizzle's D1 db module
+			// + wrangler binding for cloudflare vs the node:sqlite one for node).
+			if overlay := dataVariant.RuntimeFiles[resolvedRuntime]; overlay != "" {
+				w, err := scaffold.RenderVariant(sub, scaffold.Variant{Files: overlay}, dir, data)
+				if err != nil {
+					return err
+				}
+				written = append(written, w...)
+			}
 			// --with features render LAST (explicit opt-ins win) and contribute
 			// their own deps + scripts to the install.
 			var featureScripts []scaffold.Script

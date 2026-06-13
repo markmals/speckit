@@ -40,9 +40,12 @@
     },
     "drizzle": {
       "files": "data/drizzle/files",
-      "add": ["drizzle-orm"],
-      "addDev": ["drizzle-kit"],
-      "requiresRuntime": "cloudflare",
+      "runtimeFiles": {
+        "cloudflare": "data/drizzle/cloudflare",
+        "node": "data/drizzle/node"
+      },
+      "add": ["drizzle-orm@rc"],
+      "addDev": ["drizzle-kit@rc"],
       "scripts": [
         {
           "phase": 3,

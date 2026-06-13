@@ -135,10 +135,11 @@ Ready) and baked in as `specify work`'s defaults.
     mechanism (`scaffold.Variant`, `RenderVariant`, cross-axis `requiresRuntime`). **Cloudflare SSR
     is the default** (per web.md): `@cloudflare/vite-plugin` + `cloudflare()` + `wrangler.jsonc` +
     `wrangler types` codegen; `--runtime node` is the lighter (no-Cloudflare) variant. **`--data
-    drizzle` (D1)** lands here (schema + `drizzle.config` + `env.DB` module + `drizzle-kit generate`),
-    constrained to `--runtime cloudflare`. All of `{cloudflare,node}×{convex,drizzle,none}` verified
-    green-on-arrival; `--data drizzle --runtime node` errors. ⬜ Deferred: the `--ssr`/`--server`
-    spa/static modes (refs are all SSR).
+    drizzle` is runtime-adaptive** (drizzle-orm@rc): a `Variant.RuntimeFiles` overlay ships the **D1**
+    db module + `d1_databases` binding on `--runtime cloudflare` and the **`node:sqlite`** adapter
+    (`drizzle-orm/node-sqlite`) on `--runtime node` — shared `schema`/`drizzle.config` +
+    `drizzle-kit generate`. All of `{cloudflare,node}×{convex,drizzle,none}` verified green-on-arrival.
+    ⬜ Deferred: the `--ssr`/`--server` spa/static modes (refs are all SSR).
   - ✅ **Slice 4 — `--with clerk`.** The `--with` Feature mechanism now carries deps + scripts
     (parallel to Variant), and features render LAST. Clerk feature (from tangerine): adds
     `@clerk/tanstack-react-start`, `app/start.ts` (`clerkMiddleware`), and wraps `root.tsx` with

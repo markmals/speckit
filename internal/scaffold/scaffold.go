@@ -41,6 +41,10 @@ type Variant struct {
 	AddDev          []string `json:"addDev,omitempty"` // dev deps
 	Scripts         []Script `json:"scripts,omitempty"`
 	RequiresRuntime string   `json:"requiresRuntime,omitempty"`
+	// RuntimeFiles overlays a runtime-specific subtree on top of Files, keyed by the
+	// resolved --runtime (e.g. drizzle ships a D1 db module for cloudflare and a
+	// node:sqlite one for node). Rendered after Files.
+	RuntimeFiles map[string]string `json:"runtimeFiles,omitempty"`
 }
 
 // DataKinds lists the manifest's data-variant kinds, sorted.
