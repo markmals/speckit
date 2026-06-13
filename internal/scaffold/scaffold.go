@@ -19,29 +19,39 @@ import (
 
 // Manifest is a scaffold's scaffold.json.
 type Manifest struct {
-	Stack       string                 `json:"stack"`
-	Scripts     []Script               `json:"scripts,omitempty"`
-	Target      ManifestTarget         `json:"target"`
-	Variables   []Variable             `json:"variables,omitempty"`
-	Features    map[string]Feature     `json:"features,omitempty"`
-	DataDefault string                 `json:"dataDefault,omitempty"` // the --data kind used when none is given
-	Data        map[string]DataVariant `json:"data,omitempty"`        // selectable data layers (--data <kind>)
+	Stack          string             `json:"stack"`
+	Scripts        []Script           `json:"scripts,omitempty"`
+	Target         ManifestTarget     `json:"target"`
+	Variables      []Variable         `json:"variables,omitempty"`
+	Features       map[string]Feature `json:"features,omitempty"`
+	DataDefault    string             `json:"dataDefault,omitempty"`    // the --data kind used when none is given
+	Data           map[string]Variant `json:"data,omitempty"`           // selectable data layers (--data <kind>)
+	RuntimeDefault string             `json:"runtimeDefault,omitempty"` // the --runtime kind used when none is given
+	Runtime        map[string]Variant `json:"runtime,omitempty"`        // selectable runtimes (--runtime <kind>)
 }
 
-// DataVariant is one selectable data layer (e.g. convex, drizzle, none). Its Files
-// subtree is rendered over the base (overwriting shared files like router.tsx), its
-// deps are pnpm-added, and its Scripts (e.g. codegen) run after the base install.
-type DataVariant struct {
-	Files   string   `json:"files,omitempty"`
-	Add     []string `json:"add,omitempty"`    // runtime deps
-	AddDev  []string `json:"addDev,omitempty"` // dev deps
-	Scripts []Script `json:"scripts,omitempty"`
+// Variant is one selectable axis option — a data layer (--data) or a runtime
+// (--runtime). Its Files subtree is rendered OVER the base (overwriting shared
+// files like router.tsx / vite.config.ts), its deps are pnpm-added, and its
+// Scripts (e.g. codegen) run after the base install. RequiresRuntime, when set,
+// constrains the option to a runtime (e.g. drizzle's D1 driver requires cloudflare).
+type Variant struct {
+	Files           string   `json:"files,omitempty"`
+	Add             []string `json:"add,omitempty"`    // runtime deps
+	AddDev          []string `json:"addDev,omitempty"` // dev deps
+	Scripts         []Script `json:"scripts,omitempty"`
+	RequiresRuntime string   `json:"requiresRuntime,omitempty"`
 }
 
 // DataKinds lists the manifest's data-variant kinds, sorted.
-func (m Manifest) DataKinds() []string {
-	out := make([]string, 0, len(m.Data))
-	for k := range m.Data {
+func (m Manifest) DataKinds() []string { return variantKinds(m.Data) }
+
+// RuntimeKinds lists the manifest's runtime-variant kinds, sorted.
+func (m Manifest) RuntimeKinds() []string { return variantKinds(m.Runtime) }
+
+func variantKinds(m map[string]Variant) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
 		out = append(out, k)
 	}
 	sort.Strings(out)
@@ -219,10 +229,10 @@ func RenderGitHub(src fs.FS, projectRoot string, data Data) ([]string, error) {
 	return renderSubtree(src, "github", projectRoot, data, true)
 }
 
-// RenderData renders a data variant's files subtree into destDir, OVERWRITING
-// shared base files (e.g. app/router.tsx) so the chosen data layer wins. Returns
-// nil if the variant has no files subtree.
-func RenderData(src fs.FS, v DataVariant, destDir string, data Data) ([]string, error) {
+// RenderVariant renders a variant's files subtree into destDir, OVERWRITING
+// shared base files (e.g. app/router.tsx, vite.config.ts) so the chosen data
+// layer / runtime wins. Returns nil if the variant has no files subtree.
+func RenderVariant(src fs.FS, v Variant, destDir string, data Data) ([]string, error) {
 	if v.Files == "" {
 		return nil, nil
 	}
