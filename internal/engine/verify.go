@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -14,6 +15,8 @@ import (
 type Binding struct {
 	Scenario specmodel.SpecID `json:"scenario"`
 	Identity string           `json:"identity"`
+	File     string           `json:"file,omitempty"` // source file the binding was read from
+	Line     int              `json:"line,omitempty"` // 1-based line of the binding, for CI annotations
 }
 
 // VerifyResult is the outcome of joining test results to declared scenarios.
@@ -103,15 +106,23 @@ var (
 	vitestBindRe = regexp.MustCompile(`it\("(\[(scenario\.[a-z0-9.\-]+)\][^"]*)"`)
 )
 
-// bindingsInContent extracts scenario↔test bindings from one source file's text.
-func bindingsInContent(src string) []Binding {
+// bindingsInContent extracts scenario↔test bindings from one source file's
+// text, tagging each with the file and its 1-based line (for CI annotations).
+func bindingsInContent(path, src string) []Binding {
 	var bs []Binding
-	for _, m := range swiftBindRe.FindAllStringSubmatch(src, -1) {
-		bs = append(bs, Binding{Scenario: specmodel.SpecID(m[1]), Identity: m[2]})
+	// scenarioGroup/identityGroup are the submatch indices for each binding form.
+	add := func(re *regexp.Regexp, scenarioGroup, identityGroup int) {
+		for _, m := range re.FindAllStringSubmatchIndex(src, -1) {
+			bs = append(bs, Binding{
+				Scenario: specmodel.SpecID(src[m[2*scenarioGroup]:m[2*scenarioGroup+1]]),
+				Identity: src[m[2*identityGroup]:m[2*identityGroup+1]],
+				File:     filepath.ToSlash(path),
+				Line:     1 + strings.Count(src[:m[0]], "\n"),
+			})
+		}
 	}
-	for _, m := range vitestBindRe.FindAllStringSubmatch(src, -1) {
-		bs = append(bs, Binding{Scenario: specmodel.SpecID(m[2]), Identity: m[1]})
-	}
+	add(swiftBindRe, 1, 2)  // @Test(.scenario("…")) func `…`
+	add(vitestBindRe, 2, 1) // it("[scenario.…] …"
 	return bs
 }
 
@@ -125,8 +136,8 @@ func bindingsInContent(src string) []Binding {
 // SPEC: story.engine.verify (scenario.engine.verify.source-bound-join)
 func ScanBindings(dir string) ([]Binding, error) {
 	var bindings []Binding
-	err := walkSourceFiles(dir, sourceExts, func(_ string, content []byte) {
-		bindings = append(bindings, bindingsInContent(string(content))...)
+	err := walkSourceFiles(dir, sourceExts, func(path string, content []byte) {
+		bindings = append(bindings, bindingsInContent(path, string(content))...)
 	})
 	return bindings, err
 }

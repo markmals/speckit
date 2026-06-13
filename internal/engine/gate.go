@@ -13,6 +13,7 @@ import (
 type GateFinding struct {
 	Check   string `json:"check"`
 	Path    string `json:"path,omitempty"`
+	Line    int    `json:"line,omitempty"` // 1-based line, for CI annotations
 	Message string `json:"message"`
 }
 
@@ -46,7 +47,7 @@ func TestEditFirewall(root string, changed []string) ([]GateFinding, error) {
 		if err != nil {
 			continue // deleted or unreadable
 		}
-		for _, b := range bindingsInContent(string(content)) {
+		for _, b := range bindingsInContent(p, string(content)) {
 			specPath, ok := scenarioSpecPath[b.Scenario]
 			if !ok || changedSet[specPath] {
 				continue // dangling ref is a scan/verify concern; or the spec did change
@@ -59,6 +60,7 @@ func TestEditFirewall(root string, changed []string) ([]GateFinding, error) {
 			findings = append(findings, GateFinding{
 				Check:   "test-edit-firewall",
 				Path:    filepath.ToSlash(p),
+				Line:    b.Line,
 				Message: fmt.Sprintf("test changed but its spec %s (scenario %s) did not", specPath, b.Scenario),
 			})
 		}
