@@ -25,6 +25,9 @@
     "tiptap": {
       "files": "features/tiptap/files",
       "add": ["@tiptap/react", "@tiptap/starter-kit", "@tiptap/pm"]
+    },
+    "posthog": {
+      "add": ["posthog-js"]
     }
   },
   "dataDefault": "convex",

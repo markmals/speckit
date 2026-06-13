@@ -34,6 +34,7 @@ func TestWebScaffold(t *testing.T) {
 		"package.json", "mise.toml", "tsconfig.json", "vitest.config.ts",
 		"tsr.config.json", ".oxlintrc.json", ".oxfmtrc.json",
 		"app/root.tsx", "app/router.tsx", "app/routes.ts", "app/routes/home.tsx",
+		"app/providers.tsx", "pnpm-workspace.yaml",
 		"app/styles/tailwind.css", "app/styles/cva.ts", "app/components/foundation/button.tsx",
 		"app/lib/greeting.ts", "app/lib/greeting.test.ts",
 	} {
@@ -193,10 +194,14 @@ func TestWebScaffold(t *testing.T) {
 			t.Errorf("convex variant missing %s: %v", p, err)
 		}
 	}
-	// RenderData overwrites the shared base router with the Convex-wired one.
+	// RenderData overwrites the shared base router with the Convex-wired one — which
+	// still delegates its Wrap to <Providers>, so feature providers compose with it.
 	router, _ := os.ReadFile(filepath.Join(dataDir, "app/router.tsx"))
 	if !strings.Contains(string(router), "ConvexProvider") {
 		t.Errorf("convex variant did not overwrite app/router.tsx:\n%s", router)
+	}
+	if !strings.Contains(string(router), "<Providers>") {
+		t.Errorf("convex variant router.tsx must keep the <Providers> Wrap seam:\n%s", router)
 	}
 
 	// the clerk --with feature adds @clerk and wraps root.tsx with ClerkProvider
@@ -243,6 +248,30 @@ func TestWebScaffold(t *testing.T) {
 	}
 	if rootAfter, _ := os.ReadFile(filepath.Join(ttDir, "app/root.tsx")); string(rootAfter) != string(rootBefore) {
 		t.Error("tiptap feature must not overwrite the shared app/root.tsx (it must stay additive)")
+	}
+
+	// the provider seam: the base router delegates its Wrap to <Providers>, and the
+	// base providers.tsx is a no-op until a provider feature is selected.
+	if br, _ := os.ReadFile(filepath.Join(app, "app/router.tsx")); !strings.Contains(string(br), "<Providers>") {
+		t.Errorf("base router.tsx Wrap does not delegate to <Providers>:\n%s", br)
+	}
+	if bp, _ := os.ReadFile(filepath.Join(app, "app/providers.tsx")); strings.Contains(string(bp), "PostHogProvider") {
+		t.Errorf("base providers.tsx (no features) must be a no-op, got:\n%s", bp)
+	}
+
+	// the posthog --with feature adds posthog-js and activates the PostHogProvider
+	// block in the shared providers.tsx (the feature carries no files — it composes
+	// at the Wrap seam), so it stacks with clerk (root.tsx) and any data provider.
+	posthog, ok := m.Features["posthog"]
+	if !ok || len(posthog.Add) == 0 {
+		t.Errorf("web scaffold missing the posthog feature with deps: %+v", m.Features)
+	}
+	phDir := t.TempDir()
+	if _, err := Render(sub, phDir, Data{Name: "web", Dir: "apps/web", Features: map[string]bool{"posthog": true}}); err != nil {
+		t.Fatal(err)
+	}
+	if pp, _ := os.ReadFile(filepath.Join(phDir, "app/providers.tsx")); !strings.Contains(string(pp), "PostHogProvider") {
+		t.Errorf("posthog feature did not wire PostHogProvider into providers.tsx:\n%s", pp)
 	}
 
 	// a second target must not clobber an existing ci.yml

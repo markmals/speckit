@@ -151,12 +151,21 @@ Ready) and baked in as `specify work`'s defaults.
     shared file, so it composes with clerk and any data/runtime variant — render-tested + green-on-arrival
     verified for real (fmt:check/lint/typecheck/test/build + `specify verify` all pass on a fresh
     `target add web --with tiptap`).
-  - ⬜ Remaining `--with` add-ons: stripe / email (Resend + React Email) / tanstack-db / electron, plus
-    **sentry** / **posthog**. ⚠️ **Design fork first:** posthog/sentry are *provider* features that must
-    wrap `root.tsx`/`router.tsx`, which today's whole-file-overwrite Feature mechanism can't stack
-    (feature order is a Go map → nondeterministic last-writer-wins). Decide the composition seam (a
-    providers-compose file, conditional templating on `.Features`, or accept mutual-exclusivity) before
-    building them.
+  - ✅ **Slice 4c — provider composition seam + `--with posthog`.** Resolves the provider-stacking fork
+    (Mark's call: use TanStack Router's `Wrap`). A new base `app/providers.tsx` (a Go template) is the
+    single place client-side providers compose, via an accumulator (`tree = <X>{tree}</X>`) gated by
+    `{{if .Features.<name>}}`; both the base and the convex `router.tsx` delegate their `Wrap` to
+    `<Providers>`. So providers stack deterministically without fighting over a shared file — clerk
+    (root.tsx) is orthogonal and composes for free. **posthog** is the first provider: `add: posthog-js`
+    + a conditional `PostHogProvider` block (apiKey form, SSR-safe, env via `VITE_PUBLIC_POSTHOG_KEY`/`_HOST`);
+    it carries no files (the wiring lives in the base seam). Also fixed: a base `pnpm-workspace.yaml`
+    (`dangerouslyAllowAllBuilds`) so node+none can add build-script deps (posthog → core-js) — previously
+    the one combo without it. Verified green-on-arrival for real across 6 combos: node×{none,convex}×{±posthog},
+    cloudflare+convex (default), and node+none+**clerk+posthog** (both providers wired at once).
+  - ⬜ Remaining `--with` add-ons: **sentry** (next — now unblocked: client provider rides the same
+    `Wrap`/`providers.tsx` seam; note it also adds a vite plugin, which touches `vite.config.ts` — the
+    *runtime* axis — so handle that overlap), then stripe / email (Resend + React Email) / tanstack-db /
+    electron (mostly additive: server fns + new routes).
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the

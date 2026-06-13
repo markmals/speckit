@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
+import { Providers } from "#/providers.tsx";
+
 import { routeTree } from "./routes.gen.ts";
 
 export function getRouter() {
@@ -14,7 +16,9 @@ export function getRouter() {
         scrollRestoration: true,
         defaultPreload: "intent",
         Wrap: ({ children }) => (
-            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+            <QueryClientProvider client={queryClient}>
+                <Providers>{children}</Providers>
+            </QueryClientProvider>
         ),
     });
     setupRouterSsrQueryIntegration({ router, queryClient });
