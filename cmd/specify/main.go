@@ -242,6 +242,13 @@ func targetAddCmd() *cobra.Command {
 				}
 				written = append(written, w...)
 			}
+			// Drop the project-root .github/ tree (CI workflow). Skips any file
+			// the repo already has, so a second target never clobbers ci.yml.
+			gh, err := scaffold.RenderGitHub(sub, ".", data)
+			if err != nil {
+				return err
+			}
+			written = append(written, gh...)
 
 			rt, err := scaffold.RenderTarget(m, data)
 			if err != nil {
