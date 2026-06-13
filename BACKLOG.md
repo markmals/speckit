@@ -114,6 +114,23 @@ no truth).
 
 ---
 
+## Agent memory (`.agents/memory/`) — design doc landed
+
+Claude Code's file-based memory, made **agent-agnostic, repo-local, committed**. Design in
+[docs/design/agent-memory.md](docs/design/agent-memory.md).
+
+- ⬜ **Store:** `.agents/memory/` (agnostic root, alongside `.agents/skills/`): `MEMORY.md` concise
+  index (loaded every session) + agent-authored topic files. Committed/shared (not per-user).
+- ⬜ **Loading (per-agent projection by `init`):** Claude Code `CLAUDE.md` → `@.agents/memory/MEMORY.md`
+  native import; `AGENTS.md` (Codex/generic) + `copilot-instructions.md` → a read-at-start directive.
+- ⬜ **Discipline:** ship a `managing-memory` skill (when/how to write; keep MEMORY.md short; one topic
+  per file; don't duplicate code/specs/git).
+- ⬜ **Boundaries:** `.agents/` is agent-owned (freely edited, **not** `gate generated`-protected);
+  `.speckit/` is engine-owned. The engine **ignores** memory — it's context, not spec truth.
+- ⬜ **Dogfood:** give this repo its own `.agents/memory/` (migrate the project-relevant notes).
+
+---
+
 ## Stack scaffolding (new — proposed, needs direction)
 
 ⬜ `specify` should **scaffold a target's stack** — the wired-up starter (deps, pinned versions, config,
