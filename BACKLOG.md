@@ -114,20 +114,22 @@ no truth).
 
 ---
 
-## Agent memory (`.agents/memory/`) — design doc landed
+## Agent memory (per-agent `memory/`) — design doc landed
 
-Claude Code's file-based memory, made **agent-agnostic, repo-local, committed**. Design in
-[docs/design/agent-memory.md](docs/design/agent-memory.md).
+Claude Code's file-based memory, made **repo-local, committed**, and projected per-agent like skills.
+Design in [docs/design/agent-memory.md](docs/design/agent-memory.md).
 
-- ⬜ **Store:** `.agents/memory/` (agnostic root, alongside `.agents/skills/`): `MEMORY.md` concise
-  index (loaded every session) + agent-authored topic files. Committed/shared (not per-user).
-- ⬜ **Loading (per-agent projection by `init`):** Claude Code `CLAUDE.md` → `@.agents/memory/MEMORY.md`
-  native import; `AGENTS.md` (Codex/generic) + `copilot-instructions.md` → a read-at-start directive.
+- ⬜ **Store (per-agent, parallel to skills):** `.claude/memory/` (Claude Code), `.agents/memory/`
+  (Codex/generic), `.github/memory/` (Copilot). `MEMORY.md` concise index (loaded every session) +
+  agent-authored topic files. Committed (not per-user). Agnostic = same mechanism, projected to the
+  agent's own dir — not one shared store.
+- ⬜ **Loading (per-agent projection by `init`):** Claude Code `CLAUDE.md` → `@.claude/memory/MEMORY.md`
+  native import; `AGENTS.md` + `copilot-instructions.md` → a read-at-start directive to their `memory/`.
 - ⬜ **Discipline:** ship a `managing-memory` skill (when/how to write; keep MEMORY.md short; one topic
   per file; don't duplicate code/specs/git).
-- ⬜ **Boundaries:** `.agents/` is agent-owned (freely edited, **not** `gate generated`-protected);
-  `.speckit/` is engine-owned. The engine **ignores** memory — it's context, not spec truth.
-- ⬜ **Dogfood:** give this repo its own `.agents/memory/` (migrate the project-relevant notes).
+- ⬜ **Boundaries:** the agent dirs (`.claude/`/`.agents/`/`.github/`) are agent-owned (freely edited,
+  **not** `gate generated`-protected); `.speckit/` is engine-owned. The engine **ignores** memory.
+- ⬜ **Dogfood:** this repo uses Claude Code → give it a `.claude/memory/` (migrate project notes).
 
 ---
 
