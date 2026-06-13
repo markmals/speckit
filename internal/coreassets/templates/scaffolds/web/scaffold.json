@@ -32,6 +32,10 @@
     "email": {
       "files": "features/email/files",
       "add": ["resend", "react-email", "@react-email/render"]
+    },
+    "stripe": {
+      "files": "features/stripe/files",
+      "add": ["stripe", "@stripe/stripe-js"]
     }
   },
   "dataDefault": "convex",

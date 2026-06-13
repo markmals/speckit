@@ -298,6 +298,30 @@ func TestWebScaffold(t *testing.T) {
 		t.Error("email feature must not overwrite the shared app/root.tsx (it must stay additive)")
 	}
 
+	// the stripe --with feature is additive: it adds stripe + @stripe/stripe-js and
+	// ships a server-only checkout helper + a client-side loader, overwriting no
+	// shared file.
+	stripe, ok := m.Features["stripe"]
+	if !ok || len(stripe.Add) != 2 {
+		t.Errorf("web scaffold missing the stripe feature with its 2 deps: %+v", m.Features)
+	}
+	stDir := t.TempDir()
+	if _, err := Render(sub, stDir, data); err != nil {
+		t.Fatal(err)
+	}
+	stRootBefore, _ := os.ReadFile(filepath.Join(stDir, "app/root.tsx"))
+	if _, err := RenderFeature(sub, stripe, stDir, data); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"app/server/stripe.ts", "app/lib/stripe.ts"} {
+		if _, err := os.Stat(filepath.Join(stDir, filepath.FromSlash(p))); err != nil {
+			t.Errorf("stripe feature missing %s: %v", p, err)
+		}
+	}
+	if stRootAfter, _ := os.ReadFile(filepath.Join(stDir, "app/root.tsx")); string(stRootAfter) != string(stRootBefore) {
+		t.Error("stripe feature must not overwrite the shared app/root.tsx (it must stay additive)")
+	}
+
 	// a second target must not clobber an existing ci.yml
 	if err := os.WriteFile(ciPath, []byte("sentinel"), 0o644); err != nil {
 		t.Fatal(err)
