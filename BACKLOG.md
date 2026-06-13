@@ -7,22 +7,42 @@ in [Completed](#completed) at the bottom**. Status: ✅ done · 🔄 in progress
 
 ---
 
-## P1 · Next build — GitHub Pillar 1 (PR gating)
+## P1 · ✅ Shipped — GitHub Pillar 1 (PR gating)
 
-The agreed next slice. Spec-honesty becomes a non-bypassable required check; the
-demo is the firewall rejecting a test edited away from its spec.
+Spec-honesty is now a non-bypassable required check. **Next build is P2.**
 
-- ⬜ **Web-scaffold quality tasks (prerequisite).** Add `fmt` / `fmt:check` (Oxfmt) and
-  `lint` (Oxlint) mise tasks to `templates/scaffolds/web` so the `quality` CI job has
-  standard task names to call (`test`/`fmt:check`/`lint`/`typecheck`).
-- ⬜ **The gate Action + `ci.yml`.** Composite Action / reusable workflow
-  (`markmals/speckit/gate@v1`) installs `specify`, runs `scan` → `verify <target>` →
-  `parity --gate` → `gate firewall`/`generated`/`scope`, and emits **Checks-API
-  annotations** (scenario → file:line). The scaffolded **`workflows/ci.yml`** is a thin
-  caller with two parallel jobs: `quality` (the mise tasks) + `verify` (the gate; it
-  already runs the test suite, so no double-run). Both required checks.
-- ⬜ **Branch-protection recipe** — `specify` provisions the required-check ruleset via
-  the GitHub API; ship a documented `gh` fallback.
+- ✅ **Web-scaffold quality tasks (prerequisite).** `fmt`/`fmt:check` (Oxfmt) + `lint`
+  (Oxlint) mise tasks in the web scaffold, scoped to `app/`; `pnpm` pinned in `[tools]`.
+  `.oxfmtrc.json` + `.oxlintrc.json` **mirror the Vite+ reference** (`tanstack-react-start-contacts`):
+  Oxfmt with `tabWidth 4` / `printWidth 100` / `arrowParens avoid` / perfectionist import
+  sort / **`sortTailwindcss`** / `sortPackageJson` / jsonc+`.vscode` overrides; Oxlint with
+  type-aware rules + `jsPlugins` (perfectionist, prefer-let) + `import/extensions`. Deps:
+  `oxlint oxfmt oxlint-tsgolint eslint-plugin-perfectionist eslint-plugin-prefer-let`.
+  Green-on-arrival verified for real (`oxfmt --check` + `oxlint` + `tsgo` all exit 0 on a
+  freshly rendered scaffold with the full dep set).
+- ✅ **The gate Action + `ci.yml`.** Composite action `gate/action.yml`
+  (`markmals/speckit/gate@v1`) + reusable workflow `.github/workflows/gate.yml`; the
+  scaffold's `github/` subtree drops a thin-caller `.github/workflows/ci.yml` via the new
+  `scaffold.RenderGitHub` (skip-existing) wired into `target add`. Two jobs: `quality`
+  (mise tasks) + `verify` (the gate; runs the suite, so no double-run). Gate emits CI
+  annotations via the new `specify gate … --format github` (mirrors `oxlint --format
+  github`). **Deviation from the design doc, with rationale:** the CI sequence is `scan →
+  gate firewall → verify → parity --gate`; **`gate generated`/`gate scope` are git hooks,
+  not PR checks** — `verify` legitimately rewrites committed locks on green (a `generated`
+  PR check would false-positive), and `scope` validates a single commit subject.
+- ✅ **Branch-protection recipe** — documented `gh` ruleset fallback in
+  [docs/ci-gating.md](docs/ci-gating.md) (required contexts `quality` + `verify / verify`,
+  PR required, force-push blocked). `specify`-native provisioning rides on the gh-extension
+  auth (P2).
+
+**Needs a live PR to validate** (can't run an Actions runner locally): the mise/pnpm
+toolchain setup + trust in CI, the firewall `--against` base-SHA diff, and the
+`@v1`/`go install …@v1` references (dormant until the first release tag, P6).
+
+**Fast-follows** (richer annotations — captured under P4): line-level firewall annotations
+(`bindingsInContent` is regex-only, no line numbers today); and `--format github` on
+`verify`/`parity` so **unjoinable scenarios, dangling bindings, and drifted specs** also
+annotate to file:line — needs the report structs to carry the spec/test file path.
 
 Design: [docs/design/github-integration.md](docs/design/github-integration.md).
 
@@ -43,9 +63,11 @@ stay in the repo; defects/work/gating are **ephemeral** on GitHub.
 - ⬜ **Pillar 2 — Issues as ephemeral defect intake.** Scenario-canonical: defect Issue
   (org type Bug, via `defect.yml`) → fix adds/updates a scenario + regression test → close
   on `verify` green (lock = proof). **No durable issue↔scenario link** (rely on GitHub
-  cross-refs). Per-target `.github/`: `ci.yml`, optional `deploy.yml`, PR template,
-  `defect.yml`, `config.yml`, `CODEOWNERS` for `/features` `/specs`, stack `dependabot.yml`.
-  Org Issue Types (Bug/Feature/Task + custom **Epic**); label fallback off-org.
+  cross-refs). Extend the `github/` scaffold subtree + `scaffold.RenderGitHub` seam (landed
+  in P1, today only `ci.yml`) with the rest of the per-target `.github/`: optional
+  `deploy.yml`, PR template, `defect.yml`, `config.yml`, `CODEOWNERS` for `/features`
+  `/specs`, stack `dependabot.yml`. Org Issue Types (Bug/Feature/Task + custom **Epic**);
+  label fallback off-org.
 - ⬜ **Pillar 3 — Projects as the work surface (Beads-informed, simplified).** Kanban;
   **"ready" is a Status column, not a computed field**. Epics = Epic-typed issue +
   sub-issues. Keep from Beads: `discovered-from:#N` provenance (label+backlink — the one
@@ -95,6 +117,12 @@ stay in the repo; defects/work/gating are **ephemeral** on GitHub.
 
 ## P4 · Engine & workflow enhancements
 
+- ⬜ **Richer CI annotations (P1 fast-follow).** Extend `--format github` past the firewall:
+  thread the spec/test **file path** (and line) into `VerifyResult` (unjoinable → spec file,
+  dangling → test file) and `ParityCell` (drifted/suspect → spec file), then add `--format
+  github` to `verify`/`parity` so every gate failure annotates to **file:line** in the PR.
+  Also give `bindingsInContent` line numbers so the firewall annotation points at the exact
+  `it(...)`/`@Test` line. Today only the firewall annotates, at file level.
 - ⬜ **Scanner — multi-framework bindings.** Support the forms `CONVENTIONS.md` documents but
   the scanner doesn't yet read: MSTest `[TestProperty("scenario", …)]`, kotlin
   `@Tag("scenario:…")`, generic `// [scenario.id]` comment. (Today: Swift traits + Vitest

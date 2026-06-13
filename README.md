@@ -199,26 +199,22 @@ You'll likely need fewer of these than usual: **the spec library is the source o
 
 ### Actions (CI/CD)
 
-A few lines wire the engine into every PR:
+`specify target add` drops a `.github/workflows/ci.yml` into the project root. It runs **two parallel jobs on every PR**, both meant to be required status checks:
+
+- **`quality`** — the target's fast static checks (`fmt:check` / `lint` / `typecheck`) via its mise tasks.
+- **`verify`** — the spec gate: `scan` → the **test-edit firewall** → `verify <target>` → `parity --gate`. Because `verify` runs the test suite, tests live here only — never in `quality`.
+
+The `verify` job is one line, delegating to SpecKit's reusable workflow (so the gate updates with the `@v1` tag, no re-scaffold):
 
 ```yaml
-# .github/workflows/speckit.yml
-name: speckit
-on: pull_request
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: stable }
-      - run: go install github.com/markmals/speckit/cmd/specify@latest
-      - run: specify scan
-      - run: specify verify web          # for each target you ship
-      - run: specify parity web --gate
+verify:
+  uses: markmals/speckit/.github/workflows/gate.yml@v1
+  with: { target: web, working_directory: apps/web }
 ```
 
-Add the `gate` checks to git hooks for fast local feedback:
+The gate runs `specify gate firewall … --format github`, so a test edited away from its spec is **annotated inline** on the offending file in the PR — the same workflow-command mechanism `oxlint --format github` uses. Make the checks required (`quality` + `verify / verify`) with the branch-protection recipe in **[docs/ci-gating.md](docs/ci-gating.md)**.
+
+Keep each commit honest locally with the `gate` checks as git hooks (these are commit-time, not PR checks — `verify` legitimately rewrites locks on green):
 
 ```sh
 # .git/hooks/commit-msg
@@ -227,7 +223,7 @@ specify gate scope --message "$1"
 specify gate firewall && specify gate generated
 ```
 
-A ready-made Action (the parity matrix as a check-run summary, spec→issues, the PR-comment-to-agent loop) is the planned **github-pack**; until then, the snippet above is all you need. Deploys run on merge to `main` however you like — SpecKit doesn't prescribe a target.
+Deploys run on merge to `main` however you like — SpecKit doesn't prescribe a target.
 
 ## The `specify` command reference
 
@@ -264,7 +260,9 @@ Run `specify <command>`. Reporting commands print a styled summary by default an
 | --- | --- |
 | `specify gate firewall` | Block a change that edits a scenario-tagged test without touching that scenario's spec. |
 | `specify gate generated` | Block edits to files SpecKit generates and owns (`.speckit/lock/`, codegen output). |
-| `specify gate scope <subject>` | Check that a commit subject starts with a recognized scope. |
+| `specify gate scope [subject]` | Check that a commit subject — given positionally, or read from a file with `--message <file>` (how a `commit-msg` hook passes it) — starts with a recognized scope. |
+
+Each `gate` check takes `--against <ref>` (diff against a ref instead of the staged set) and `--format text\|json\|github`; `--format github` emits CI annotations on the offending file (see [docs/ci-gating.md](docs/ci-gating.md)).
 
 ### Other
 
