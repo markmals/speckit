@@ -1,4 +1,13 @@
 node_modules/
 dist/
-junit.xml
+.vite/
 .tanstack/
+junit.xml
+
+# Generated — the route tree (tsr generate) and Cloudflare env types (wrangler types).
+app/routes.gen.ts
+worker-configuration.d.ts
+
+# Local env
+.env
+.env.local

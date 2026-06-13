@@ -110,10 +110,24 @@ Ready) and baked in as `specify work`'s defaults.
 
 ## P3 · Scaffolding & stack coverage
 
-- ⬜ **Web scaffold — flesh out** to the full default: React Compiler, React Aria, Motion,
-  Zod, TanStack Query/Table/Form/Hotkeys; the `app/` router structure; `--data convex|drizzle`;
-  the SSR/server variants; `--with` features (clerk/stripe/…); Varlock + `.vscode`. Pack
-  refresh to this stack. Stack approved in [scaffolds/web.md](docs/design/scaffolds/web.md).
+- 🔄 **Web scaffold — flesh out** to the full default. Approach: prototype-first / resolve-by-running
+  (build the real app green, then templatize), grounded in inspecting the reference apps (trove ·
+  tangerine-dashboard · contacts main+convex). Engine decision: **plain Vite + oxc + Mise** (not
+  vite-plus), confirmed with Mark — matches [scaffolds/web.md](docs/design/scaffolds/web.md).
+  - ✅ **Slice 1 — default app, green-on-arrival (verified for real).** TanStack Start SSR +
+    Router (virtual file routes, `app/routes.ts` → `routes.gen.ts` via `tsr generate`) + Query;
+    React 19 + **React Compiler** (`@rolldown/plugin-babel` + `reactCompilerPreset()`); **Tailwind
+    v4**; the **React-Aria + `cva` + Motion** foundation recipe (`app/components/foundation/`);
+    Zod; `#/*` subpath imports; Mise tasks (dev/test/build/fmt:check/lint/typecheck + `routes`
+    codegen, `mise trust` on install); the binding harness preserved. Fresh `specify target add web`
+    → `verify` green + `fmt:check`/`lint`/`typecheck`/`build` all pass.
+  - ⬜ **Slice 2 — `--data convex|drizzle`** (Drizzle+D1 and the Convex client/provider wiring,
+    from the contacts main/convex delta).
+  - ⬜ **Slice 3 — runtime/SSR matrix** (`--ssr`/`--server`, Cloudflare runtime via
+    `@cloudflare/vite-plugin` + `wrangler.jsonc`, the static-SPA mode).
+  - ⬜ **Slice 4 — `--with clerk`** (auth, from tangerine-dashboard) + the other `--with` add-ons.
+  - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
+    and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
   "actor is human" rule for libraries; `story`+`domain`+`error` apply, UI kinds don't) and the
   stacks **`swift-package`**, **`swift-cli`**, **`ts-lib`**, **`vscode-extension`**. Engine
@@ -160,6 +174,22 @@ Ready) and baked in as `specify work`'s defaults.
 
 ## P5 · Docs decisions & minor cleanups
 
+- ⬜ **Harness & usage guides (`docs/`).** Extensive, kept-current markdown — the onboarding
+  surface, linked from the README. Two axes:
+  - **Per supported harness** — one guide each for **Claude Code**, **Codex**, **Generic**
+    (`AGENTS.md`), **Copilot**: what `init` projects for that agent (commands/skills/rules/review
+    subagents/`memory/` + the orientation file and its loading mechanism), how to drive the
+    `/speckit.*` commands there, and the per-agent differences (Claude gets review subagents +
+    `@import` memory; Codex/Generic use `AGENTS.md` read-at-start directives; Copilot uses
+    `.github/agents` + `.prompts` + `copilot-instructions.md`). Source of truth = the
+    `internal/project` adapters — keep in lockstep.
+  - **With vs. without GitHub** — using `specify` **GitHub-native** (PR gate, Issues defect intake,
+    the Projects board via `specify issues`/`work`, `deploy`/`secrets`/`protect`, branch protection)
+    **and** **offline** (the engine alone: `scan`/`verify`/`lock`/`drift`/`cover`/`parity`/`gate` +
+    git hooks — no `gh`, no network). Make the determinism line explicit: nothing GitHub is required
+    for correctness. Likely `docs/harnesses/<agent>.md` + `docs/usage/{github,offline}.md`. Substantial
+    deliverable, not a cleanup; reflects the shipped P2 surface ([docs/design/agent-memory.md](docs/design/agent-memory.md),
+    [docs/design/github-integration.md](docs/design/github-integration.md)).
 - ⬜ **Decision — historical-doc vocab.** `FORK.md` / `FORK-PLAN.md` still use engine-key
   `platform` (~100× in FORK-PLAN) as dated planning records. Migrate to `target`, or leave as
   pinned artifacts? (Untouched for now.)

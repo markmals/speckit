@@ -24,3 +24,7 @@
 # mise local overrides
 mise.local.toml
 .mise.local.toml
+
+# Transient Codex run artifacts (per the dynamic-workflow policy)
+.claude/codex-results/
+.claude/schemas/
