@@ -17,6 +17,23 @@
       ]
     }
   ],
+  "dataDefault": "convex",
+  "data": {
+    "convex": {
+      "files": "data/convex/files",
+      "add": ["convex", "@convex-dev/react-query"],
+      "scripts": [
+        {
+          "phase": 3,
+          "commands": [
+            "CONVEX_AGENT_MODE=anonymous pnpm exec convex dev --once",
+            "grep -q '^VITE_CONVEX_URL=' .env.local || echo \"VITE_CONVEX_URL=$(grep '^CONVEX_URL=' .env.local | cut -d= -f2)\" >> .env.local"
+          ]
+        }
+      ]
+    },
+    "none": {}
+  },
   "target": {
     "command": "cd {{.Dir}} && mise run test",
     "format": "junit",

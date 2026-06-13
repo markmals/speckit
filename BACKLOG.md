@@ -121,10 +121,18 @@ Ready) and baked in as `specify work`'s defaults.
     Zod; `#/*` subpath imports; Mise tasks (dev/test/build/fmt:check/lint/typecheck + `routes`
     codegen, `mise trust` on install); the binding harness preserved. Fresh `specify target add web`
     → `verify` green + `fmt:check`/`lint`/`typecheck`/`build` all pass.
-  - ⬜ **Slice 2 — `--data convex|drizzle`** (Drizzle+D1 and the Convex client/provider wiring,
-    from the contacts main/convex delta).
-  - ⬜ **Slice 3 — runtime/SSR matrix** (`--ssr`/`--server`, Cloudflare runtime via
-    `@cloudflare/vite-plugin` + `wrangler.jsonc`, the static-SPA mode).
+  - 🔄 **Slice 2 — `--data` layers.** Scaffold-manifest `data` variants + a `--data` flag
+    (`scaffold.RenderData` overwrites shared base files like `router.tsx`; per-variant deps +
+    codegen scripts phase-ordered after the base install).
+    - ✅ **`--data convex` (the default) + `--data none`**, both green-on-arrival, verified for real.
+      Convex is green offline via an **anonymous local deployment** —
+      `CONVEX_AGENT_MODE=anonymous pnpm exec convex dev --once` generates `convex/_generated/`
+      with no account/login; `pnpm-workspace.yaml dangerouslyAllowAllBuilds` clears pnpm 11's
+      native-build gate. Client/provider wiring from the contacts@convex delta.
+    - ⬜ **`--data drizzle` (D1)** — folds into the Cloudflare runtime slice below (D1 is reached
+      via `cloudflare:workers`, so it needs that runtime).
+  - ⬜ **Slice 3 — runtime/SSR matrix + Drizzle+D1** (`--ssr`/`--server`, Cloudflare runtime via
+    `@cloudflare/vite-plugin` + `wrangler.jsonc`, the static-SPA mode; Drizzle+D1 lands here).
   - ⬜ **Slice 4 — `--with clerk`** (auth, from tangerine-dashboard) + the other `--with` add-ons.
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.

@@ -91,7 +91,12 @@ animations via **View Transitions**, Zod, **Astro** i18n, Drizzle +
 - **TanStack Start** + Router (virtual routes) + Query; React 19 + React Compiler; TanStack DevTools.
 - **Mise** (monorepo) driving pnpm · Vite · Vitest · tsdown · **Oxfmt** · **Oxlint** · tsgo. (Prettier/ESLint belong to the Astro `website` stack, since oxc can't handle `.astro`.)
 - **Tailwind CSS** + **React Aria**; **Motion**; **Zod**.
-- **Data:** `--data convex` (default) · `drizzle` (`node:sqlite`/D1).
+- **Data:** `--data convex` (default) · `drizzle` (D1) · `none` (data-less shell). **Convex stays
+  green-on-arrival via an _anonymous local deployment_** — the install runs
+  `CONVEX_AGENT_MODE=anonymous convex dev --once` (no account/login) to generate
+  `convex/_generated/`, with `pnpm-workspace.yaml dangerouslyAllowAllBuilds` clearing pnpm 11's
+  native-build gate. `drizzle`'s D1 driver needs the Cloudflare runtime, so it ships with that
+  slice (not `node:sqlite`).
 - **Runtime/deploy:** Cloudflare (default) · Node-local; the SSR/server matrix below.
 - **Project glue:** **Varlock** for env vars, a **GitHub Actions** CI workflow (runs the
   Mise `test`/`lint`/`check` tasks), `.vscode` settings.
