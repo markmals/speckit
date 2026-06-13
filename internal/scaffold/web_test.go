@@ -199,6 +199,26 @@ func TestWebScaffold(t *testing.T) {
 		t.Errorf("convex variant did not overwrite app/router.tsx:\n%s", router)
 	}
 
+	// the clerk --with feature adds @clerk and wraps root.tsx with ClerkProvider
+	clerk, ok := m.Features["clerk"]
+	if !ok || len(clerk.Add) == 0 {
+		t.Errorf("web scaffold missing the clerk feature with deps: %+v", m.Features)
+	}
+	featDir := t.TempDir()
+	if _, err := Render(sub, featDir, data); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RenderFeature(sub, clerk, featDir, data); err != nil {
+		t.Fatal(err)
+	}
+	croot, _ := os.ReadFile(filepath.Join(featDir, "app/root.tsx"))
+	if !strings.Contains(string(croot), "ClerkProvider") {
+		t.Errorf("clerk feature did not wrap root.tsx with ClerkProvider:\n%s", croot)
+	}
+	if _, err := os.Stat(filepath.Join(featDir, "app/start.ts")); err != nil {
+		t.Errorf("clerk feature missing app/start.ts: %v", err)
+	}
+
 	// a second target must not clobber an existing ci.yml
 	if err := os.WriteFile(ciPath, []byte("sentinel"), 0o644); err != nil {
 		t.Fatal(err)

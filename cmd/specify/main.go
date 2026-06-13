@@ -249,13 +249,6 @@ func targetAddCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for f := range features {
-				w, err := scaffold.RenderFeature(sub, m.Features[f], dir, data)
-				if err != nil {
-					return err
-				}
-				written = append(written, w...)
-			}
 			// Runtime + data layers render over the base, overwriting shared files
 			// (the runtime's vite.config.ts, the data layer's router.tsx).
 			for _, v := range []scaffold.Variant{runtimeVariant, dataVariant} {
@@ -264,6 +257,18 @@ func targetAddCmd() *cobra.Command {
 					return err
 				}
 				written = append(written, w...)
+			}
+			// --with features render LAST (explicit opt-ins win) and contribute
+			// their own deps + scripts to the install.
+			var featureScripts []scaffold.Script
+			for f := range features {
+				feat := m.Features[f]
+				w, err := scaffold.RenderFeature(sub, feat, dir, data)
+				if err != nil {
+					return err
+				}
+				written = append(written, w...)
+				featureScripts = append(featureScripts, variantInstallScripts(scaffold.Variant{Add: feat.Add, AddDev: feat.AddDev, Scripts: feat.Scripts})...)
 			}
 			// Seed the scaffold's example feature into the project root, but only
 			// when the spec library is empty — never clobber existing specs.
@@ -310,6 +315,7 @@ func targetAddCmd() *cobra.Command {
 				allScripts := append([]scaffold.Script{}, m.Scripts...)
 				allScripts = append(allScripts, variantInstallScripts(runtimeVariant)...)
 				allScripts = append(allScripts, variantInstallScripts(dataVariant)...)
+				allScripts = append(allScripts, featureScripts...)
 				scripts, err := scaffold.Manifest{Scripts: allScripts}.PhasedScripts(data)
 				if err != nil {
 					return err

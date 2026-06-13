@@ -139,7 +139,11 @@ Ready) and baked in as `specify work`'s defaults.
     constrained to `--runtime cloudflare`. All of `{cloudflare,node}×{convex,drizzle,none}` verified
     green-on-arrival; `--data drizzle --runtime node` errors. ⬜ Deferred: the `--ssr`/`--server`
     spa/static modes (refs are all SSR).
-  - ⬜ **Slice 4 — `--with clerk`** (auth, from tangerine-dashboard) + the other `--with` add-ons.
+  - ✅ **Slice 4 — `--with clerk`.** The `--with` Feature mechanism now carries deps + scripts
+    (parallel to Variant), and features render LAST. Clerk feature (from tangerine): adds
+    `@clerk/tanstack-react-start`, `app/start.ts` (`clerkMiddleware`), and wraps `root.tsx` with
+    `ClerkProvider`. Green-on-arrival without live keys (typecheck + build pass; auth resolves at
+    runtime). ⬜ Other `--with` add-ons (stripe/email/tiptap/tanstack-db/electron/sentry/posthog).
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
