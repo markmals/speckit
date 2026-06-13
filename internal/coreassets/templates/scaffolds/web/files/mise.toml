@@ -12,7 +12,7 @@ run = "vite dev"
 run = "vitest run --reporter=junit --outputFile=junit.xml"
 
 [tasks.typecheck]
-run = "tsgo --noEmit"
+run = "tsgo"
 
 [tasks.build]
 run = "vite build"
