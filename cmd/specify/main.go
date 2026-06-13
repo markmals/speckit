@@ -530,12 +530,16 @@ func gateCmd() *cobra.Command {
 }
 
 func gateFirewallCmd() *cobra.Command {
-	var against string
+	var against, format string
 	c := &cobra.Command{
 		Use:   "firewall",
 		Short: "Block a scenario-tagged test change whose spec didn't change",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			fmtv, err := parseFormat(format)
+			if err != nil {
+				return err
+			}
 			changed, err := changedFiles(against)
 			if err != nil {
 				return err
@@ -544,38 +548,48 @@ func gateFirewallCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return reportGate(f)
+			return reportGate(f, fmtv)
 		},
 	}
 	c.Flags().StringVar(&against, "against", "", "diff against this ref (default: staged changes)")
+	c.Flags().StringVar(&format, "format", "text", "output format: text|json|github (github emits CI annotations)")
 	return c
 }
 
 func gateGeneratedCmd() *cobra.Command {
-	var against string
+	var against, format string
 	c := &cobra.Command{
 		Use:   "generated",
 		Short: "Block edits to generated paths",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			fmtv, err := parseFormat(format)
+			if err != nil {
+				return err
+			}
 			changed, err := changedFiles(against)
 			if err != nil {
 				return err
 			}
-			return reportGate(engine.GeneratedBlock(changed))
+			return reportGate(engine.GeneratedBlock(changed), fmtv)
 		},
 	}
 	c.Flags().StringVar(&against, "against", "", "diff against this ref (default: staged changes)")
+	c.Flags().StringVar(&format, "format", "text", "output format: text|json|github (github emits CI annotations)")
 	return c
 }
 
 func gateScopeCmd() *cobra.Command {
-	var msgFile string
+	var msgFile, format string
 	c := &cobra.Command{
 		Use:   "scope [subject]",
 		Short: "Validate a commit subject's scope",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			fmtv, err := parseFormat(format)
+			if err != nil {
+				return err
+			}
 			var subject string
 			switch {
 			case msgFile != "":
@@ -593,10 +607,11 @@ func gateScopeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return reportGate(engine.ScopedCommit(subject, scopes))
+			return reportGate(engine.ScopedCommit(subject, scopes), fmtv)
 		},
 	}
 	c.Flags().StringVar(&msgFile, "message", "", "read the subject from a commit-message file (first line)")
+	c.Flags().StringVar(&format, "format", "text", "output format: text|json|github (github emits CI annotations)")
 	return c
 }
 
@@ -622,9 +637,25 @@ func changedFiles(against string) ([]string, error) {
 	return files, nil
 }
 
-// reportGate prints gate findings and exits non-zero if any.
-func reportGate(findings []engine.GateFinding) error {
-	fmt.Println(renderGate(findings))
+// reportGate renders gate findings in the requested format and exits non-zero
+// if any. github format emits one workflow-command annotation per finding (no
+// trailing summary), so the CI step both fails and annotates the offending file.
+func reportGate(findings []engine.GateFinding, format outputFormat) error {
+	switch format {
+	case formatJSON:
+		if findings == nil {
+			findings = []engine.GateFinding{}
+		}
+		if err := writeJSON(os.Stdout, map[string]any{"findings": findings}); err != nil {
+			return err
+		}
+	case formatGitHub:
+		for _, f := range findings {
+			fmt.Println(ghCommand("error", f.Path, f.Message))
+		}
+	default:
+		fmt.Println(renderGate(findings))
+	}
 	if len(findings) > 0 {
 		os.Exit(1)
 	}
