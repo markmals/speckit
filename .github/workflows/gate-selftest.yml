@@ -33,7 +33,7 @@ jobs:
     # The gate action's mise-action installs the repo-root mise.toml; skip the
     # local-only container tools (act/colima/docker-cli) on the runner.
     env:
-      MISE_DISABLE_TOOLS: act,colima,docker-cli
+      MISE_DISABLE_TOOLS: act,colima,lima,docker-cli
     steps:
       - uses: actions/checkout@v6
         with:
