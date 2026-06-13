@@ -1,0 +1,88 @@
+name: SpecKit gate
+description: >-
+  Run the SpecKit spec gate for a target — lint the spec library (scan), the
+  test-edit firewall, verify (which runs the test suite and joins each scenario
+  to its bound test), and the parity matrix — emitting GitHub annotations on the
+  files that drift. Assumes the repo is already checked out with full history
+  (fetch-depth: 0) so the firewall can diff against the PR base.
+
+inputs:
+  target:
+    description: The target to verify — a key in .speckit/specs.json.
+    required: true
+  working_directory:
+    description: >-
+      The target's app directory (e.g. apps/web). Its toolchain is installed
+      with `mise install`, and if it has a package.json its npm deps are
+      installed with `pnpm install --frozen-lockfile`, before verify runs.
+      Leave empty for stacks that need no per-directory setup.
+    required: false
+    default: ""
+  specify_version:
+    description: The `specify` version/ref installed via `go install` (a tag, branch, or SHA).
+    required: false
+    default: v1
+  go_version:
+    description: The Go toolchain used to build `specify`.
+    required: false
+    default: "1.26"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go_version }}
+
+    - name: Install specify
+      shell: bash
+      env:
+        SPECIFY_VERSION: ${{ inputs.specify_version }}
+      run: |
+        go install "github.com/markmals/speckit/cmd/specify@${SPECIFY_VERSION}"
+        echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+    - name: Set up mise
+      uses: jdx/mise-action@v3
+
+    - name: Install target toolchain & deps
+      shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: |
+        if [ -n "$WORKING_DIRECTORY" ]; then
+          cd "$WORKING_DIRECTORY"
+          mise trust
+          mise install
+          if [ -f package.json ]; then
+            pnpm install --frozen-lockfile
+          fi
+        fi
+
+    - name: Lint the spec library (scan)
+      shell: bash
+      run: specify scan
+
+    - name: Test-edit firewall
+      shell: bash
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        if [ -n "$BASE_SHA" ]; then
+          specify gate firewall --against "$BASE_SHA" --format github
+        else
+          echo "not a pull_request event — skipping the test-edit firewall"
+        fi
+
+    - name: Verify (run tests, join scenarios to specs)
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+      run: specify verify "$TARGET"
+
+    - name: Parity gate
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+      run: specify parity "$TARGET" --gate

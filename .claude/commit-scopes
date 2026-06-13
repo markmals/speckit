@@ -16,6 +16,9 @@ reports        # internal/reports — junit/xunit/event-stream adapters
 integrations   # internal/integrations
 extensions     # internal/extensions
 
+# Repo infrastructure
+ci             # .github/ workflows + the hosted gate action/reusable workflow
+
 # Fork meta
 fork           # fork establishment, provenance, FORK.md
 spike          # throwaway spikes/
