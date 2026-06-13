@@ -1,5 +1,9 @@
 {
   "name": "{{.Name}}",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#/*": "./app/*"
+  }
 }

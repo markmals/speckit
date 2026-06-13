@@ -1,28 +1,33 @@
 [tools]
 node = "24"
 pnpm = "11"
-# gh drives the GitHub-native surface (`specify`/`gh specify`: issues, projects,
-# secrets) and supplies the token the binary inherits. 2.94 is the floor for the
-# --type/--parent/--blocked-by automation.
+# gh drives the GitHub-native surface and supplies the token the binary inherits;
+# op resolves op:// secret references for `specify secrets sync`.
 gh = "2.94"
-# op (1Password CLI) resolves op:// secret references for `specify secrets sync`.
 op = "2"
 
-# Call npm binaries (vite, vitest, tsgo, oxlint, oxfmt) by bare name — no npx.
+# Call npm binaries (vite, vitest, tsgo, oxlint, oxfmt, tsr) by bare name — no npx.
 [env]
 _.path = ['{{config_root}}/node_modules/.bin']
+
+[tasks.routes]
+description = "generate the TanStack Router tree (app/routes.gen.ts)"
+run = "tsr generate"
 
 [tasks.dev]
 run = "vite dev"
 
 [tasks.test]
+description = "run Vitest with the junit reporter the engine joins"
 run = "vitest run --reporter=junit --outputFile=junit.xml"
 
 [tasks.typecheck]
-run = "tsgo"
+description = "type-check with tsgo (needs the generated route tree)"
+depends = ["routes"]
+run = "tsgo --noEmit"
 
 # Quality tasks — standard names the CI `quality` job calls (fmt:check/lint/typecheck).
-# Scoped to app/ (the source) so the gate stays on code, not config files.
+# Scoped to app/ (the source) so the gate stays on code, not config/generated files.
 [tasks.fmt]
 description = "format app/ in place (Oxfmt)"
 run = "oxfmt app"
@@ -32,7 +37,8 @@ description = "fail if app/ needs formatting (Oxfmt)"
 run = "oxfmt --check app"
 
 [tasks.lint]
-description = "lint app/ (Oxlint)"
+description = "lint app/ (Oxlint); needs the generated route tree"
+depends = ["routes"]
 run = "oxlint app"
 
 [tasks.build]

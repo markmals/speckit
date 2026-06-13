@@ -1,0 +1,8 @@
+{
+  "virtualRouteConfig": "app/routes.ts",
+  "routesDirectory": "app",
+  "generatedRouteTree": "app/routes.gen.ts",
+  "target": "react",
+  "semicolons": true,
+  "quoteStyle": "double"
+}

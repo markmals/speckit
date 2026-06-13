@@ -30,7 +30,13 @@ func TestWebScaffold(t *testing.T) {
 	if _, err := Render(sub, app, data); err != nil {
 		t.Fatal(err)
 	}
-	for _, p := range []string{"package.json", "mise.toml", "vitest.config.ts", ".oxlintrc.json", ".oxfmtrc.json", "app/lib/greeting.ts", "app/lib/greeting.test.ts"} {
+	for _, p := range []string{
+		"package.json", "mise.toml", "vite.config.ts", "tsconfig.json", "vitest.config.ts",
+		"tsr.config.json", ".oxlintrc.json", ".oxfmtrc.json",
+		"app/root.tsx", "app/router.tsx", "app/routes.ts", "app/routes/home.tsx",
+		"app/styles/tailwind.css", "app/styles/cva.ts", "app/components/foundation/button.tsx",
+		"app/lib/greeting.ts", "app/lib/greeting.test.ts",
+	} {
 		if _, err := os.Stat(filepath.Join(app, p)); err != nil {
 			t.Errorf("missing %s: %v", p, err)
 		}
@@ -38,6 +44,20 @@ func TestWebScaffold(t *testing.T) {
 	// the .tmpl suffix must be stripped
 	if _, err := os.Stat(filepath.Join(app, "package.json.tmpl")); !os.IsNotExist(err) {
 		t.Error("package.json.tmpl suffix not stripped")
+	}
+	// package.json wires the #/* subpath import alias + the target name.
+	pkg, _ := os.ReadFile(filepath.Join(app, "package.json"))
+	for _, want := range []string{`"name": "web"`, `"#/*": "./app/*"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Errorf("package.json missing %q:\n%s", want, pkg)
+		}
+	}
+	// vite.config wires TanStack Start (srcDirectory app) + the React Compiler pass + Tailwind.
+	vite, _ := os.ReadFile(filepath.Join(app, "vite.config.ts"))
+	for _, want := range []string{"tanstackStart(", `srcDirectory: "app"`, "reactCompilerPreset(", "tailwindcss("} {
+		if !strings.Contains(string(vite), want) {
+			t.Errorf("vite.config.ts missing %q", want)
+		}
 	}
 	// the quality CI job calls these standard task names — they must exist.
 	mise, err := os.ReadFile(filepath.Join(app, "mise.toml"))

@@ -1,12 +1,23 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": ["**/worker-configuration.d.ts", "dist/**"],
-  "plugins": ["import", "typescript", "react"],
+  "ignorePatterns": [
+    "**/worker-configuration.d.ts",
+    "dist/**",
+    "**/routes.gen.ts"
+  ],
+  "plugins": [
+    "import",
+    "typescript",
+    "react"
+  ],
   "options": {
     "typeAware": true,
     "typeCheck": true
   },
-  "jsPlugins": ["eslint-plugin-perfectionist", "eslint-plugin-prefer-let"],
+  "jsPlugins": [
+    "eslint-plugin-perfectionist",
+    "eslint-plugin-prefer-let"
+  ],
   "rules": {
     "typescript/no-floating-promises": "allow",
     "typescript/unbound-method": "allow",
@@ -26,6 +37,11 @@
       }
     ],
     "eslint/prefer-const": "off",
-    "prefer-let/prefer-let": [2, { "forceUpperCaseConst": true }]
+    "prefer-let/prefer-let": [
+      2,
+      {
+        "forceUpperCaseConst": true
+      }
+    ]
   }
 }
