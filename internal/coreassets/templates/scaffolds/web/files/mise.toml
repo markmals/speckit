@@ -1,7 +1,8 @@
 [tools]
 node = "24"
+pnpm = "11"
 
-# Call npm binaries (vite, vitest, tsgo) by bare name — no npx.
+# Call npm binaries (vite, vitest, tsgo, oxlint, oxfmt) by bare name — no npx.
 [env]
 _.path = ['{{config_root}}/node_modules/.bin']
 
@@ -13,6 +14,20 @@ run = "vitest run --reporter=junit --outputFile=junit.xml"
 
 [tasks.typecheck]
 run = "tsgo"
+
+# Quality tasks — standard names the CI `quality` job calls (fmt:check/lint/typecheck).
+# Scoped to app/ (the source) so the gate stays on code, not config files.
+[tasks.fmt]
+description = "format app/ in place (Oxfmt)"
+run = "oxfmt app"
+
+[tasks."fmt:check"]
+description = "fail if app/ needs formatting (Oxfmt)"
+run = "oxfmt --check app"
+
+[tasks.lint]
+description = "lint app/ (Oxlint)"
+run = "oxlint app"
 
 [tasks.build]
 run = "vite build"

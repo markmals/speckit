@@ -1,6 +1,16 @@
 [tools]
 go = "1.26"
 
+# Local-only container tooling for the gate self-test (`mise run act`). OS-gated
+# so the Windows CI matrix never tries to install them; CI's mise-action skips
+# them via MISE_DISABLE_TOOLS in .github/workflows/gate-selftest.yml. colima is
+# the mise-native Docker daemon (a Lima VM) since the macOS `docker` formula is
+# CLI-only.
+act = "0.2"
+colima = { version = "0.10", os = ["macos", "linux"] }
+lima = { version = "1", os = ["macos", "linux"] } # provides limactl, which colima drives
+docker-cli = { version = "29", os = ["macos", "linux"] }
+
 [tasks.build]
 description = "compile all packages"
 run = "go build ./..."
@@ -17,7 +27,7 @@ run = "go test ./..."
 description = "format the tree in place"
 run = "gofmt -w cmd internal"
 
-[tasks.fmt-check]
+[tasks."fmt:check"]
 description = "fail if anything needs gofmt"
 run = '''
 unformatted=$(gofmt -l cmd internal)
@@ -30,5 +40,14 @@ fi
 
 [tasks.ci]
 description = "everything CI runs, plus a gofmt gate — run before pushing"
-depends = ["fmt-check"]
+depends = ["fmt:check"]
 run = ["go build ./...", "go vet ./...", "go test ./..."]
+
+[tasks.act]
+description = "run the gate self-test workflow locally via act (boots colima if needed)"
+run = '''
+colima status >/dev/null 2>&1 || colima start
+DOCKER_HOST="$(docker context inspect colima -f '{{.Endpoints.docker.Host}}')"
+export DOCKER_HOST
+act workflow_dispatch -W .github/workflows/gate-selftest.yml
+'''

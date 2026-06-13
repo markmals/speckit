@@ -1,0 +1,46 @@
+# Self-test for the SpecKit gate Action (gate/action.yml).
+#
+# Runs the gate against testdata/act-fixture — a tiny end-to-end SpecKit project
+# (one scenario, one bound vitest test) — using a `specify` built from this very
+# checkout (`specify_source: local`), so it works before the first release tag
+# exists. This exercises the runner glue the unit tests can't: mise-action,
+# `mise install` + `pnpm install`, `specify verify` running the suite, the junit
+# join, and parity.
+#
+# Runs in CI on PRs that touch the gate, and locally via `mise run act`.
+#
+# Note: the test-edit firewall is skipped here (workflow_dispatch / push have no
+# PR base to diff, and it does not path-translate into a sub-directory project) —
+# its logic is covered by the Go unit tests in internal/engine.
+name: gate-selftest
+
+on:
+  pull_request:
+    paths:
+      - "gate/**"
+      - ".github/workflows/gate-selftest.yml"
+      - "testdata/act-fixture/**"
+      - "cmd/specify/**"
+      - "internal/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    # The gate action's mise-action installs the repo-root mise.toml; skip the
+    # local-only container tools (act/colima/docker-cli) on the runner.
+    env:
+      MISE_DISABLE_TOOLS: act,colima,lima,docker-cli
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./gate
+        with:
+          target: app
+          project_dir: testdata/act-fixture
+          working_directory: testdata/act-fixture/app
+          specify_source: local

@@ -20,6 +20,8 @@ func (claudeAdapter) SkillsDir() string { return ".claude/skills" }
 
 func (claudeAdapter) AgentsDir() string { return ".claude/agents" }
 
+func (claudeAdapter) RulesDir() string { return ".claude/rules" }
+
 func (claudeAdapter) Project(root string, commands []Command) ([]string, error) {
 	var written []string
 	for _, c := range commands {
@@ -50,4 +52,15 @@ const claudeOrientation = `# SpecKit
 This project uses SpecKit. The ` + "`/speckit.*`" + ` commands live in
 ` + "`.claude/skills/`" + ` and the runtime state in ` + "`.speckit/`" + `.
 Run ` + "`specify`" + ` for the engine (scan / verify / drift / parity).
+
+## Rules
+
+These always-loaded conventions live in ` + "`.claude/rules/`" + `:
+
+@.claude/rules/code-quality.md
+@.claude/rules/commit-discipline.md
+@.claude/rules/spec-conventions.md
+
+` + "`.claude/rules/enforcement-hierarchy.md`" + ` is the standard for deciding
+where a new convention lives — read it when you add one.
 `

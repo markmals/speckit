@@ -1,0 +1,9 @@
+[tools]
+node = "24"
+pnpm = "11"
+
+[env]
+_.path = ['{{config_root}}/node_modules/.bin']
+
+[tasks.test]
+run = "vitest run --reporter=junit --outputFile=junit.xml"

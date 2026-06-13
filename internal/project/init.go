@@ -86,6 +86,23 @@ func Init(root string, assets fs.FS, opts Options) ([]string, error) {
 			written = append(written, w)
 		}
 	}
+
+	// Project the always-loaded guidance rules into the agent's rules dir; the
+	// orientation file (CLAUDE.md / AGENTS.md / copilot-instructions.md) points at
+	// them.
+	if dir := adapter.RulesDir(); dir != "" {
+		rules, err := loadRules(assets)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range rules {
+			w, err := writeFile(filepath.Join(root, dir, r.Name+".md"), []byte(r.Content))
+			if err != nil {
+				return nil, err
+			}
+			written = append(written, w)
+		}
+	}
 	return written, nil
 }
 

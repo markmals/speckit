@@ -125,11 +125,14 @@ func (m Manifest) PhasedScripts(data Data) ([]Script, error) {
 // text/template (stripping the suffix) and copies everything else verbatim into
 // destDir. Returns the written paths (relative to destDir).
 func Render(src fs.FS, destDir string, data Data) ([]string, error) {
-	return renderSubtree(src, "files", destDir, data)
+	return renderSubtree(src, "files", destDir, data, false)
 }
 
 // renderSubtree renders one subtree (files/ or a feature's dir) into destDir.
-func renderSubtree(src fs.FS, root, destDir string, data Data) ([]string, error) {
+// When skipExisting is set, a destination file that already exists is left
+// untouched (and omitted from the returned paths) — so a shared subtree like
+// github/ never clobbers config the repo already has.
+func renderSubtree(src fs.FS, root, destDir string, data Data, skipExisting bool) ([]string, error) {
 	var written []string
 	err := fs.WalkDir(src, root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -155,6 +158,11 @@ func renderSubtree(src fs.FS, root, destDir string, data Data) ([]string, error)
 			b, out = []byte(s), strings.TrimSuffix(rel, ".tmpl")
 		}
 		dst := filepath.Join(destDir, out)
+		if skipExisting {
+			if _, err := os.Stat(dst); err == nil {
+				return nil // keep the repo's existing file
+			}
+		}
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			return err
 		}
@@ -174,7 +182,19 @@ func RenderRoot(src fs.FS, projectRoot string, data Data) ([]string, error) {
 	if _, err := fs.Stat(src, "root"); errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
-	return renderSubtree(src, "root", projectRoot, data)
+	return renderSubtree(src, "root", projectRoot, data, false)
+}
+
+// RenderGitHub renders the scaffold's optional github/ subtree (a .github/ tree
+// — the CI workflow today; PR templates, defect forms, CODEOWNERS later) into
+// the project root, skipping any file that already exists so a second
+// `target add` never clobbers the repo's existing GitHub config. Returns nil if
+// the scaffold has no github/ subtree.
+func RenderGitHub(src fs.FS, projectRoot string, data Data) ([]string, error) {
+	if _, err := fs.Stat(src, "github"); errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	return renderSubtree(src, "github", projectRoot, data, true)
 }
 
 // RenderFeature renders a feature's files subtree into destDir.
@@ -182,7 +202,7 @@ func RenderFeature(src fs.FS, f Feature, destDir string, data Data) ([]string, e
 	if f.Files == "" {
 		return nil, nil
 	}
-	return renderSubtree(src, f.Files, destDir, data)
+	return renderSubtree(src, f.Files, destDir, data, false)
 }
 
 // RenderTarget resolves the manifest's target fields against data.

@@ -75,7 +75,7 @@ run through `text/template` (so `{{.Dir}}` etc. resolve):
       "phase": 0,
       "commands": [
         "pnpm add react react-dom @tanstack/react-router @tanstack/react-start",
-        "pnpm add -D vite vitest typescript @vitejs/plugin-react @tailwindcss/vite tailwindcss",
+        "pnpm add -D vite vitest @typescript/native-preview @vitejs/plugin-react @tailwindcss/vite tailwindcss oxlint oxfmt oxlint-tsgolint eslint-plugin-perfectionist eslint-plugin-prefer-let",
         "pnpm install"
       ]
     }

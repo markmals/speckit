@@ -1,246 +1,200 @@
 # SpecKit backlog
 
-Running list of follow-ups raised while building the fork, so nothing gets lost
-between sessions. Newest asks at the top of each section. Status: ✅ done ·
-🔄 in progress · ⬜ todo · 🔒 blocked (dependency noted).
+Running list of follow-ups, so nothing gets lost between sessions. **Open work is
+ordered by priority** (P1 = next build → P6 = gated release); **completed work lives
+in [Completed](#completed) at the bottom**. Status: ✅ done · 🔄 in progress ·
+⬜ todo · 🔒 blocked.
 
 ---
 
-## Done this session
+## P1 · ✅ Shipped — GitHub Pillar 1 (PR gating)
 
-- ✅ **Command-prompt synthesis** — all 9 `/speckit.*` commands reworked: Workbench's hard-won
-  discipline (via the skills they invoke) + spec-kit's structural rigor (prioritized P1/P2/P3
-  stories, measurable success criteria, the clarify/analyze taxonomies, checklists, constitution)
-  on the fork's tooling (`.speckit/`, the `specify` engine, no scripts). All stale upstream refs
-  removed. Folder-layout decision resolved (see "Command-prompt rework" below).
-- ✅ **Authoring skills ported** — `brainstorming-feature`, `writing-user-stories`,
-  `implementing-a-spec`; the commands invoke them.
-- ✅ **Process-discipline trio** — `test-driven-development`, `verification-before-completion`,
-  `adversarial-review` authored and projected by `init` into the agent's skills dir.
-- ✅ **`systematic-debugging`** skill ported (command-agnostic).
-- ✅ **Homebrew via native bottling** — dropped goreleaser's `brews:` download-formula;
-  from-source `specify.rb` + tap auto-bump (`update-specify.yml`) + cross-repo dispatch
-  from `release.yml` via the PAT. Artifacts in `packaging/homebrew/`. Deploy gated on first release.
-- ✅ **Copilot skills → `.github/skills`** (cloud-agent convention).
-- ✅ **`verify` config `command` is a string**, not an array.
+Spec-honesty is now a non-bypassable required check. **Next build is P2.**
 
----
+- ✅ **Web-scaffold quality tasks (prerequisite).** `fmt`/`fmt:check` (Oxfmt) + `lint`
+  (Oxlint) mise tasks in the web scaffold, scoped to `app/`; `pnpm` pinned in `[tools]`.
+  `.oxfmtrc.json` + `.oxlintrc.json` **mirror the Vite+ reference** (`tanstack-react-start-contacts`):
+  Oxfmt with `tabWidth 4` / `printWidth 100` / `arrowParens avoid` / perfectionist import
+  sort / **`sortTailwindcss`** / `sortPackageJson` / jsonc+`.vscode` overrides; Oxlint with
+  type-aware rules + `jsPlugins` (perfectionist, prefer-let) + `import/extensions`. Deps:
+  `oxlint oxfmt oxlint-tsgolint eslint-plugin-perfectionist eslint-plugin-prefer-let`.
+  Green-on-arrival verified for real (`oxfmt --check` + `oxlint` + `tsgo` all exit 0 on a
+  freshly rendered scaffold with the full dep set).
+- ✅ **The gate Action + `ci.yml`.** Composite action `gate/action.yml`
+  (`markmals/speckit/gate@v1`) + reusable workflow `.github/workflows/gate.yml`; the
+  scaffold's `github/` subtree drops a thin-caller `.github/workflows/ci.yml` via the new
+  `scaffold.RenderGitHub` (skip-existing) wired into `target add`. Two jobs: `quality`
+  (mise tasks) + `verify` (the gate; runs the suite, so no double-run). Gate emits CI
+  annotations via the new `specify gate … --format github` (mirrors `oxlint --format
+  github`). **Deviation from the design doc, with rationale:** the CI sequence is `scan →
+  gate firewall → verify → parity --gate`; **`gate generated`/`gate scope` are git hooks,
+  not PR checks** — `verify` legitimately rewrites committed locks on green (a `generated`
+  PR check would false-positive), and `scope` validates a single commit subject.
+- ✅ **Branch-protection recipe** — documented `gh` ruleset fallback in
+  [docs/ci-gating.md](docs/ci-gating.md) (required contexts `quality` + `verify / verify`,
+  PR required, force-push blocked). `specify`-native provisioning rides on the gh-extension
+  auth (P2).
 
-## Skills port — bring over Workbench's full set
+**Needs a live PR to validate** (can't run an Actions runner locally): the mise/pnpm
+toolchain setup + trust in CI, the firewall `--against` base-SHA diff, and the
+`@v1`/`go install …@v1` references (dormant until the first release tag, P6).
 
-Workbench has **21 skills**; the slash commands should invoke them (as `/sdd-*` does).
+**Fast-follows** (richer annotations — captured under P4): line-level firewall annotations
+(`bindingsInContent` is regex-only, no line numbers today); and `--format github` on
+`verify`/`parity` so **unjoinable scenarios, dangling bindings, and drifted specs** also
+annotate to file:line — needs the report structs to carry the spec/test file path.
 
-**Universal process skills (8):**
-- ✅ test-driven-development · verification-before-completion · adversarial-review · systematic-debugging
-- ✅ implementing-a-spec · brainstorming-feature · writing-user-stories (ported + wired to the commands)
-- 🔒 **triaging-defects** — the `DEFECTS.md` drain; blocked on establishing a defect-ledger convention + a `/speckit.defect` equivalent + the per-target folder model.
-
-**Platform dev (9) + verification/control (4) skills:** ✅ All 13 ported to
-`internal/coreassets/templates/packs/<stack>/` and projected **on demand** by `specify packs`,
-gated on each target's `stack` (web/apple/android/go-cli/node-cli/website — evidence-based; windows/linux/rust-cli packs removed).
-`init` stays process-skills-only. See [docs/config.md](docs/config.md#platform-packs).
-
-**Wire skills to slash commands** ✅ — `/speckit.specify` → brainstorming-feature (+ writing-user-stories); `/speckit.implement` → implementing-a-spec; `/speckit.analyze` → `specify scan` + semantic passes; etc.
-
-⬜ **Feature-folder templates** (minor) — the fork ships spec-kit's `spec-template`/`plan-template`/`tasks-template`, but the commands now author Workbench-style feature folders. The skills point at `specs/CONVENTIONS.md` for structure (works), but `NARRATIVE`/story/model/view-model/error templates under `.speckit/templates/feature/` would scaffold faster.
-
----
-
-## Command-prompt rework ✅ (done this session)
-
-All 9 `/speckit.*` commands (analyze · checklist · clarify · constitution · implement · plan ·
-specify · tasks · taskstoissues) reworked to the fork's reality — synthesizing Workbench's
-discipline with spec-kit's rigor:
-
-- `.speckit/` not `.specify/`; no shell scripts; the `specify` engine (scan/verify/drift/cover/parity/gate).
-- Structured args (`/speckit.plan 0001-feature-name web`); commands invoke the process skills.
-- spec-kit strengths folded in: prioritized P1/P2/P3 stories, measurable success criteria, the
-  clarify 5-question / analyze severity taxonomies, the "unit tests for requirements" checklist, the constitution.
-
-**Folder-layout decision: resolved.** The Workbench data model (`features/<NNNN>/` with ID'd
-`stories/`/`models/`/`view-models/`, `// SPEC:` pointers, scenario sub-IDs) is canonical per
-`specs/CONVENTIONS.md` (mechanized in `specmodel`). spec-kit's monolithic `spec.md` is replaced by
-the feature folder; `plan` and `tasks` become **per-target layers on top** —
-`features/<NNNN>/plans/<target>.md` and `tasks/<target>.md`.
+Design: [docs/design/github-integration.md](docs/design/github-integration.md).
 
 ---
 
-## GitHub-native integration (new direction — design doc landed)
+## P2 · GitHub-native core + agent memory
 
-The strategic pivot: SpecKit's banner becomes **GitHub-native** (PRs gate, Issues hold
-defects, Projects hold the agent's work) while staying agent-native/agnostic. Full design in
-[docs/design/github-integration.md](docs/design/github-integration.md). Architecture: a portable
-spec-integrity core (engine never reads GitHub for correctness) + a GitHub-native workflow shell;
-GitHub is the blessed-default-but-overridable path; the engine *projects* repo truth onto GitHub
-surfaces. Determinism line: specs/locks/parity stay in the repo; defects/work/gating move to GitHub.
+The pivot's heart. Architecture: a portable spec-integrity core (engine works offline,
+never needs GitHub for correctness) + a GitHub-native workflow shell; the engine
+*projects* repo truth onto GitHub. Determinism line: specs/locks/parity/agent-memory
+stay in the repo; defects/work/gating are **ephemeral** on GitHub.
 
-- ⬜ **Pillar 1 — PR gating (build first).** Official composite Action + reusable workflow
-  (`markmals/speckit/gate@v1`) that installs `specify`, runs `scan`/`verify`/`parity --gate`/`gate *`,
-  and emits **Checks-API annotations** (scenario→file:line). Thin per-stack `workflows/speckit.yml`
-  caller. `specify github protect` (later) to provision the required-check ruleset via `gh api`.
-- ⬜ **Pillar 2 — Issues as defect intake.** Scenario-canonical lifecycle: defect Issue (type Bug,
-  via `defect.yml` form) → fix updates/adds a scenario + regression test → PR links *without
-  auto-close* (GA setting) → close on `verify` green (lock = proof). Link via `<!-- issue: #N -->` in
-  the scenario + lock record. Per-target `.github/`: gate workflow, PR template, `defect.yml`,
-  `config.yml`, `CODEOWNERS` for `/features` `/specs`, stack-ecosystem `dependabot.yml`.
-- ⬜ **Pillar 3 — Projects as work surface (Beads-informed).** Engine→board projection; agent drives
-  via `gh` + the **`NSExceptional/gh-projects`** extension (fork+pin; 2 PRs back: `--json` on writes,
-  generic field query). Borrow from Beads: a computed **`Ready`** Project field (blocks + parent
-  gate readiness — the highest-leverage steal), `discovered-from:#N` provenance (label+backlink — the
-  one GitHub gap), atomic claim, "land the plane" teardown. **Pin `gh ≥ 2.94.0`** (native
-  `--type`/`--parent`/`--blocked-by` + JSON, 2026-06-10).
-- ⬜ **Provider seam (light, v1).** A `"github"` block in `.speckit/specs.json` enables the blessed
-  path; omit it to run `specify` manually elsewhere (GitLab CI) or point the agent at another tracker
-  (linctl/Linear). Don't build the full `"providers"` map until a second blessed provider is real.
-- ⬜ **Future:** VS Code extension (codelens on `// SPEC:`, parity tree, board view); `specify` as a
-  `gh` extension; GitHub MCP `projects` toolset; GitHub Agentic Workflows; Discussions for spec RFCs.
-
----
-
-## Stack scaffolding (new — proposed, needs direction)
-
-⬜ `specify` should **scaffold a target's stack** — the wired-up starter (deps, pinned versions, config,
-and the scenario-binding test harness) — so the agent doesn't reassemble the right packages/conventions
-every time a new target or product begins. Complements the platform packs: a **pack** is the agent's
-*guidance* for a stack; a **scaffold** is the runnable *starter* for it, on the SpecKit-recommended stack.
-
-**Design doc:** [docs/design/stack-scaffolding.md](docs/design/stack-scaffolding.md) — full proposal, awaiting review.
-
-**Decided:** SpecKit-**curated** templates (not delegated to `create-*`), rendered with Go `text/template`;
-**design-first** (no code until the doc is signed off). Command: `specify target add <name> --stack <stack>`.
-First slice = **web** end-to-end (green on `specify verify` immediately), then **apple** (exercises the
-`swift` format + the `SpecTraits.swift` harness). Prior art: `~/Developer/Libraries/create-sprinkles`.
-
-**Resolved:** plain `specs.json` (so the merge is a trivial load→add→write), keep `{{ }}` with escaping,
-and `target add` runs the install (`--no-install` to skip). Folded into the design doc.
-
-**Web scaffold ✅ approved** ([web preview](docs/design/scaffolds/web.md)): **TanStack Start** (React 19 +
-React Compiler, `app/` dir + virtual file routes) + **Mise** (env/tasks/toolchain, monorepo = root + per-target
-config, `_.path = node_modules/.bin` for bare binaries) driving **raw Oxfmt/Oxlint/Vite/Vitest/tsdown** (Mise
-chosen for polyglot Node/Go/Swift + Astro, which vp doesn't do) + **Tailwind v4** + **React Aria**; data
-**`--data drizzle|convex`**; **SSR/server matrix** (SSR app | SPA+server | static SPA = Trove's daemon pattern);
-Clerk optional. Defaults `--ssr --server`/cloudflare/convex. **No bundled components** — Foundation is
-Catalyst-derived (paid/closed-source); encourage DIY Tailwind+React-Aria; **future:** a shadcn registry backed
-by React Aria (not Radix). Pack refresh = follow-up.
-
-  - ✅ **Build Part A (machinery):** `config.AddTarget`/`Save`; the `internal/scaffold` text/template renderer
-    (manifest, `.tmpl` handling, FuncMap casings, `--with` features, `RenderTarget`); `specify target add <name>
-    --stack <stack> [--dir --product --with --no-install]` — wired + tested (fixture). Runs the install, registers
-    the target, projects the pack.
-  - ✅ **Build Part B (web scaffold) — green end-to-end:** `templates/scaffolds/web/` (TanStack Start +
-    React 19 + Vite 8 + Tailwind 4 + Vitest 4 + Mise) seeds an example feature at the project root + a bound
-    test. Proven in a temp project: `target add web` → `pnpm add`/`pnpm install` → `mise run test` →
-    **`specify verify web` green + locked**. The scaffold `root/` subtree + `featuresEmpty` seeding are wired.
-  - ✅ **Align with create-sprinkles (resolve-by-running):** the manifest's single `install` string became a
-    phased **`scripts`** list (`{commands, phase, silent}` + `Manifest.PhasedScripts`). Dependency versions are
-    no longer hardcoded in `package.json.tmpl` (which carried floating `"latest"` that `pnpm install` never
-    pins); a phase-0 `pnpm add …` resolves + pins each dep at scaffold time (verified: `"vite": "^8.0.16"`,
-    `"@tanstack/react-router": "^1.170.15"`, …). Phases 1–3 (codegen/format/feature-setup) plug into the same
-    runner for the flesh-out. Documented in [stack-scaffolding.md](docs/design/stack-scaffolding.md).
-  - ⬜ **Web scaffold — flesh out:** the full default deps (React Compiler, React Aria, Motion, Zod, TanStack
-    Query/Table/Form/Hotkeys), the `app/` router structure, `--data convex|drizzle`, the SSR/server variants,
-    the `--with` features (clerk/stripe/…), Varlock + GitHub Actions + `.vscode`. Pack refresh to this stack.
-  - **Per-stack previews** ([docs/design/scaffolds/](docs/design/scaffolds/)): **web** ✅ spec'd (comprehensive
-    stack), **node-cli** ✅ spec'd (shares the Node toolchain; CLI-specific = Bombshell/TS-Rest/plainjob/SEA +
-    Homebrew/Mise/apt/winget dist). Each remaining stack gets the same inspect-then-spec pass; no scaffold is
-    built until its tooling preview is signed off.
-
-## Coverage gap — libraries / Swift packages / CLIs / extensions (from the ~/Developer sweep)
-
-⬜ A sweep of `~/Developer` showed SpecKit is **app-centric** but a large slice of the real work isn't apps:
-**libraries** (Reactivity, downpour, icing-components, content-layer, cider, sqlite-data, PrivateHeaderKit,
-catalyst-remix, create-sprinkles), **Swift packages/CLIs** (remctl, apple-platform-tools — a monorepo of
-Swift packages + CLIs), and a **VS Code extension** (mise-vscode). These don't fit the app-centric authoring
-model (NARRATIVE → human user stories → view-models/flows) — a library's consumer is a developer.
-
-**The engine doesn't care** (it joins scenario↔test regardless), so the fix is **additive**, not a redesign:
-- A product **`kind: app | library`**. For `library`, relax `writing-user-stories`' "actor is human" → the
-  actor is the API/CLI consumer; `story`+`domain`+`error` kinds apply, `view-model`/`flow` (UI) don't; dovetails
-  with the property-test guidance already in TDD. Maybe an `api`/`contract` spec kind.
-- New stacks/scaffolds: **`swift-package`**, **`swift-cli`** (SwiftPM, `swift test`, no simulator — distinct
-  from the GUI `apple` stack), **`ts-lib`** (npm package + Vitest, no dev server), **`vscode-extension`**.
-  The binding harness (Swift Testing / Vitest) carries over unchanged.
-- Monorepos (apple-platform-tools) are already covered — each package is a target/product.
-
-**Decided: expand now.** Design folded into [docs/design/library-products.md](docs/design/library-products.md)
-(the `kind` + the library authoring variant) and the [scaffolding doc](docs/design/stack-scaffolding.md).
-
-**Stack roster is evidence-based** (`~/Developer` + the `markmals`/`markmals-archive` GitHub accounts, 141 repos):
-**kept** — web · website (Astro) · apple · android (light: 2 archived Kotlin/KMP) · go-cli · node-cli ·
-swift-package · swift-cli · ts-lib · vscode-extension. **Dropped (zero evidence)** — `rust-cli`, `windows`
-(.NET), `linux`, `browser-extension` (only the ambiguous ObjC `SafariInjector`). Each stack's exact
-bleeding-edge tooling is **previewed for Mark's sign-off before its scaffold is built**. First build = web.
-
-## Config system — `.speckit/specs.json`
-
-- ✅ **targets** — `.speckit/specs.json` (plain JSON) with version/agent/paths/targets;
-  each target's verify wiring inline, retiring `.speckit/verify/<target>.json`. The engine keys on
-  **target** (lock `.speckit/lock/<target>/`); `scan` validates the config. Products are an optional
-  label; the `products` collection and `contracts` are documented as futures in [docs/config.md](docs/config.md).
-- ⬜ **product-rollup render** — `cover`/`parity` grouping + per-product verdict. The label and
-  `ProductTargets()` exist; the render lands with the multi-target slice below.
+- ⬜ **`specify` becomes a `gh` extension** (foundational for Pillars 2–3). One Go binary:
+  standalone `specify` (offline) **and** `gh specify …` (inherits `gh auth token` → zero
+  token plumbing). Inline the Projects GraphQL (lifted from `NSExceptional/gh-projects`)
+  in this repo; GitHub commands un-namespaced; likely **no config block** (auto-detect
+  repo + linked project). **Pin `gh ≥ 2.94.0` via `mise.toml`.**
+- ⬜ **Pillar 2 — Issues as ephemeral defect intake.** Scenario-canonical: defect Issue
+  (org type Bug, via `defect.yml`) → fix adds/updates a scenario + regression test → close
+  on `verify` green (lock = proof). **No durable issue↔scenario link** (rely on GitHub
+  cross-refs). Extend the `github/` scaffold subtree + `scaffold.RenderGitHub` seam (landed
+  in P1, today only `ci.yml`) with the rest of the per-target `.github/`: optional
+  `deploy.yml`, PR template, `defect.yml`, `config.yml`, `CODEOWNERS` for `/features`
+  `/specs`, stack `dependabot.yml`. Org Issue Types (Bug/Feature/Task + custom **Epic**);
+  label fallback off-org.
+- ⬜ **Pillar 3 — Projects as the work surface (Beads-informed, simplified).** Kanban;
+  **"ready" is a Status column, not a computed field**. Epics = Epic-typed issue +
+  sub-issues. Keep from Beads: `discovered-from:#N` provenance (label+backlink — the one
+  GitHub gap), atomic claim, "land the plane" teardown; `blocked-by` as a visual signal
+  only. Mirror Mark's `APL-Innovation-Lab/projects/1` columns (TBD — token lacks
+  `read:project`).
+- ⬜ **Agent memory (per-agent `memory/`).** Projected like skills: `.claude/memory/`,
+  `.agents/memory/`, `.github/memory/`. `MEMORY.md` index loaded every session + topic
+  files; committed. `init` wires loading (Claude `@import`; AGENTS.md/copilot directive);
+  ship a `managing-memory` skill. Agent-owned (not `gate generated`-protected); the engine
+  ignores it. Dogfood: this repo → `.claude/memory/`. Design:
+  [docs/design/agent-memory.md](docs/design/agent-memory.md).
+- ⬜ **Deploy workflows (optional, none required).** `deploy.yml` for `cloudflare-workers-ssr`,
+  `cloudflare-workers-spa` (assets), `railway`, `github-pages-spa`. Chosen at
+  `specify init --deploy`, addable later (`specify deploy add`); per-target vs project-level
+  ergonomics open. (`CLOUDFLARE_ACCOUNT_ID` is committed in `wrangler.jsonc`, not a secret.)
+- ⬜ **Secrets via 1Password (`op`).** 1Password is the single source of truth; repo holds
+  only `op://` references, never values. `specify` resolves via local `op` and pushes to
+  GitHub Actions secrets (`gh secret set`) + the platform store (`wrangler secret put` /
+  `railway variables`), piping op→consumer (never echoed/logged). Optional upgrade:
+  runtime-load via `OP_SERVICE_ACCOUNT_TOKEN` + `1password/load-secrets-action`. Pin `op`
+  in `mise.toml`.
 
 ---
 
-## Subagents — claude-pack
+## P3 · Scaffolding & stack coverage
 
-- ✅ `spec-reviewer` · `test-gap-finder` · `drift-hunter` · `handoff-builder` ported and projected into
-  `.claude/agents/` (claude-only — codex/generic/copilot have no projectable subagent-dispatch dir). Each
-  leans on the engine: spec-reviewer → `specify scan`; the rest → `specify verify`/`drift`/`parity`.
-- ✅ `visual-verifier` — ported (drives Chrome DevTools / iOS sim / Android emulator through a story's
-  Gherkin scenarios), projected by `init` alongside the other subagents.
-- ⬜ codex/copilot review-equivalents — open question; their delegation models differ from Claude's dispatch.
-
----
-
-## Hooks (11) — claude-pack overlay
-
-⬜ `block-generated` · `format-on-edit` · `scoped-commits` · `spec-reconcile` · `stop-lint` ·
-`notify-long-task` · `user-prompt-context` + codegen hooks (`convex`/`openapi`/`tuist`). Note: `gate`
-already mechanizes the enforcement ones (firewall / generated / scope) — decide which hooks remain
-worthwhile vs. folded into `gate`.
-
----
-
-## Scanner enhancement
-
-⬜ Support the per-framework binding forms `CONVENTIONS.md` already documents: MSTest
-`[TestProperty("scenario", …)]`, kotlin `@Tag("scenario:…")`, generic `// [scenario.id]` comment.
-Currently the scanner reads only Swift traits + Vitest titles.
+- ⬜ **Web scaffold — flesh out** to the full default: React Compiler, React Aria, Motion,
+  Zod, TanStack Query/Table/Form/Hotkeys; the `app/` router structure; `--data convex|drizzle`;
+  the SSR/server variants; `--with` features (clerk/stripe/…); Varlock + `.vscode`. Pack
+  refresh to this stack. Stack approved in [scaffolds/web.md](docs/design/scaffolds/web.md).
+- ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
+  "actor is human" rule for libraries; `story`+`domain`+`error` apply, UI kinds don't) and the
+  stacks **`swift-package`**, **`swift-cli`**, **`ts-lib`**, **`vscode-extension`**. Engine
+  unchanged (joins scenario↔test regardless). Design:
+  [library-products.md](docs/design/library-products.md). Roster is evidence-based (web ·
+  website · apple · android · go-cli · node-cli · swift-package · swift-cli · ts-lib ·
+  vscode-extension; dropped rust-cli/windows/linux/browser-extension).
+- ⬜ **Per-stack scaffold builds** — **apple next** (exercises the `swift` report format + the
+  `SpecTraits.swift` harness), then the rest one at a time, each gated on a tooling preview.
+  node-cli already spec'd ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
+- ⬜ **Feature-folder templates** (minor) — `NARRATIVE`/story/model/view-model/error templates
+  under `.speckit/templates/feature/` so the commands scaffold faster (today they point at
+  `specs/CONVENTIONS.md`, which works).
 
 ---
 
-## Docs
+## P4 · Engine & workflow enhancements
 
-✅ **Repo-wide prose sweep** (platform→target + de-upstream). Migrated the engine-key
-`platform`→`target` vocabulary across the spec library (engine + lifecycle stories/NARRATIVE/README,
-`specs/models/{lock,ledger,specmodel}.md`) — scenario IDs left frozen, `scan` clean. Added `specify target add`
-coverage + a refreshed Status line to the README. De-upstreamed the inherited GitHub community files
-(SECURITY, SUPPORT, PR template, CODE_OF_CONDUCT contact). Fixed the botched `Target Target` in plan-template.
-
-✅ Rewrote `spec-driven.md` — replaced the upstream Python/branch/Nine-Articles essay with the fork's model
-(targets, the source-bound join, verify→lock→drift→cover→parity→gate, trunk-based).
-
-⬜ **Decision — historical-doc vocab.** `FORK.md` / `FORK-PLAN.md` still use engine-key `platform` (~100
-occurrences in FORK-PLAN) as dated planning records. Decide: migrate to `target` for consistency, or leave as
-pinned historical artifacts. (Left untouched for now.)
-
-⬜ **Decision — `init --platforms` / `extension add` vs `target add --stack`.** The `features/0002-init`
-extension stories spec a `--platforms`/`specify extension add` surface that overlaps the shipped
-`specify target add --stack` + `specify packs`. Reconcile the planned design (or relabel the stories as a
-deferred Phase-4 surface).
-
-⬜ **Legacy whole-file templates.** `plan-template.md` / `tasks-template.md` / `checklist-template.md` still use
-the upstream `spec.md`/`plan.md`/`tasks.md` artifact model and carry unrendered `__SPECKIT_COMMAND_*__` tokens
-(no Go-side substitution). At odds with the feature-folder model the commands/skills now use.
-
-⬜ **Minor (code):** `cmd/specify/render.go` prints a `PLATFORM` column header in the cover/parity/gate state
-table — rename to `TARGET` to match the rest of the CLI.
+- ⬜ **Richer CI annotations (P1 fast-follow).** Extend `--format github` past the firewall:
+  thread the spec/test **file path** (and line) into `VerifyResult` (unjoinable → spec file,
+  dangling → test file) and `ParityCell` (drifted/suspect → spec file), then add `--format
+  github` to `verify`/`parity` so every gate failure annotates to **file:line** in the PR.
+  Also give `bindingsInContent` line numbers so the firewall annotation points at the exact
+  `it(...)`/`@Test` line. Today only the firewall annotates, at file level.
+- ⬜ **Scanner — multi-framework bindings.** Support the forms `CONVENTIONS.md` documents but
+  the scanner doesn't yet read: MSTest `[TestProperty("scenario", …)]`, kotlin
+  `@Tag("scenario:…")`, generic `// [scenario.id]` comment. (Today: Swift traits + Vitest
+  titles only.)
+- ⬜ **Product-rollup render** — `cover`/`parity` grouping + per-product verdict. `ProductTargets()`
+  exists; lands with the multi-target slice.
+- ⬜ **triaging-defects skill** — reframe around **GitHub Issues** (Pillar 2 supersedes the old
+  `DEFECTS.md`-ledger blocker): triage an issue → scenario/regression test → close on green.
+- ⬜ **Hooks (claude-pack overlay)** — `format-on-edit`, `spec-reconcile`, `stop-lint`,
+  `notify-long-task`, `user-prompt-context` + codegen hooks (convex/openapi/tuist). `gate`
+  already mechanizes the enforcement ones (firewall/generated/scope) — decide which hooks remain
+  vs. folded into `gate`.
+- ⬜ **codex/copilot review subagents** — equivalents to the claude-pack reviewers; their
+  delegation models differ from Claude's dispatch (open question).
+- ⬜ **VS Code extension** — codelens on `// SPEC:` (jump scenario ↔ bound test), drift gutter,
+  a parity tree, run the gate, a board view. The developer-native complement to the CLI.
 
 ---
 
-## Release gate (outward — needs explicit go-ahead)
+## P5 · Docs decisions & minor cleanups
 
-⬜ The first release (`v0.1.0` tag) is the trigger that activates brew + mise. On tag: goreleaser
-publishes archives and dispatches `specify-release` to the tap; the tap bumps + bottles. First-release
-checklist is in `packaging/homebrew/README.md`. Do **not** tag or push to the tap without confirmation.
+- ⬜ **Decision — historical-doc vocab.** `FORK.md` / `FORK-PLAN.md` still use engine-key
+  `platform` (~100× in FORK-PLAN) as dated planning records. Migrate to `target`, or leave as
+  pinned artifacts? (Untouched for now.)
+- ⬜ **Decision — `init --platforms` / `extension add` vs `target add --stack`.** The
+  `features/0002-init` extension stories spec a surface that overlaps the shipped `target add` +
+  `packs`. Reconcile, or relabel as a deferred Phase-4 design.
+- ⬜ **Legacy whole-file templates.** `plan-template.md` / `tasks-template.md` /
+  `checklist-template.md` still use the upstream `spec.md`/`plan.md`/`tasks.md` model + unrendered
+  `__SPECKIT_COMMAND_*__` tokens — at odds with the feature-folder model.
+- ⬜ **`render.go` PLATFORM header** — the cover/parity/gate state table prints a `PLATFORM`
+  column; rename to `TARGET`.
+- ⬜ **Discussions** (maybe) — spec RFCs before they're committed. Take it or leave it. **Not
+  pursuing:** GitHub MCP toolset, GitHub Agentic Workflows.
+
+---
+
+## P6 · Release (outward — needs explicit go-ahead)
+
+- ⬜ The first release (`v0.1.0` tag) activates brew + mise. On tag: goreleaser publishes
+  archives and dispatches `specify-release` to the tap; the tap bumps + bottles. Checklist in
+  `packaging/homebrew/README.md`. **Do not tag or push to the tap without confirmation.**
+
+---
+
+## Completed
+
+- ✅ **Engine & config** — `.speckit/specs.json` (plain JSON: version/agent/paths/targets, verify
+  wiring inline); the engine keys on **target** (`platform`→`target` rename through code, specs, and
+  docs); `scan` validates the config. The full engine (scan/verify/lock/drift/cover/parity/gate) and
+  `init` are implemented + tested.
+- ✅ **Commands & skills** — all 9 `/speckit.*` commands reworked to the fork's reality (`.speckit/`,
+  the `specify` engine, no scripts) synthesizing Workbench discipline + spec-kit rigor; 7 universal
+  process/authoring skills + 13 platform-pack skills ported and wired to the commands; the
+  feature-folder data model (`features/<NNNN>/…`, scenario sub-IDs, `// SPEC:` pointers) resolved as
+  canonical.
+- ✅ **Rules pack** — `code-quality` · `commit-discipline` · `spec-conventions` ·
+  `enforcement-hierarchy` ported from Workbench to the fork's reality (`target`, `specify
+  gate`/`verify`, the engine mechanizes the sync invariants) and projected by `init` into each
+  agent's rules dir (`.claude/rules/` · `.agents/rules/` · `.github/rules/`), referenced from the
+  orientation file (`@import` for Claude; a directive for AGENTS.md / copilot-instructions.md).
+- ✅ **Subagents (claude-pack)** — `spec-reviewer` · `test-gap-finder` · `drift-hunter` ·
+  `handoff-builder` · `visual-verifier` ported and projected into `.claude/agents/`.
+- ✅ **Stack scaffolding (machinery + web)** — Part A (`config.AddTarget`/`Save`, the
+  `internal/scaffold` text/template renderer, `specify target add … --stack`); Part B (the **web**
+  scaffold green end-to-end: `target add web` → `pnpm add` → `mise run test` → `verify` green +
+  locked); the create-sprinkles **resolve-by-running** alignment (phased `scripts`, `pnpm add` pins
+  versions, no hardcoded `"latest"`); tsgo fix (`@typescript/native-preview` + `tsgo` typecheck task).
+  web + node-cli stacks spec'd.
+- ✅ **Distribution** — Homebrew from-source bottling (`specify.rb` + tap auto-bump + cross-repo
+  dispatch); deploy gated on the first release (P6).
+- ✅ **Docs & design** — repo-wide prose currency sweep (`platform`→`target`, de-upstreamed the
+  inherited GitHub community files, removed dead upstream `.github/` config); `spec-driven.md` rewritten
+  to the fork's model; design docs landed for **GitHub integration**, **agent memory**, **stack
+  scaffolding**, and **library products**; mise task naming convention set to colons (`fmt:check`).

@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -14,30 +12,18 @@ var deviateRe = regexp.MustCompile(`// SPEC: (scenario\.[a-z0-9.\-]+) \(deviates
 
 // ScanDeviations reads scenario-scoped deviation markers from a target's
 // source — `// SPEC: <scenario-id> (deviates: <reason>)` (CONVENTIONS) — and
-// returns scenario-id -> reason.
+// returns scenario-id -> reason. Generated and vendored directories are skipped
+// (see walkSourceFiles); every other file is read, since the marker can appear
+// in any `//`-comment language.
 //
 // SPEC: story.engine.parity
 func ScanDeviations(dir string) (map[specmodel.SpecID]string, error) {
 	out := map[specmodel.SpecID]string{}
-	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		b, err := os.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		for _, m := range deviateRe.FindAllStringSubmatch(string(b), -1) {
+	err := walkSourceFiles(dir, nil, func(_ string, content []byte) {
+		for _, m := range deviateRe.FindAllStringSubmatch(string(content), -1) {
 			out[specmodel.SpecID(m[1])] = m[2]
 		}
-		return nil
 	})
-	if os.IsNotExist(err) {
-		return out, nil
-	}
 	return out, err
 }
 

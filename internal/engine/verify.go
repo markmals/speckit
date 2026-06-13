@@ -1,9 +1,6 @@
 package engine
 
 import (
-	"io/fs"
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -121,29 +118,15 @@ func bindingsInContent(src string) []Binding {
 // ScanBindings reads scenario↔test bindings from a target's test source (D15):
 // Swift Testing `.scenario(...)` traits on raw-identifier funcs, and Vitest
 // it() titles that lead with [scenario.id]. The binding's Identity is the test
-// name as it appears in the runner's report.
+// name as it appears in the runner's report. Generated and vendored
+// directories (node_modules, .gitignore'd trees) are skipped — see
+// walkSourceFiles.
 //
 // SPEC: story.engine.verify (scenario.engine.verify.source-bound-join)
 func ScanBindings(dir string) ([]Binding, error) {
 	var bindings []Binding
-	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		switch filepath.Ext(p) {
-		case ".swift", ".ts", ".tsx", ".js", ".mjs":
-		default:
-			return nil
-		}
-		b, err := os.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		bindings = append(bindings, bindingsInContent(string(b))...)
-		return nil
+	err := walkSourceFiles(dir, sourceExts, func(_ string, content []byte) {
+		bindings = append(bindings, bindingsInContent(string(content))...)
 	})
 	return bindings, err
 }

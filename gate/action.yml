@@ -1,0 +1,112 @@
+name: SpecKit gate
+description: >-
+  Run the SpecKit spec gate for a target — lint the spec library (scan), the
+  test-edit firewall, verify (which runs the test suite and joins each scenario
+  to its bound test), and the parity matrix — emitting GitHub annotations on the
+  files that drift. Assumes the repo is already checked out with full history
+  (fetch-depth: 0) so the firewall can diff against the PR base.
+
+inputs:
+  target:
+    description: The target to verify — a key in .speckit/specs.json.
+    required: true
+  working_directory:
+    description: >-
+      The target's app directory (e.g. apps/web). Its toolchain is installed
+      with `mise install`, and if it has a package.json its npm deps are
+      installed with `pnpm install --frozen-lockfile`, before verify runs.
+      Leave empty for stacks that need no per-directory setup.
+    required: false
+    default: ""
+  specify_version:
+    description: The `specify` version/ref installed via `go install` (a tag, branch, or SHA).
+    required: false
+    default: v1
+  specify_source:
+    description: >-
+      Where `specify` comes from. `release` (default) installs it with
+      `go install …@<specify_version>`; `local` builds it from a checkout of
+      this repo at `$GITHUB_WORKSPACE/cmd/specify` — used by the action's own
+      self-test, where the released version does not exist yet.
+    required: false
+    default: release
+  project_dir:
+    description: >-
+      The SpecKit project root (where `.speckit/specs.json` lives) when it is
+      not the repository root — e.g. a test fixture or a project nested in a
+      monorepo. The scan / firewall / verify / parity steps run here.
+    required: false
+    default: "."
+  go_version:
+    description: The Go toolchain used to build `specify`.
+    required: false
+    default: "1.26"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ inputs.go_version }}
+
+    - name: Install specify
+      shell: bash
+      env:
+        SPECIFY_VERSION: ${{ inputs.specify_version }}
+        SPECIFY_SOURCE: ${{ inputs.specify_source }}
+      run: |
+        if [ "$SPECIFY_SOURCE" = "local" ]; then
+          ( cd "$GITHUB_WORKSPACE" && go build -o "$(go env GOPATH)/bin/specify" ./cmd/specify )
+        else
+          go install "github.com/markmals/speckit/cmd/specify@${SPECIFY_VERSION}"
+        fi
+        echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+    - name: Set up mise
+      uses: jdx/mise-action@v4
+
+    - name: Install target toolchain & deps
+      shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: |
+        if [ -n "$WORKING_DIRECTORY" ]; then
+          cd "$WORKING_DIRECTORY"
+          mise trust
+          mise install
+          if [ -f package.json ]; then
+            pnpm install --frozen-lockfile
+          fi
+        fi
+
+    - name: Lint the spec library (scan)
+      shell: bash
+      working-directory: ${{ inputs.project_dir }}
+      run: specify scan
+
+    - name: Test-edit firewall
+      shell: bash
+      working-directory: ${{ inputs.project_dir }}
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        if [ -n "$BASE_SHA" ]; then
+          specify gate firewall --against "$BASE_SHA" --format github
+        else
+          echo "not a pull_request event — skipping the test-edit firewall"
+        fi
+
+    - name: Verify (run tests, join scenarios to specs)
+      shell: bash
+      working-directory: ${{ inputs.project_dir }}
+      env:
+        TARGET: ${{ inputs.target }}
+      run: specify verify "$TARGET"
+
+    - name: Parity gate
+      shell: bash
+      working-directory: ${{ inputs.project_dir }}
+      env:
+        TARGET: ${{ inputs.target }}
+      run: specify parity "$TARGET" --gate

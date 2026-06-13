@@ -1,3 +1,7 @@
+.agents/rules/code-quality.md
+.agents/rules/commit-discipline.md
+.agents/rules/enforcement-hierarchy.md
+.agents/rules/spec-conventions.md
 .agents/skills/adversarial-review/SKILL.md
 .agents/skills/brainstorming-feature/SKILL.md
 .agents/skills/implementing-a-spec/SKILL.md
