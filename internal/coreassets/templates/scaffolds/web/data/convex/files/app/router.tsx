@@ -4,6 +4,7 @@ import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query
 import { ConvexProvider } from "convex/react";
 
 import { convex, queryClient } from "#/data/convex.ts";
+import { Providers } from "#/providers.tsx";
 
 import { routeTree } from "./routes.gen.ts";
 
@@ -15,7 +16,9 @@ export function getRouter() {
         scrollRestoration: true,
         Wrap: ({ children }) => (
             <ConvexProvider client={convex}>
-                <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+                <QueryClientProvider client={queryClient}>
+                    <Providers>{children}</Providers>
+                </QueryClientProvider>
             </ConvexProvider>
         ),
     });
