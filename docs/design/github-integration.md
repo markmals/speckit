@@ -246,8 +246,8 @@ branch (or on release), and lists the secrets to set (via `gh secret set` or the
 
 | kind | Action / mechanism | Secrets | Notes |
 | --- | --- | --- | --- |
-| `cloudflare-workers-ssr` | `cloudflare/wrangler-action` → `wrangler deploy` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | SSR app on Workers (e.g. TanStack Start); needs `wrangler.jsonc` with a server entry |
-| `cloudflare-workers-spa` | `wrangler deploy` with Workers static **assets** | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | assets-only; `assets.not_found_handling = "single-page-application"`, no server worker |
+| `cloudflare-workers-ssr` | `cloudflare/wrangler-action` → `wrangler deploy` | `CLOUDFLARE_API_TOKEN` | SSR app on Workers (e.g. TanStack Start); `account_id` is committed in `wrangler.jsonc` (an identifier, not a secret), which also carries the server entry |
+| `cloudflare-workers-spa` | `wrangler deploy` with Workers static **assets** | `CLOUDFLARE_API_TOKEN` | assets-only; `account_id` in `wrangler.jsonc`; `assets.not_found_handling = "single-page-application"`, no server worker |
 | `railway` | Railway CLI in-workflow (`railway up --service <svc>`) | `RAILWAY_TOKEN` | for server/container apps; alternatively Railway's own GitHub auto-deploy (no workflow) |
 | `github-pages-spa` | `actions/upload-pages-artifact` + `actions/deploy-pages` | none (uses `GITHUB_TOKEN`) | needs Pages enabled, `pages: write` + `id-token: write`, `environment: github-pages`; handle the `/<repo>/` base + SPA 404 fallback |
 
@@ -275,10 +275,10 @@ Declarative — the deploy manifest maps each secret to its reference (committab
 ```jsonc
 "deploy": {
   "kind": "cloudflare-workers-ssr",
-  "ci":      { "CLOUDFLARE_API_TOKEN": "op://Private/Cloudflare/api_token",
-               "CLOUDFLARE_ACCOUNT_ID": "op://Private/Cloudflare/account_id" },
+  "ci":      { "CLOUDFLARE_API_TOKEN": "op://Private/Cloudflare/api_token" },
   "runtime": { "DATABASE_URL": "op://Private/app-db/url" }
 }
+// note: CLOUDFLARE_ACCOUNT_ID is not here — it's committed in wrangler.jsonc (an identifier, not a secret)
 ```
 
 `specify deploy add <kind>` (and a re-runnable `specify secrets sync`) reads each
