@@ -28,6 +28,10 @@
     },
     "posthog": {
       "add": ["posthog-js"]
+    },
+    "email": {
+      "files": "features/email/files",
+      "add": ["resend", "react-email", "@react-email/render"]
     }
   },
   "dataDefault": "convex",
