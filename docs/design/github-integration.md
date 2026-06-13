@@ -93,7 +93,7 @@ A PR run has two distinct concerns, and they get **two parallel jobs in one
 trigger → one run to inspect, but independent status checks):
 
 - **`quality`** — the target's fast static checks via its mise tasks:
-  `fmt-check`, `lint`, `typecheck`.
+  `fmt:check`, `lint`, `typecheck`.
 - **`verify`** — the SpecKit spec gate: `scan` → `verify <target>` → `parity --gate`
   → `gate firewall`/`generated`/`scope`, with Checks-API annotations.
 
@@ -117,7 +117,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: jdx/mise-action@v3
-      - run: mise run -C apps/web fmt-check
+      - run: mise run -C apps/web fmt:check
       - run: mise run -C apps/web lint
       - run: mise run -C apps/web typecheck
   verify:
@@ -130,8 +130,9 @@ killer feature — inline PR comments on the exact scenario), duplicates logic a
 stacks, and forces a re-scaffold to update. The reusable workflow earns its keep via
 annotations + setup + single-source updates; the thin caller keeps it transparent.
 This works stack-agnostically because every scaffold exposes the **standard mise
-task names** (`test`, `fmt-check`, `lint`, `typecheck`); a stack without one simply
-omits that step.
+task names** (`test`, `fmt:check`, `lint`, `typecheck`); a stack without one simply
+omits that step. (Mise task-name parts are colon-separated — `fmt:check`, not
+`fmt-check`.)
 
 ### Branch protection / rulesets
 
@@ -172,7 +173,7 @@ the same hierarchy Beads gets from parent-child. *Caveat:* Issue Types are an
 
 | File | Purpose |
 | --- | --- |
-| `workflows/ci.yml` | PR checks — a `quality` job (fmt-check/lint/typecheck) + a `verify` job (the spec gate, which also runs tests) |
+| `workflows/ci.yml` | PR checks — a `quality` job (fmt:check/lint/typecheck) + a `verify` job (the spec gate, which also runs tests) |
 | `workflows/deploy.yml` | *optional* deploy (see below); only if a deploy target was chosen |
 | `PULL_REQUEST_TEMPLATE.md` | spec-touch checklist (specs changed? scenarios bound? `verify` green? `drift` clean?) |
 | `ISSUE_TEMPLATE/defect.yml` | a defect form — stamps `type: Bug`, a label, the project; prompts for repro + the target |

@@ -9,7 +9,7 @@ Run the local CI gate — it mirrors the `go` GitHub workflow exactly, plus a
 gofmt check:
 
 ```sh
-mise run ci   # gofmt-check + go build + go vet + go test, all packages
+mise run ci   # gofmt check + go build + go vet + go test, all packages
 ```
 
 `mise run fmt` formats the tree in place. **Always run `mise run ci` before
@@ -35,6 +35,7 @@ pushing** so failures are caught locally instead of on a remote runner.
   `features/`, and its tests carry `// SPEC:` reverse pointers. `specify scan`
   must stay clean.
 - Commits are scoped (`<scope>: <subject>`); `specify gate scope` enforces it.
+- Mise task names use colons as separators — `fmt:check` (in TOML, `[tasks."fmt:check"]`), not `fmt-check`. Same convention in scaffolded projects.
 - Projection changes are covered by golden trees under
   `internal/project/testdata/goldens/` — regenerate with
   `go test ./internal/project -run TestInitGoldenTrees -update`.

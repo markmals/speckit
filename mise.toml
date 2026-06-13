@@ -17,7 +17,7 @@ run = "go test ./..."
 description = "format the tree in place"
 run = "gofmt -w cmd internal"
 
-[tasks.fmt-check]
+[tasks."fmt:check"]
 description = "fail if anything needs gofmt"
 run = '''
 unformatted=$(gofmt -l cmd internal)
@@ -30,5 +30,5 @@ fi
 
 [tasks.ci]
 description = "everything CI runs, plus a gofmt gate — run before pushing"
-depends = ["fmt-check"]
+depends = ["fmt:check"]
 run = ["go build ./...", "go vet ./...", "go test ./..."]

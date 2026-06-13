@@ -81,11 +81,11 @@ no truth).
   commands live in the binary un-namespaced; likely **no config block** (auto-detect repo + linked
   project via gh). **Pin `gh ≥ 2.94.0` via `mise.toml`** (`[tools] gh = "2.94"`).
 - ⬜ **Pillar 1 — PR gating (build first).** One **`workflows/ci.yml`** (descriptive name) with two
-  parallel jobs: **`quality`** (the target's mise `fmt-check`/`lint`/`typecheck`) + **`verify`** (the
+  parallel jobs: **`quality`** (the target's mise `fmt:check`/`lint`/`typecheck`) + **`verify`** (the
   spec gate — composite Action/reusable workflow that installs `specify`, runs `scan`/`verify`/`parity
   --gate`/`gate *` with **Checks-API annotations**). `verify` already runs the test suite via the
   target command, so tests aren't double-run. Both required checks. Needs standard mise task names
-  (`test`/`fmt-check`/`lint`/`typecheck`) in every scaffold — add `fmt-check`/`lint` to the web stack
+  (`test`/`fmt:check`/`lint`/`typecheck`) in every scaffold — add `fmt:check`/`lint` to the web stack
   (oxfmt/oxlint). `specify` provisions the required-check ruleset via the API.
 - ⬜ **Pillar 2 — Issues as ephemeral defect intake.** Scenario-canonical: defect Issue (org type Bug,
   via `defect.yml`) → fix adds/updates a scenario + regression test → close on `verify` green (lock =
