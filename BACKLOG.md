@@ -179,6 +179,11 @@ stay in the repo; defects/work/gating are **ephemeral** on GitHub.
   process/authoring skills + 13 platform-pack skills ported and wired to the commands; the
   feature-folder data model (`features/<NNNN>/…`, scenario sub-IDs, `// SPEC:` pointers) resolved as
   canonical.
+- ✅ **Rules pack** — `code-quality` · `commit-discipline` · `spec-conventions` ·
+  `enforcement-hierarchy` ported from Workbench to the fork's reality (`target`, `specify
+  gate`/`verify`, the engine mechanizes the sync invariants) and projected by `init` into each
+  agent's rules dir (`.claude/rules/` · `.agents/rules/` · `.github/rules/`), referenced from the
+  orientation file (`@import` for Claude; a directive for AGENTS.md / copilot-instructions.md).
 - ✅ **Subagents (claude-pack)** — `spec-reviewer` · `test-gap-finder` · `drift-hunter` ·
   `handoff-builder` · `visual-verifier` ported and projected into `.claude/agents/`.
 - ✅ **Stack scaffolding (machinery + web)** — Part A (`config.AddTarget`/`Save`, the
