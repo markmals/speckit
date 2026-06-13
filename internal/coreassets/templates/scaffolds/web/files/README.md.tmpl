@@ -5,5 +5,10 @@ A TanStack Start web app scaffolded by SpecKit. Add routes under `app/routes/`.
 - `mise run dev` — dev server
 - `mise run test` — Vitest; a test is bound to a spec scenario by an
   `[scenario.<id>]` prefix on its `it(...)` title (see `app/lib/greeting.test.ts`).
+- `mise run lint` — Oxlint · `mise run typecheck` — tsgo
+- `mise run fmt` — Oxfmt (format `app/`) · `mise run fmt:check` — the CI check
 
 `specify verify {{.Name}}` runs the tests and joins each scenario to its bound test.
+
+In CI, `lint` / `typecheck` / `fmt:check` make up the **quality** job and `verify`
+(the spec gate, which also runs `test`) makes up the **verify** job — both required.
