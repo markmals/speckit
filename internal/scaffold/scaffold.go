@@ -19,11 +19,33 @@ import (
 
 // Manifest is a scaffold's scaffold.json.
 type Manifest struct {
-	Stack     string             `json:"stack"`
-	Scripts   []Script           `json:"scripts,omitempty"`
-	Target    ManifestTarget     `json:"target"`
-	Variables []Variable         `json:"variables,omitempty"`
-	Features  map[string]Feature `json:"features,omitempty"`
+	Stack       string                 `json:"stack"`
+	Scripts     []Script               `json:"scripts,omitempty"`
+	Target      ManifestTarget         `json:"target"`
+	Variables   []Variable             `json:"variables,omitempty"`
+	Features    map[string]Feature     `json:"features,omitempty"`
+	DataDefault string                 `json:"dataDefault,omitempty"` // the --data kind used when none is given
+	Data        map[string]DataVariant `json:"data,omitempty"`        // selectable data layers (--data <kind>)
+}
+
+// DataVariant is one selectable data layer (e.g. convex, drizzle, none). Its Files
+// subtree is rendered over the base (overwriting shared files like router.tsx), its
+// deps are pnpm-added, and its Scripts (e.g. codegen) run after the base install.
+type DataVariant struct {
+	Files   string   `json:"files,omitempty"`
+	Add     []string `json:"add,omitempty"`    // runtime deps
+	AddDev  []string `json:"addDev,omitempty"` // dev deps
+	Scripts []Script `json:"scripts,omitempty"`
+}
+
+// DataKinds lists the manifest's data-variant kinds, sorted.
+func (m Manifest) DataKinds() []string {
+	out := make([]string, 0, len(m.Data))
+	for k := range m.Data {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // Script is a phase of post-render setup: shell commands the CLI runs in the
@@ -195,6 +217,16 @@ func RenderGitHub(src fs.FS, projectRoot string, data Data) ([]string, error) {
 		return nil, nil
 	}
 	return renderSubtree(src, "github", projectRoot, data, true)
+}
+
+// RenderData renders a data variant's files subtree into destDir, OVERWRITING
+// shared base files (e.g. app/router.tsx) so the chosen data layer wins. Returns
+// nil if the variant has no files subtree.
+func RenderData(src fs.FS, v DataVariant, destDir string, data Data) ([]string, error) {
+	if v.Files == "" {
+		return nil, nil
+	}
+	return renderSubtree(src, v.Files, destDir, data, false)
 }
 
 // RenderFeature renders a feature's files subtree into destDir.

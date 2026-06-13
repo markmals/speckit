@@ -197,7 +197,7 @@ func targetCmd() *cobra.Command {
 // targetAddCmd scaffolds a stack's starter into <dir>, registers the target in
 // .speckit/specs.json, projects the stack's pack, and runs the install.
 func targetAddCmd() *cobra.Command {
-	var stack, dir, product string
+	var stack, dir, product, dataKind string
 	var with []string
 	var noInstall bool
 	c := &cobra.Command{
@@ -230,6 +230,21 @@ func targetAddCmd() *cobra.Command {
 				}
 				features[f] = true
 			}
+			// Resolve the data layer (--data, else the stack's default).
+			var variant scaffold.DataVariant
+			if len(m.Data) > 0 {
+				kind := dataKind
+				if kind == "" {
+					kind = m.DataDefault
+				}
+				v, ok := m.Data[kind]
+				if !ok {
+					return fmt.Errorf("stack %q has no --data %q (have: %s)", stack, kind, strings.Join(m.DataKinds(), ", "))
+				}
+				variant = v
+			} else if dataKind != "" {
+				return fmt.Errorf("stack %q has no data layers (--data not supported)", stack)
+			}
 			data := scaffold.Data{Name: name, Dir: dir, Product: product, Features: features, Vars: map[string]string{}}
 
 			written, err := scaffold.Render(sub, dir, data)
@@ -243,6 +258,13 @@ func targetAddCmd() *cobra.Command {
 				}
 				written = append(written, w...)
 			}
+			// The data layer renders last among the target's files so it can
+			// overwrite shared base files (e.g. app/router.tsx).
+			dw, err := scaffold.RenderData(sub, variant, dir, data)
+			if err != nil {
+				return err
+			}
+			written = append(written, dw...)
 			// Seed the scaffold's example feature into the project root, but only
 			// when the spec library is empty — never clobber existing specs.
 			if featuresEmpty(".") {
@@ -283,7 +305,9 @@ func targetAddCmd() *cobra.Command {
 			// than frozen into a template. Phases run in order; a Silent step's
 			// failure is logged and skipped.
 			if !noInstall {
-				scripts, err := m.PhasedScripts(data)
+				// Base install + the data layer's deps/codegen, phase-ordered together.
+				allScripts := append(append([]scaffold.Script{}, m.Scripts...), dataInstallScripts(variant)...)
+				scripts, err := scaffold.Manifest{Scripts: allScripts}.PhasedScripts(data)
 				if err != nil {
 					return err
 				}
@@ -308,9 +332,23 @@ func targetAddCmd() *cobra.Command {
 	c.Flags().StringVar(&stack, "stack", "", "the stack to scaffold (required)")
 	c.Flags().StringVar(&dir, "dir", "", "where to scaffold (default apps/<name>)")
 	c.Flags().StringVar(&product, "product", "", "product label for the target")
+	c.Flags().StringVar(&dataKind, "data", "", "data layer for stacks that offer it (e.g. convex|drizzle|none)")
 	c.Flags().StringArrayVar(&with, "with", nil, "optional scaffold features (repeatable)")
 	c.Flags().BoolVar(&noInstall, "no-install", false, "skip the scaffold's post-render scripts (dependency install, codegen)")
 	return c
+}
+
+// dataInstallScripts turns a data variant's declared deps into pnpm-add steps
+// (phase 2, after the base install) plus the variant's own scripts (e.g. codegen).
+func dataInstallScripts(v scaffold.DataVariant) []scaffold.Script {
+	var out []scaffold.Script
+	if len(v.Add) > 0 {
+		out = append(out, scaffold.Script{Phase: 2, Commands: []string{"pnpm add " + strings.Join(v.Add, " ")}})
+	}
+	if len(v.AddDev) > 0 {
+		out = append(out, scaffold.Script{Phase: 2, Commands: []string{"pnpm add -D " + strings.Join(v.AddDev, " ")}})
+	}
+	return append(out, v.Scripts...)
 }
 
 // featuresEmpty reports whether the project has no spec library yet (so a

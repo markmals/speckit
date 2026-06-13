@@ -144,6 +144,37 @@ func TestWebScaffold(t *testing.T) {
 	if strings.Contains(string(dep), "{{") {
 		t.Errorf("dependabot.yml has unrendered template syntax:\n%s", dep)
 	}
+	// the convex data variant overwrites the base router and adds the convex files
+	if m.DataDefault != "convex" {
+		t.Errorf("web dataDefault = %q, want convex", m.DataDefault)
+	}
+	for _, k := range []string{"convex", "none"} {
+		if _, ok := m.Data[k]; !ok {
+			t.Errorf("web scaffold missing --data %q", k)
+		}
+	}
+	cvx := m.Data["convex"]
+	if len(cvx.Add) == 0 || len(cvx.Scripts) == 0 {
+		t.Errorf("convex variant should declare deps + a codegen script: %+v", cvx)
+	}
+	dataDir := t.TempDir()
+	if _, err := Render(sub, dataDir, data); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RenderData(sub, cvx, dataDir, data); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"convex/schema.ts", "convex/messages.ts", "app/data/convex.ts", "pnpm-workspace.yaml"} {
+		if _, err := os.Stat(filepath.Join(dataDir, filepath.FromSlash(p))); err != nil {
+			t.Errorf("convex variant missing %s: %v", p, err)
+		}
+	}
+	// RenderData overwrites the shared base router with the Convex-wired one.
+	router, _ := os.ReadFile(filepath.Join(dataDir, "app/router.tsx"))
+	if !strings.Contains(string(router), "ConvexProvider") {
+		t.Errorf("convex variant did not overwrite app/router.tsx:\n%s", router)
+	}
+
 	// a second target must not clobber an existing ci.yml
 	if err := os.WriteFile(ciPath, []byte("sentinel"), 0o644); err != nil {
 		t.Fatal(err)
