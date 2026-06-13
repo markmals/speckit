@@ -170,10 +170,16 @@ Ready) and baked in as `specify work`'s defaults.
     verified for real (fmt:check/lint/typecheck/test/build + `specify verify`). ⚠️ `resend` is a Node SDK;
     on the Cloudflare Workers runtime a user wiring the helper into a Worker may need node-compat (the
     helper is additive/unimported, so the scaffold itself stays green).
+  - ✅ **Slice 4e — `--with stripe`.** Additive: ships `app/server/stripe.ts` (a server-only Stripe
+    client + `createCheckoutSession` helper, key via `process.env.STRIPE_SECRET_KEY`) + `app/lib/stripe.ts`
+    (a client `loadStripe` via `VITE_STRIPE_PUBLISHABLE_KEY`), overwriting no shared file. Deps `stripe` +
+    `@stripe/stripe-js` (Stripe SDK 22 makes `apiVersion` optional). Green-on-arrival verified for real
+    (fmt:check/lint/typecheck/test/build + `specify verify`). Same Workers caveat as email (Node SDK;
+    additive/unimported so the scaffold stays green).
   - ⬜ Remaining `--with` add-ons: **sentry** (now unblocked: client provider rides the same
     `Wrap`/`providers.tsx` seam; note it also adds a vite plugin, which touches `vite.config.ts` — the
-    *runtime* axis — so handle that overlap), then stripe (checkout route + server fns) / tanstack-db /
-    electron.
+    *runtime* axis — so handle that overlap), then **tanstack-db** (intersects the `--data` axis) /
+    **electron** (a bigger shell change).
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
