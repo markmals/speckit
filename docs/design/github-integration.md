@@ -1,8 +1,8 @@
 # Design — GitHub-native integration
 
-**Status:** proposal / direction-setting. Captures the pivot from "Claude-native"
+**Status:** proposal / direction-setting. The pivot from "Claude-native"
 (Workbench) to **GitHub-native**: SpecKit stays agent-native and agent-agnostic
-(Claude Code / Codex / Copilot today), but its *banner* becomes that the framework
+(Claude Code / Codex / Copilot), but its *banner* becomes that the framework
 *lives on GitHub* — PRs gate, Issues hold defects, Projects hold the agent's work —
 instead of being kept as repo markdown. Research current as of 2026-06.
 
@@ -14,314 +14,255 @@ Two layers, joined by `specify`:
 
 - A **portable spec-integrity core** — git + files + test runners; the engine
   (`scan`/`verify`/`lock`/`drift`/`cover`/`parity`/`gate`); works offline; never
-  reads the GitHub API for *correctness*. This is the guarantee.
+  needs GitHub for *correctness*. This is the guarantee.
 - A **GitHub-native workflow shell** — Issues / Projects / PRs / Actions. This is
   the banner.
 
-The mechanic that makes it *SpecKit* and not just "please use GitHub" is the same
-one we already use for code: **projection.** Code is a materialized view of specs;
-now GitHub surfaces are materialized views of *engine state*. `specify` projects
-truth outward (opens issues for unbound scenarios, syncs project items from
-drift/parity, sets PR check status) and the agent reads coordination back via
-`gh`. *Everything the engine reports must be earned* now extends to the board and
-the PR checks — they can't lie, because the engine owns them.
+The mechanic is **projection** — the same move we use for code. Code is a
+materialized view of specs; GitHub surfaces are materialized views of *process*.
+The difference from the spec library: **GitHub state is ephemeral coordination**,
+not durable truth. The durable artifacts (specs, scenarios, locks, tests) live in
+the repo; the issues and project cards are throwaway scaffolding around the work.
 
 ## The determinism line (what may move, what may not)
 
-The test for every artifact: **does the engine have to verify, hash, or diff this
-at a specific commit?**
+The test: **does the engine have to verify, hash, or diff this at a specific commit?**
 
 | Artifact | Stays in repo? | Why |
 | --- | --- | --- |
 | Scenarios / acceptance criteria / models | **yes** | the join hashes & diffs them per commit; the BDD source |
 | Locks, parity, drift state (`.speckit/`) | **yes** | content hashes; offline-verifiable; engine I/O |
 | Code, tests, `// SPEC:` pointers | **yes** | the implementation under proof |
-| Defects | no → **Issues** | mutable work item; its durable form is a regression scenario in the repo |
-| Work / the agent's plan & tasks | no → **Projects** | coordination; already treated as disposable |
+| Agent session memory / project notes | **yes** (markdown) | durable context belongs with the code, not a pinned issue |
+| Defects | no → **Issues** | ephemeral intake; its durable form is a regression scenario in the repo |
+| Work / epics / the agent's task board | no → **Projects** | ephemeral coordination |
 | Gating | no → **PRs + Actions** | enforcement trigger, not a proof input |
 
-Hard rule: **nothing the engine must verify or hash leaves the repo.** GitHub
-carries process *around* the specs, never the specs themselves.
+Hard rule: **nothing the engine must verify or hash leaves the repo.** Everything on
+GitHub is disposable — you could delete the whole board and lose no truth.
 
-## Blessed-default-but-overridable (the provider seam)
+## Shape: `specify` *is* a `gh` extension
 
-GitHub is a **hard requirement of the blessed path** — and that's deliberate. On
-that path we go deep: official Action, `specify` forwards to the `gh` CLI for
-blessed commands, the engine reads Issues/Projects directly. We don't pretend
-everything is abstract.
+One Go binary, two invocation paths:
 
-But the integration is **overridable**, because the integrity core doesn't depend
-on it:
+- **standalone `specify`** — installed via Homebrew / Mise / release binary. The
+  engine commands (`scan`/`verify`/`lock`/`drift`/`cover`/`parity`/`gate`) need no
+  `gh` and no network. Offline integrity is preserved.
+- **`gh specify …`** — installed via `gh extension install markmals/specify` (a
+  `gh` extension is just a binary named `gh-specify` that `gh` dispatches to). This
+  is the GitHub-native install, and the reason it's worth it: the binary
+  **inherits `gh`'s auth** (`gh auth token`), so every GitHub call — REST or
+  GraphQL — needs zero separate token plumbing.
 
-- Run `specify` manually in a GitLab CI pipeline instead of the official Action.
-- Point your agent at `linctl` + Linear for issue/work tracking instead of `gh`.
+Consequences for the design:
 
-The seam is intentionally **light** for v1 — config selects providers; the engine
-core is provider-free. Default shape in `.speckit/specs.json`:
-
-```jsonc
-{
-  "github": {                  // presence enables the blessed path; omit to opt out
-    "repo": "markmals/spec-kit",   // optional — gh infers from origin
-    "project": 4,                  // the Projects board number
-    "gate": ["scan", "verify", "parity", "firewall", "generated"]
-  }
-}
-```
-
-Overriding = omit the `github` block (the engine still fully works) and wire your
-own CI/agent skills. A fuller `"providers": { "ci": …, "issues": …, "work": … }`
-map is a future option if real demand for a second blessed provider appears — we
-won't build the abstraction before we need it.
-
----
+- **We inline the Projects GraphQL ourselves.** Rather than depend on a separate
+  `gh` extension, the binary contains the GraphQL client for everything `gh project`
+  can't do (item/field CRUD beyond status, sub-issue progress, dependency edges).
+  We lift the approach from `NSExceptional/gh-projects` and **vendor it directly in
+  this repo** (open decision 4), evolving it internally.
+- **GitHub commands live in the binary, un-namespaced.** No mandatory `github`
+  subcommand wall — `specify` calls GitHub APIs/services directly where it helps
+  (open decision 3). It uses `gh`'s token for auth and shells out to `gh` for the
+  blessed commands `gh` already does well.
+- **Config shrinks toward zero.** Because the extension inherits `gh`'s repo context
+  (current repo, the linked project) and auth, we likely **don't need a `github`
+  config block at all** (open decision 1). The only thing not inferable is *which
+  project board* — and `gh` can list a repo's linked projects, so even that may be
+  auto-detected, with a flag/one-line config as the fallback.
 
 ## Pillar 1 — PR gating (build first)
 
-The strongest, cheapest banner: the engine becomes a **required status check**, so
-spec-honesty is non-bypassable. `specify gate firewall` as a PR check means *you
-cannot merge a test that silently drifted from its spec* — that's the demo.
+The engine becomes a **required status check**: spec-honesty is non-bypassable.
+`specify gate firewall` as a PR check means *you cannot merge a test that silently
+drifted from its spec* — that's the demo.
 
-### Custom Action **and** inline — layered (decision)
+### Custom Action **and** inline — layered
 
-Ship an **official composite action** (e.g. `markmals/speckit/gate@v1`) that:
+An official composite action (`markmals/speckit/gate@v1`) that:
 
-1. installs the pinned `specify` binary (setup-style),
+1. installs the pinned `specify` binary,
 2. runs the gate for the target: `scan` → `verify <target>` → `parity <target> --gate` → `gate firewall` / `gate generated` / `gate scope`,
-3. emits **Checks API annotations** mapping each unjoinable scenario, dangling
-   test reference, or drifted spec to its exact file + line.
+3. emits **Checks-API annotations** mapping each unjoinable scenario, dangling test
+   reference, or drifted spec to its exact file + line.
 
-The scaffolded per-stack workflow is then a **thin caller**:
+The scaffolded per-stack workflow is a thin caller. **Workflow files are named for
+what they do** (not `speckit.yml`):
 
 ```yaml
-# .github/workflows/speckit.yml (dropped in by `target add`)
+# .github/workflows/verify.yml   (dropped in by `target add`)
 on: { pull_request: {} }
 jobs:
-  gate:
-    uses: markmals/speckit/.github/workflows/gate.yml@v1   # reusable workflow
+  verify:
+    uses: markmals/speckit/.github/workflows/gate.yml@v1
     with: { target: web }
 ```
 
-So it *reads* per-stack but *delegates* to the versioned action. Why not pure
-inline `run: specify verify`?
-
-- **Annotations** — the killer feature. Inline `run:` can surface a red X; only an
-  action that speaks the Checks API can put *"scenario.welcome.greet.hello has no
-  bound test"* on the exact line of the PR diff. That's the thing that makes the
-  gate feel native.
-- **Central updates** — fix the gate once; every consumer repo gets it via the tag.
-  Inline means re-scaffolding every repo.
-- **Marketplace presence** — an official "SpecKit" Action is itself the
-  GitHub-native banner.
-
-The per-stack thinness keeps it transparent and customizable; the action earns its
-keep via annotations + setup + single-source updates.
+Pure inline `run: specify verify` loses the **annotations** (the killer feature —
+inline PR comments on the exact scenario), duplicates logic across stacks, and
+forces a re-scaffold to update. The action earns its keep via annotations + setup +
+single-source updates; the thin caller keeps it transparent.
 
 ### Branch protection / rulesets
 
-The gate only bites if it's **required**. Rulesets aren't a checked-in file
-(they're repo/org settings), so we provision them via `gh api` — a future
-`specify github protect` subcommand that requires the SpecKit checks, requires a PR
-before merge, and restricts force-pushes. Until then, ship a documented `gh`
-recipe in the scaffold's README.
+The gate only bites if **required**. Rulesets are repo settings, not a checked-in
+file, so `specify` provisions them via the GitHub API (it has `gh`'s token):
+require the SpecKit checks, require a PR, restrict force-pushes. Ship a documented
+fallback recipe in the scaffold README.
 
----
+## Pillar 2 — Issues as ephemeral defect intake
 
-## Pillar 2 — Issues as the defect intake
-
-### Lifecycle (scenario-canonical)
+### Lifecycle (scenario-canonical, no durable link)
 
 ```
-defect filed (Issue, auto-typed Bug, auto-added to board)
+defect filed (Issue, type Bug, via defect.yml form, auto-added to the board)
   → triage
-  → the fix updates/adds a SCENARIO in the repo (if the behavior is spec-representable)
+  → the fix updates/adds a SCENARIO in the repo (if spec-representable)
       OR adds a regression TEST bound to a new scenario (if it can't/shouldn't live in the spec)
-  → fix PR references the issue WITHOUT auto-closing it
-  → merge → `verify <target>` joins the new scenario green → writes the lock
-  → THEN close the issue (the lock is the proof the defect is fixed)
+  → fix PR; merge → verify <target> joins the new scenario green → writes the lock
+  → close the issue (the lock is the proof; the issue was just intake)
 ```
 
-The **Issue is intake + history; the scenario + its lock are the truth.** A defect
-never lives only as a closed issue — it lives as a scenario you can re-verify
-forever.
+The **Issue is ephemeral intake + history; the scenario + its lock are the truth.**
+We deliberately keep **no durable issue↔scenario backlink** (open decision 2) — the
+issue can be closed, archived, even deleted, and nothing in the repo depends on it.
+GitHub's automatic cross-references (the fix PR mentioning `#123`) are enough of a
+breadcrumb; we don't maintain a bidirectional link.
 
-This is enabled by a real, current GitHub feature: the **link-without-auto-close
-repo setting** (GA 2025-04-23). The fix PR can say `Fixes #123` for the link graph
-while the issue stays open until the scenario actually verifies green — closing on
-*proof*, not on *merge*.
+### Issue types & epics
 
-### Linking convention
-
-The scenario carries the originating issue, and the lock records it, so
-issue ↔ scenario ↔ test ↔ lock is a closed loop:
-
-```md
-## Scenario: rejects an empty name   <!-- id: scenario.welcome.greet.empty -->
-<!-- issue: markmals/spec-kit#123 -->
-```
-
-### Issue types, not labels
-
-Use **org Issue Types** (GA 2025-04, Bug/Task/Feature, customizable) rather than
-`type:` labels — a defect is `type: Bug`. They're a real field, filterable, and an
-issue form can stamp the type at intake.
+Use org **Issue Types** (GA 2025-04): Bug / Feature / Task plus a custom **Epic**
+type. Epics are an Epic-typed issue with **sub-issues** (GA: 100/parent, 8 deep) —
+the same hierarchy Beads gets from parent-child. *Caveat:* Issue Types are an
+**organization** feature; a personal repo falls back to a `type:` label.
 
 ### What goes in each target's `.github/`
 
-`target add` should drop in:
+`target add` drops in (descriptive filenames throughout):
 
 | File | Purpose |
 | --- | --- |
-| `workflows/speckit.yml` | the gate (thin caller of the official reusable workflow) |
+| `workflows/verify.yml` | the gate (thin caller of the official reusable workflow) |
+| `workflows/deploy.yml` | *optional* deploy (see below); only if a deploy target was chosen |
 | `PULL_REQUEST_TEMPLATE.md` | spec-touch checklist (specs changed? scenarios bound? `verify` green? `drift` clean?) |
-| `ISSUE_TEMPLATE/defect.yml` | a defect form — stamps `type: Bug`, a label, the project, and prompts for repro + the target + the scenario id it violates |
-| `ISSUE_TEMPLATE/config.yml` | points discussions/docs at *this* repo |
-| `CODEOWNERS` | maps `/features/**` and `/specs/**` to the spec owner, so **spec changes require human review** — reinforces "deviations need sign-off" |
+| `ISSUE_TEMPLATE/defect.yml` | a defect form — stamps `type: Bug`, a label, the project; prompts for repro + the target |
+| `ISSUE_TEMPLATE/config.yml` | points docs at *this* repo |
+| `CODEOWNERS` | maps `/features/**` and `/specs/**` to the spec owner, so **spec changes require human review** |
 | `dependabot.yml` | for the stack's ecosystem (web → npm, go → gomod) |
 
-Branch protection / the ruleset is repo settings (provisioned via
-`specify github protect` / `gh`), not a file.
+## Pillar 3 — Projects as the work surface (Beads-informed, simplified)
 
----
+The board is **ephemeral coordination**, projected from work state and driven by the
+agent via the inlined GraphQL client. It is a kanban: **the "ready queue" is just a
+Status column** (e.g. Backlog → Todo → In Progress → In Review → Done), not a
+computed field. The agent pulls the top card of the actionable column and moves it
+across as it works.
 
-## Pillar 3 — Projects as the work surface (Beads-informed)
+> Column set TBD — mirroring Mark's `APL-Innovation-Lab/projects/1` once its columns
+> are confirmed (couldn't read it: the token lacks `read:project`).
 
-The board is a **materialized view of engine + work state.** `specify` projects
-open issues for unbound scenarios and drifted specs, creates/updates project items,
-and sets a `spec-id` text field, `Status`, and `Priority`. The agent reads "what's
-next" from the board and drives it via `gh`.
+### What we borrow from Beads — and what we drop
 
-### What we borrow from Beads (repointed at GitHub)
+Beads (`bd`, Steve Yegge) is structured, queryable agent memory: a dependency-aware
+issue graph that replaces bit-rotting markdown plans. We steal the *patterns* that
+survive a simpler, column-based model:
 
-Beads (`bd`, Steve Yegge) is structured, queryable, git-synced *memory for agents*
-— a dependency-aware issue graph that replaces bit-rotting markdown plans. We don't
-adopt Beads's storage; we steal its **patterns**, implemented on GitHub primitives.
-The crux of Beads is that **only `blocks` + parent→child propagation gate
-readiness**; `discovered-from` and `related` are pure metadata.
+| Beads pattern | Our decision |
+| --- | --- |
+| **parent-child** (epic → subtask) | **keep** → Epic issue type + sub-issues (native) |
+| **`ready` = open ∧ unblocked**, computed | **drop the computation** → "ready" is a kanban column you move cards into |
+| **`blocks` / `blocked-by`** | **keep as a signal only** → native dependency badge / `is:blocked` filter so the agent doesn't pull a blocked card; not an automated gate |
+| **`discovered-from` provenance** | **keep as convention** → file mid-task follow-ups as new issues with a `discovered-from:#N` label + body backlink (GitHub has no native provenance edge — the one gap) |
+| **atomic claim** | **keep** → assign-self + move to In Progress in one mutation (GitHub assignment is server-atomic; multi-agent safe) |
+| **collision-free hash IDs** | **drop** → GitHub allocates `#N` atomically server-side; not needed |
+| **`bd remember` / `bd prime`** (pinned memory) | **drop from GitHub** → durable agent memory + session context stay as **repo markdown** |
+| **"land the plane" teardown** | **keep** → an end-of-session ritual (a skill): run the gate, file discovered work, push, hand off |
 
-| Beads pattern | GitHub implementation | Fit |
-| --- | --- | --- |
-| **parent-child** (epic → subtask) | **Sub-issues** (GA, 100/parent, 8 deep) | clean |
-| **blocks / blocked-by** | **Issue dependencies** (GA Aug 2025, `is:blocked` filter, `gh --blocked-by`) | clean |
-| **`ready` queue** (open ∧ no open blocker ∧ no blocked ancestor) | a **computed `Ready` boolean Project field** + a "Ready" view sorted by Priority | needs scripting — GitHub won't compute *transitive* unblock for you |
-| **`discovered-from`** provenance | a `discovered-from:#N` label + body backlink + GitHub's auto cross-reference | **the one gap** — a convention, not a typed queryable edge |
-| **atomic `--claim`** | assign-self + `Status: In progress` in one GraphQL mutation | clean — GitHub assignment is server-atomic, so multi-agent claims are safe |
-| **collision-free hash IDs** | not needed — GitHub allocates `#N` atomically server-side | GitHub is *simpler* here |
-| **`bd remember` / `bd prime`** | a pinned "Project Memory" issue + the Ready view, fetched at session start | clean (complements SpecKit's file memory) |
-| **"land the plane" teardown** | an end-of-session ritual (skill + optional close-out check) | clean |
-
-The **`Ready` field is the highest-leverage borrow.** GitHub gives you the
-dependency edges and the `is:blocked` filter, but not transitive readiness across a
-parent chain — so a small `gh`/GraphQL step (on-demand via `specify`, or a
-scheduled Action) sets `Ready = true/false` per open issue, and the agent's queue
-is just the "Ready" view sorted by Priority. That reproduces `bd ready --json`;
-emit the blocker list as the `--explain` reason.
-
-### The agent loop (Beads's loop on GitHub, via `specify` + `gh`)
+### The agent loop (on GitHub, via `specify` + `gh`)
 
 ```
-prime    → read the Ready view + the pinned Project-Memory issue (session context)
-ready    → pick the top unblocked item (gh projects ready / the Ready view)
-claim    → assign self + Status: In progress  (one atomic mutation)
+prime    → read session context from REPO markdown (memory/, AGENTS.md) — not GitHub
+ready    → take the top card of the actionable column (skip any showing "blocked")
+claim    → assign self + move to In Progress  (one atomic mutation)
 work     → implement tests-first; bind each test to its scenario
-discover → file follow-ups mid-task as issues, linked discovered-from:#N
+discover → file follow-ups mid-task as issues, labeled discovered-from:#N
 verify   → specify verify <target> → join → lock
-close    → close the issue ON GREEN (lock = proof); recompute Ready for unblocked items
+close    → move to Done / close the issue ON GREEN (lock = proof)
 land     → run the gate, confirm discovered work is filed, push, post a handoff
 ```
 
-### The `gh-projects` extension
-
-Use **`NSExceptional/gh-projects`** as the agent's Projects CLI — it wraps the
-Projects v2 GraphQL API ergonomically (address projects by number, items by issue
-number/title, fields/options by *name*), and already ships the verbs we need:
-`create`, `add`, `draft`, `move`, `set` (incl. iteration + text fields), `ready`
-(= items in Todo), `field-create`, `link`. **18 subcommands; it even has a `ready`.**
-
-Caveats (it's a day-old v0.1.x, single author): **fork and pin** rather than depend
-on upstream. Two cheap PRs close the only real gaps, worth sending back:
-
-1. `--json` on the write commands (so the agent can capture the created item id).
-2. a generic field-value query (`items --field X --value Y`) — today only `Status`
-   is a first-class filter.
-
-Fallback for both: raw `gh api graphql` (the extension's own `internal/projects/`
-shows how). Don't gate our design on upstream acceptance — vendor the fork.
-
 ### Operational reality (from the research)
 
-- **Projects is GraphQL-only** (no REST). Plan a two-tier client: `gh project` /
-  `gh-projects` for item+field CRUD, raw GraphQL for automations, sub-issue
-  progress, and dependency edges.
-- **Cache the IDs.** The API takes node IDs, not names — resolve and cache project
-  id, field ids, and single-select **option ids** once (`field-list`).
-- **Idempotency:** `addProjectV2ItemById` returns the existing item if already
-  present (safe to re-run); field writes are last-write-wins.
-- **Rate budget:** GraphQL shares 5,000 points/hr — use a GitHub App token for
-  headroom; never let a board-sync failure block a local `verify`.
-- **Multi-select fields are NOT available yet** — don't design fields around them.
-- **Built-in automations** (close → Done, PR-merged → Done, linked-PR → In
-  progress) are free but **UI-configured only** — document the setup; you can't
-  provision them via `gh`.
+- **Projects is GraphQL-only** (no REST). The inlined client is a two-tier thing:
+  the `gh project` verbs for status/field CRUD, raw GraphQL for sub-issue progress,
+  dependency edges, and automations.
+- **Cache node IDs** — the API takes IDs, not names; resolve project/field/option
+  IDs once.
+- **Idempotency:** adding an item that's already present returns the existing item;
+  field writes are last-write-wins.
+- **Rate budget:** GraphQL shares 5,000 points/hr — use `gh`'s token; never let a
+  board-sync failure block a local `verify`.
+- **Built-in automations** (close → Done, PR-merged → Done, linked-PR → In progress)
+  are free but **UI-configured only** — document the setup; can't be provisioned via
+  `gh`. **Multi-select fields are not available yet.**
 
----
+## Deploy workflows (optional, configurable)
 
-## GitHub features we lean on (and version pins)
+Optional GitHub deploy workflows, **none required**, chosen at `specify init` (a
+`--deploy <kind>` flag / prompt) and **addable after the fact** (`specify deploy add
+<kind>`; exact ergonomics — project-level vs per-target — is open). Each drops a
+descriptively-named `.github/workflows/deploy.yml`, triggered on push to the default
+branch (or on release), and lists the secrets to set (via `gh secret set` or the UI).
+
+| kind | Action / mechanism | Secrets | Notes |
+| --- | --- | --- | --- |
+| `cloudflare-workers-ssr` | `cloudflare/wrangler-action` → `wrangler deploy` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | SSR app on Workers (e.g. TanStack Start); needs `wrangler.jsonc` with a server entry |
+| `cloudflare-workers-spa` | `wrangler deploy` with Workers static **assets** | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | assets-only; `assets.not_found_handling = "single-page-application"`, no server worker |
+| `railway` | Railway CLI in-workflow (`railway up --service <svc>`) | `RAILWAY_TOKEN` | for server/container apps; alternatively Railway's own GitHub auto-deploy (no workflow) |
+| `github-pages-spa` | `actions/upload-pages-artifact` + `actions/deploy-pages` | none (uses `GITHUB_TOKEN`) | needs Pages enabled, `pages: write` + `id-token: write`, `environment: github-pages`; handle the `/<repo>/` base + SPA 404 fallback |
+
+These are independent of the gate (deploy on push/release; gate on PR).
+
+## GitHub features we lean on, and version pins
 
 | Feature | Status (2026-06) | We use it for |
 | --- | --- | --- |
-| `gh` `--type` / `--parent` / `--blocked-by` + JSON | GA in **gh ≥ 2.94.0** (2026-06-10) | the whole automation surface — **pin `gh ≥ 2.94.0`** |
-| Issue types (org) | GA 2025-04 | defect = `type: Bug` |
-| Issue dependencies | GA 2025-08 | `blocks`/`blocked-by` for the Ready queue |
-| Sub-issues (100/parent, 8 deep) | GA 2025-04 | spec/epic → scenario hierarchy |
-| Link-without-auto-close toggle | GA 2025-04 | close defects on *proof*, not on merge |
+| `gh` `--type` / `--parent` / `--blocked-by` + JSON | GA in **gh ≥ 2.94.0** (2026-06-10) | the automation surface — **pin `gh ≥ 2.94.0` via `mise.toml` (`[tools] gh = "2.94"`)** |
+| Issue types (org) incl. custom Epic | GA 2025-04 (**org-only**) | defect = Bug; epics = Epic + sub-issues; label fallback off-org |
+| Sub-issues (100/parent, 8 deep) | GA 2025-04 | epic → sub-issue hierarchy |
+| Issue dependencies (`blocked-by`) | GA 2025-08 | a "blocked" badge so the agent skips blocked cards (signal, not gate) |
 | Issue forms (auto type/label/project) | GA | the `defect.yml` intake |
-| Projects built-in automations | GA | free status transitions (UI-configured) |
-| Projects GraphQL item/field CRUD | GA | engine → board sync |
-| Parent / Sub-issue-progress Project fields | GA | rollup without computing it |
+| Projects GraphQL item/field CRUD; built-in automations | GA | board sync + free status transitions |
 
-Preview — **do not depend on yet:** org-wide Issue Fields (preview, May 2026);
-multi-select Project fields (not shipped). Semantic/hybrid issue search (GA
-2026-04) is a nice-to-have for "find the defect/scenario like this."
-
----
+Pin `gh` as a peer dependency in **`mise.toml`** (repo and scaffolds), so the right
+`gh` is present wherever `specify` runs. Preview — **don't depend on yet:** org-wide
+Issue Fields (preview); multi-select Project fields (not shipped).
 
 ## Future Directions
 
-- **VS Code extension** — the developer-native complement: codelens on `// SPEC:`
-  pointers (jump scenario ↔ bound test), drift indicators in the gutter, a parity
-  tree view of the spec library, run the gate from the editor, and a board view of
-  the Ready queue. Agent-native *and* developer-native.
-- **`specify` as a `gh` extension** — `gh speckit verify web`, installed via
-  `gh extension install`. A genuinely GitHub-native install story alongside the
-  Homebrew/Mise paths.
-- **GitHub MCP server `projects` toolset** (GA 2025-10) — an alternative to
-  `gh-projects` for MCP-native agents; the engine could speak MCP instead of
-  shelling out to `gh`.
-- **GitHub Agentic Workflows** (public preview 2026-06) — GitHub-hosted agent
-  orchestration; could host the SpecKit loop server-side rather than in the
-  developer's agent.
-- **Discussions** — spec RFCs (proposed specs debated before they're committed) and
-  methodology Q&A. Weakest fit; only if the community wants it.
-- **Packages / Releases** — distribute platform packs and stack scaffolds as
-  versioned artifacts, not just the binary.
-- **Org-wide Issue Fields** (when GA) — a standard Priority/Effort across every repo
-  in an org, instead of per-project fields.
+- **VS Code extension** — codelens on `// SPEC:` pointers (jump scenario ↔ bound
+  test), drift indicators in the gutter, a parity tree of the spec library, run the
+  gate from the editor, a board view. The developer-native complement to the
+  agent-native CLI.
+- **Discussions** — *maybe* — spec RFCs (proposed specs debated before they're
+  committed). Take it or leave it; not a priority.
 
----
+(Explicitly **not pursuing:** the GitHub MCP `projects` toolset and GitHub Agentic
+Workflows — the chosen path is agent-native CLIs + skills that teach agents to drive
+them, not MCP or GitHub-hosted orchestration.)
 
 ## Open decisions
 
-1. **Provider config shape** — the light `"github"` block (v1) vs a full
-   `"providers"` map. Recommend the block until a second blessed provider is real.
-2. **Where the issue↔scenario link lives** — scenario frontmatter, the lock, or
-   both. Recommend scenario comment + lock record (the loop above).
-3. **`specify github …` subcommands vs pure skills** — do we build
-   `github protect` / `github sync` / `github issue→scenario` into the binary, or
-   keep GitHub orchestration in agent skills that drive `gh`? Likely a thin set of
-   binary subcommands for the deterministic bits (protect, the Ready computation,
-   the projection sync) + skills for the judgment bits.
-4. **`gh-projects` fork ownership** — vendor under `markmals/` and pin; attempt the
-   two upstream PRs but don't depend on them.
-5. **Ready-field computation** — on-demand via `specify` vs a scheduled Action.
-   Probably both: `specify` computes on sync; an Action keeps it fresh.
+1. **Config block** — start with a tiny optional `github` block *only* for what `gh`
+   can't infer (the project number); likely droppable once the extension auto-detects
+   the repo's linked project. Lean on `gh` context + auth.
+2. **No issue↔scenario link** — issues/projects are ephemeral; rely on GitHub's
+   automatic cross-references, maintain nothing. (Decided.)
+3. **GitHub commands in the binary, un-namespaced** — `specify` calls GitHub
+   APIs/services directly; no mandatory `github` subcommand wall. (Decided.)
+4. **Inline the Projects GraphQL** (lifted from `gh-projects`) **directly in this
+   repo** and evolve it internally; no upstream dependency. (Decided.)
+5. **Ready is a board column, not a computed field.** (Decided.)
+6. **Deploy command ergonomics** — `init --deploy` + `specify deploy add`; is deploy
+   project-level or per-target/app? Lean per-target (an app deploys), with `init`
+   sugar for the primary app. (Open.)

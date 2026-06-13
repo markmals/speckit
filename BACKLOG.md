@@ -70,30 +70,38 @@ the feature folder; `plan` and `tasks` become **per-target layers on top** —
 The strategic pivot: SpecKit's banner becomes **GitHub-native** (PRs gate, Issues hold
 defects, Projects hold the agent's work) while staying agent-native/agnostic. Full design in
 [docs/design/github-integration.md](docs/design/github-integration.md). Architecture: a portable
-spec-integrity core (engine never reads GitHub for correctness) + a GitHub-native workflow shell;
-GitHub is the blessed-default-but-overridable path; the engine *projects* repo truth onto GitHub
-surfaces. Determinism line: specs/locks/parity stay in the repo; defects/work/gating move to GitHub.
+spec-integrity core (engine never needs GitHub for correctness; works offline) + a GitHub-native
+workflow shell; the engine *projects* repo truth onto GitHub. Determinism line: specs/locks/parity/
+agent-memory stay in the repo; defects/work/gating are **ephemeral** on GitHub (delete the board, lose
+no truth).
 
-- ⬜ **Pillar 1 — PR gating (build first).** Official composite Action + reusable workflow
-  (`markmals/speckit/gate@v1`) that installs `specify`, runs `scan`/`verify`/`parity --gate`/`gate *`,
-  and emits **Checks-API annotations** (scenario→file:line). Thin per-stack `workflows/speckit.yml`
-  caller. `specify github protect` (later) to provision the required-check ruleset via `gh api`.
-- ⬜ **Pillar 2 — Issues as defect intake.** Scenario-canonical lifecycle: defect Issue (type Bug,
-  via `defect.yml` form) → fix updates/adds a scenario + regression test → PR links *without
-  auto-close* (GA setting) → close on `verify` green (lock = proof). Link via `<!-- issue: #N -->` in
-  the scenario + lock record. Per-target `.github/`: gate workflow, PR template, `defect.yml`,
-  `config.yml`, `CODEOWNERS` for `/features` `/specs`, stack-ecosystem `dependabot.yml`.
-- ⬜ **Pillar 3 — Projects as work surface (Beads-informed).** Engine→board projection; agent drives
-  via `gh` + the **`NSExceptional/gh-projects`** extension (fork+pin; 2 PRs back: `--json` on writes,
-  generic field query). Borrow from Beads: a computed **`Ready`** Project field (blocks + parent
-  gate readiness — the highest-leverage steal), `discovered-from:#N` provenance (label+backlink — the
-  one GitHub gap), atomic claim, "land the plane" teardown. **Pin `gh ≥ 2.94.0`** (native
-  `--type`/`--parent`/`--blocked-by` + JSON, 2026-06-10).
-- ⬜ **Provider seam (light, v1).** A `"github"` block in `.speckit/specs.json` enables the blessed
-  path; omit it to run `specify` manually elsewhere (GitLab CI) or point the agent at another tracker
-  (linctl/Linear). Don't build the full `"providers"` map until a second blessed provider is real.
-- ⬜ **Future:** VS Code extension (codelens on `// SPEC:`, parity tree, board view); `specify` as a
-  `gh` extension; GitHub MCP `projects` toolset; GitHub Agentic Workflows; Discussions for spec RFCs.
+- ⬜ **`specify` becomes a `gh` extension.** One Go binary: standalone `specify` (engine offline, no
+  gh) **and** `gh specify …` (`gh extension install`, inherits `gh auth token` → zero token plumbing).
+  Inline the Projects GraphQL (lifted from `NSExceptional/gh-projects`) directly in this repo; GitHub
+  commands live in the binary un-namespaced; likely **no config block** (auto-detect repo + linked
+  project via gh). **Pin `gh ≥ 2.94.0` via `mise.toml`** (`[tools] gh = "2.94"`).
+- ⬜ **Pillar 1 — PR gating (build first).** Composite Action + reusable workflow
+  (`markmals/speckit/gate@v1`) installs `specify`, runs `scan`/`verify`/`parity --gate`/`gate *`, emits
+  **Checks-API annotations** (scenario→file:line). Thin per-stack **`workflows/verify.yml`** caller
+  (descriptive names, not `speckit.yml`). `specify` provisions the required-check ruleset via the API.
+- ⬜ **Pillar 2 — Issues as ephemeral defect intake.** Scenario-canonical: defect Issue (org type Bug,
+  via `defect.yml`) → fix adds/updates a scenario + regression test → close on `verify` green (lock =
+  proof). **No durable issue↔scenario link** (rely on GitHub cross-refs). Per-target `.github/`:
+  `verify.yml`, optional `deploy.yml`, PR template, `defect.yml`, `config.yml`, `CODEOWNERS` for
+  `/features` `/specs`, stack-ecosystem `dependabot.yml`. Org Issue Types (Bug/Feature/Task + custom
+  **Epic**); label fallback off-org.
+- ⬜ **Pillar 3 — Projects as the work surface (Beads-informed, simplified).** Kanban; **"ready" is a
+  Status column, NOT a computed field**. Epics = Epic-typed issue + sub-issues. Keep from Beads:
+  `discovered-from:#N` provenance (label+backlink — the one GitHub gap), atomic claim, "land the plane"
+  teardown; `blocked-by` as a visual signal only. Drop: computed ready, hash IDs, pinned-memory issue
+  (agent memory stays repo markdown). Mirror Mark's `APL-Innovation-Lab/projects/1` columns (TBD —
+  couldn't read; token lacks `read:project`).
+- ⬜ **Deploy workflows (optional, none required).** `deploy.yml` for `cloudflare-workers-ssr`,
+  `cloudflare-workers-spa` (assets), `railway`, `github-pages-spa`. Chosen at `specify init --deploy`,
+  addable later (`specify deploy add`); per-target vs project-level ergonomics open. Each lists its
+  secrets (`gh secret set`).
+- ⬜ **Future:** VS Code extension (codelens on `// SPEC:`, parity tree, board view); Discussions for
+  spec RFCs (maybe). **Not pursuing:** GitHub MCP toolset, GitHub Agentic Workflows.
 
 ---
 
