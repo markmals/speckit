@@ -165,4 +165,45 @@ func TestGoServiceScaffold(t *testing.T) {
 	if mainAfter, _ := os.ReadFile(filepath.Join(sqDir, "main.go")); string(mainAfter) != string(mainBefore) {
 		t.Error("sqlite feature must not overwrite the shared main.go (it must stay additive)")
 	}
+
+	// --with client: an additive external-service client package (trove's
+	// internal/services idiom) — a bounded http.Client, JSON helper, typed non-2xx
+	// errors, URL-error sanitization, and a fakeServer httptest harness. Pure
+	// stdlib (no deps/scripts), overwrites no shared file.
+	cl, ok := m.Features["client"]
+	if !ok {
+		t.Fatalf("go-service missing the client feature: %+v", m.Features)
+	}
+	if len(cl.Scripts) != 0 || len(cl.Add) != 0 {
+		t.Errorf("client feature should be pure stdlib (no deps/scripts): %+v", cl)
+	}
+	clDir := t.TempDir()
+	cdata := Data{Name: "daemon", Dir: "cmd/daemon", Module: "example.com/acme", Features: map[string]bool{"client": true}}
+	if _, err := Render(sub, clDir, cdata); err != nil {
+		t.Fatal(err)
+	}
+	clMainBefore, _ := os.ReadFile(filepath.Join(clDir, "main.go"))
+	if _, err := RenderFeature(sub, cl, clDir, cdata); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{
+		"internal/services/services.go", "internal/services/example.go", "internal/services/services_test.go",
+	} {
+		if _, err := os.Stat(filepath.Join(clDir, filepath.FromSlash(p))); err != nil {
+			t.Errorf("client feature missing %s: %v", p, err)
+		}
+	}
+	svc, _ := os.ReadFile(filepath.Join(clDir, "internal/services/services.go"))
+	for _, want := range []string{"func GetJSON(", "type APIError", "func SanitizeURLError(", "DefaultTimeout"} {
+		if !strings.Contains(string(svc), want) {
+			t.Errorf("services.go missing %q:\n%s", want, svc)
+		}
+	}
+	if tst, _ := os.ReadFile(filepath.Join(clDir, "internal/services/services_test.go")); !strings.Contains(string(tst), "func fakeServer(") {
+		t.Errorf("services_test.go must ship the fakeServer httptest harness:\n%s", tst)
+	}
+	// additive: no shared file overwritten.
+	if clMainAfter, _ := os.ReadFile(filepath.Join(clDir, "main.go")); string(clMainAfter) != string(clMainBefore) {
+		t.Error("client feature must not overwrite the shared main.go (it must stay additive)")
+	}
 }

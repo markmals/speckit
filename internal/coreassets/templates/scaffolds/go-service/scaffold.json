@@ -45,6 +45,9 @@
           ]
         }
       ]
+    },
+    "client": {
+      "files": "features/client/files"
     }
   },
   "target": {

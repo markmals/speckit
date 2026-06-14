@@ -244,8 +244,17 @@ Ready) and baked in as `specify work`'s defaults.
     `go get` script, tidied by the base phase-5 `go mod tidy`. Verified green-on-arrival: base+sqlite AND
     **openapi+sqlite** (17 files, both deps) → `go build`/`fmt:check`/`vet`/`specify verify` (2 passed ·
     1 locked; the untagged store test runs + passes, out of scenario scope under `bindings: scoped`).
-  - 🔄 **Remaining trove-parity bundle** (green-on-arrival PR): **external-service client + httptest**
-    idiom. pnpm-workspace membership lands with the broader monorepo slice.
+  - ✅ **`--with client` (external-service client + httptest idiom)** (PR pending). Additive, **pure stdlib**
+    (no deps/scripts): a member-private `internal/services` package — trove's pattern — with a bounded
+    `http.Client` (DefaultTimeout), a `GetJSON` helper, a typed `APIError` for non-2xx, `SanitizeURLError`
+    (strips the `*url.Error` URL so a key in a query string never logs), an example `Client` (project only
+    consumed fields), and a `fakeServer(t, routes)` httptest harness + tests. Plain `.go` (no template vars),
+    so speckit's own `go build`/`go test` compile + run it (free validation). Verified green-on-arrival:
+    base+client AND the **full openapi+sqlite+client** stack (`internal/{api,services,store}`) →
+    `go build`/`fmt:check`/`vet`/`test`/`specify verify` (2 passed · 1 locked) all green.
+  - ✅ **trove-parity series complete** — all four bundles (root `go.mod` · openapi · sqlite · client)
+    compose into one troved-shaped green-on-arrival service. ⬜ Still later: pnpm-workspace membership +
+    repo-root `internal/` sharing land with the broader monorepo slice; the protocol `x-spec` coverage reader.
 - ⬜ **Per-stack scaffold builds** — **apple next** (exercises the `swift` report format + the
   `SpecTraits.swift` harness), then the rest one at a time, each gated on a tooling preview.
   node-cli already spec'd ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
