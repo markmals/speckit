@@ -235,9 +235,17 @@ Ready) and baked in as `specify work`'s defaults.
     contract. Verified green-on-arrival: `target add … --with openapi` → `go build`/`fmt:check`/`vet`/`test`
     + `specify verify` (2 passed · 1 locked), module path from the git remote. (Also fixed: the default base
     `main.go` shipped a literal unrendered `{{kebab .Name}}` in its package comment.)
-  - 🔄 **Remaining trove-parity bundles** (Mark wants all four; green-on-arrival PRs): **SQLite store +
-    migrations + flag/env config**; **external-service client + httptest** idiom. pnpm-workspace membership
-    lands with the broader monorepo slice.
+  - ✅ **`--with sqlite` (store + migrations + flag/env config)** (PR pending). Additive (like the web
+    email/stripe features — overwrites no shared file, so it composes with the base AND `--with openapi`):
+    ships a member-private `internal/store` package (pure-Go **glebarez** SQLite — busy_timeout + single
+    conn; embedded `migrations/*.sql` applied once via a `_migrations` table; a settings KV + a roundtrip
+    test) and a `config.go` flag/env helper (`loadConfig` with `envStr`/`envInt` fallbacks). Feature files
+    are `.tmpl` (so speckit's `go build ./...` doesn't compile them — they import glebarez); deps via a
+    `go get` script, tidied by the base phase-5 `go mod tidy`. Verified green-on-arrival: base+sqlite AND
+    **openapi+sqlite** (17 files, both deps) → `go build`/`fmt:check`/`vet`/`specify verify` (2 passed ·
+    1 locked; the untagged store test runs + passes, out of scenario scope under `bindings: scoped`).
+  - 🔄 **Remaining trove-parity bundle** (green-on-arrival PR): **external-service client + httptest**
+    idiom. pnpm-workspace membership lands with the broader monorepo slice.
 - ⬜ **Per-stack scaffold builds** — **apple next** (exercises the `swift` report format + the
   `SpecTraits.swift` harness), then the rest one at a time, each gated on a tooling preview.
   node-cli already spec'd ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).

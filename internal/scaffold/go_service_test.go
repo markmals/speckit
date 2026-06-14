@@ -123,4 +123,46 @@ func TestGoServiceScaffold(t *testing.T) {
 	if mise, _ := os.ReadFile(filepath.Join(dir, "mise.toml")); strings.Contains(string(mise), "[tasks.generate]") {
 		t.Errorf("default mise.toml must not carry the generate task:\n%s", mise)
 	}
+
+	// --with sqlite: an additive feature (like the web email/stripe ones). It ships
+	// a member-private internal/store package (glebarez SQLite + embedded migrations
+	// + a settings KV + a test) and a flag/env config helper, overwriting no shared
+	// file — so it composes with the base, --with openapi, and any other feature.
+	sq, ok := m.Features["sqlite"]
+	if !ok || len(sq.Scripts) == 0 {
+		t.Fatalf("go-service missing the sqlite feature with a deps script: %+v", m.Features)
+	}
+	sqDir := t.TempDir()
+	sdata := Data{Name: "daemon", Dir: "cmd/daemon", Module: "example.com/acme", Features: map[string]bool{"sqlite": true}}
+	if _, err := Render(sub, sqDir, sdata); err != nil {
+		t.Fatal(err)
+	}
+	mainBefore, _ := os.ReadFile(filepath.Join(sqDir, "main.go"))
+	if _, err := RenderFeature(sub, sq, sqDir, sdata); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{
+		"config.go",
+		"internal/store/store.go", "internal/store/migrate.go",
+		"internal/store/store_test.go", "internal/store/migrations/0001_init.sql",
+	} {
+		if _, err := os.Stat(filepath.Join(sqDir, filepath.FromSlash(p))); err != nil {
+			t.Errorf("sqlite feature missing %s: %v", p, err)
+		}
+	}
+	// the store uses the pure-Go driver + embedded migrations; config is flag+env.
+	storeGo, _ := os.ReadFile(filepath.Join(sqDir, "internal/store/store.go"))
+	if !strings.Contains(string(storeGo), "glebarez/go-sqlite") {
+		t.Errorf("store.go must use the pure-Go glebarez driver:\n%s", storeGo)
+	}
+	if mig, _ := os.ReadFile(filepath.Join(sqDir, "internal/store/migrate.go")); !strings.Contains(string(mig), "go:embed migrations/*.sql") {
+		t.Errorf("migrate.go must embed the migrations:\n%s", mig)
+	}
+	if cfg, _ := os.ReadFile(filepath.Join(sqDir, "config.go")); !strings.Contains(string(cfg), "func loadConfig()") || !strings.Contains(string(cfg), "func envInt(") {
+		t.Errorf("config.go must provide the flag/env config helper:\n%s", cfg)
+	}
+	// additive: it must not overwrite the shared main.go.
+	if mainAfter, _ := os.ReadFile(filepath.Join(sqDir, "main.go")); string(mainAfter) != string(mainBefore) {
+		t.Error("sqlite feature must not overwrite the shared main.go (it must stay additive)")
+	}
 }
