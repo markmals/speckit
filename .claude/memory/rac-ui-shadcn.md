@@ -1,25 +1,30 @@
 ---
-description: The proven recipe to replace the web scaffold's hand-rolled foundation with rac-ui via the official shadcn CLI — gated on publishing rac-ui to GitHub.
+description: The proven recipe to replace the web scaffold's hand-rolled foundation with racket-ui (markmals/racket-ui) via the official shadcn CLI — gated on committing registry.json to that repo's root.
 ---
 
 # rac-ui via the shadcn CLI (web foundation replacement)
 
 **Goal (Mark's call):** retire the web scaffold's ad-hoc `foundation/` (React-Aria +
-cva recipe) and instead consume **rac-ui** — a shadcn/ui-compatible registry rebuilt
+cva recipe) and instead consume **racket-ui** — a shadcn/ui-compatible registry rebuilt
 on React Aria Components + Tailwind v4 + cva + Tabler — via the **official shadcn
-CLI**. rac-ui lives at `~/Developer/Libraries/rac-ui` (registry items under
-`registry/default/*`, built to `dist/r/*.json`); its GitHub remote is
-**`github.com/markmals/rac-ui`**.
+CLI**. Local dir: `~/Developer/Libraries/racket-ui` (registry items under
+`registry/default/*`); GitHub registry: **`github.com/markmals/racket-ui`** → the shadcn
+address is **`markmals/racket-ui/<item>`** (NOT `markmals/racket-ui` — published under the
+`racket-ui` name).
 
-## ⛔ Gate: rac-ui must be published first
+## ⛔ Gate: publish `registry.json`, then templatize
 
-Decided: **Mark publishes `github.com/markmals/rac-ui` (public) first**, THEN this is
-templatized + verified end-to-end against the real GitHub registry + merged. As of
-2026-06-13 the public registry (`rac-ui.malstrom.me`) is **down** and the GitHub repo
-isn't public — so the change **cannot merge** (every `target add web` would fail) and
-can only be verified against a **local stand-in** (`cd rac-ui/dist && python3 -m
-http.server 8899`, components.json `registries: {"@rac-ui": "http://localhost:8899/r/{name}.json"}`).
-Shadcn GitHub-registry form: `shadcn add markmals/rac-ui/<item>`.
+As of 2026-06-14 `github.com/markmals/racket-ui` is **public**, BUT `registry.json` is
+**gitignored** there (untracked) so it isn't at the repo root — and shadcn's GitHub
+registry *requires* `registry.json` at the root. So `shadcn add markmals/racket-ui/…`
+**404s** ("raw.githubusercontent.com did not return a root registry.json file") and the
+templatization **cannot merge** yet (every `target add web` would fail). **Fix first, in
+the racket-ui repo:** regenerate it (`mise run registry-sync`/`registry-build` if stale),
+remove `registry.json` from `.gitignore`, commit + push it (it references the
+already-committed `registry/default/*` source). **Verify:** `pnpm dlx shadcn@latest list
+markmals/racket-ui` succeeds. (To prototype before that's fixed, serve the local build as
+a stand-in: `cd racket-ui/dist && python3 -m http.server 8899`, components.json
+`registries: {"@rac-ui": "http://localhost:8899/r/{name}.json"}`, `shadcn add @rac-ui/<item>`.)
 
 ## The proven recipe (a real scaffold restructured + installed → fully green)
 
@@ -38,9 +43,9 @@ member root** (components/ui + lib at root; `app/` keeps routes/entry/globals).
    must coexist, so the rule can't be `always` or `never`.
 5. **components.json (new):** `style: new-york`, `tailwind.css: app/globals.css`,
    `iconLibrary: tabler`, aliases `@/components` / `@/lib` / ui `@/components/ui` / utils
-   `@/lib/cva`, registry `markmals/rac-ui`.
+   `@/lib/cva`, registry `markmals/racket-ui`.
 6. **install script (phase 0, after pnpm install):**
-   `pnpm dlx shadcn@latest add markmals/rac-ui/base markmals/rac-ui/button … --yes`
+   `pnpm dlx shadcn@latest add markmals/racket-ui/base markmals/racket-ui/button … --yes`
    (`@rac-ui/base` brings globals.css + deps @tabler/icons-react, cva@beta,
    react-aria-components, tailwind-merge + the `lib/cva.ts` helper — identical to the old
    `styles/cva.ts`).
