@@ -70,11 +70,15 @@ func TestAppleScaffold(t *testing.T) {
 		`path: "Tests/CoreTests"`,
 		// the shared test-support target (the .spec/.scenario traits), depended on by CoreTests.
 		`.target(name: "TestSupport", path: "Tests/Support")`,
-		`dependencies: ["GourmandCore", "TestSupport"]`,
 	} {
 		if !strings.Contains(string(pkg), want) {
 			t.Errorf("Package.swift missing %q:\n%s", want, pkg)
 		}
+	}
+	// the CoreTests deps render multi-line (the seam composes conditionals), so check
+	// them whitespace-normalized: the base has only Core + the shared support target.
+	if !strings.Contains(nospace(string(pkg)), `dependencies:["GourmandCore","TestSupport",]`) {
+		t.Errorf("base CoreTests deps must be exactly Core + TestSupport:\n%s", pkg)
 	}
 
 	// Slice 2 — the Tuist app project consumes the Core package's product, builds a
@@ -209,11 +213,15 @@ func TestAppleScaffold(t *testing.T) {
 		`.library(name: "GourmandPersistence", targets: ["GourmandPersistence"])`,
 		`name: "GourmandPersistence"`,
 		`path: "Sources/Persistence"`,
-		`dependencies: ["GourmandCore", "TestSupport", "GourmandPersistence"]`,
 	} {
 		if !strings.Contains(string(sdPkg), want) {
 			t.Errorf("swiftdata Package.swift seam missing %q:\n%s", want, sdPkg)
 		}
+	}
+	// CoreTests gains the Persistence dep (so the persist test, which lives there, can
+	// import it).
+	if !strings.Contains(nospace(string(sdPkg)), `dependencies:["GourmandCore","TestSupport","GourmandPersistence",]`) {
+		t.Errorf("swiftdata CoreTests must depend on Persistence:\n%s", sdPkg)
 	}
 	if strings.Contains(string(sdPkg), "PersistenceTests") {
 		t.Errorf("swiftdata must NOT add a separate test target (clobbers the event stream):\n%s", sdPkg)
@@ -245,4 +253,76 @@ func TestAppleScaffold(t *testing.T) {
 	if strings.Contains(string(story), "scenario.todo.manage.persist") {
 		t.Errorf("default story must not carry the persist scenario:\n%s", story)
 	}
+
+	// --with openapi: a contract-first API client via the Swift OpenAPI Generator
+	// build-tool plugin. The seam adds the swift-openapi-* package dependencies (after
+	// `products`, before `targets` — SPM enforces that order), the API target + plugin,
+	// and the CoreTests deps; the feature ships the contract + a public facade + a
+	// fake-transport test (proving the client offline).
+	oapi, ok := m.Features["openapi"]
+	if !ok {
+		t.Fatalf("apple missing the openapi feature: %+v", m.Features)
+	}
+	odata := Data{Name: "gourmand", Dir: "apps/gourmand", Features: map[string]bool{"openapi": true}}
+	odir := t.TempDir()
+	if _, err := Render(sub, odir, odata); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RenderFeature(sub, oapi, odir, odata); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{
+		"Core/Sources/API/openapi.yaml",
+		"Core/Sources/API/openapi-generator-config.yaml",
+		"Core/Sources/API/TodoAPIClient.swift",
+		"Core/Tests/CoreTests/TodoAPIClientTests.swift",
+	} {
+		if _, err := os.Stat(filepath.Join(odir, filepath.FromSlash(p))); err != nil {
+			t.Errorf("openapi feature missing %s: %v", p, err)
+		}
+	}
+	oPkg := string(mustRead(t, filepath.Join(odir, "Core/Package.swift")))
+	for _, want := range []string{
+		`.package(url: "https://github.com/apple/swift-openapi-generator", from: "1.0.0")`,
+		`.library(name: "GourmandAPI", targets: ["GourmandAPI"])`,
+		`name: "GourmandAPI"`,
+		`.plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator")`,
+		`.product(name: "OpenAPIRuntime", package: "swift-openapi-runtime")`,
+	} {
+		if !strings.Contains(oPkg, want) {
+			t.Errorf("openapi Package.swift seam missing %q:\n%s", want, oPkg)
+		}
+	}
+	// `dependencies` must sit AFTER `products` (SwiftPM enforces it; got it wrong once).
+	if di, pi := strings.Index(oPkg, "dependencies:"), strings.Index(oPkg, "products:"); di < pi {
+		t.Errorf("Package.swift: `dependencies` must come after `products` (SwiftPM arg order)")
+	}
+	if strings.Contains(string(pkg), "swift-openapi") {
+		t.Errorf("default Package.swift must not pull swift-openapi:\n%s", pkg)
+	}
+	oTest := string(mustRead(t, filepath.Join(odir, "Core/Tests/CoreTests/TodoAPIClientTests.swift")))
+	if !strings.Contains(oTest, `.scenario("scenario.todo.manage.fetch")`) || !strings.Contains(oTest, "ClientTransport") {
+		t.Errorf("openapi test must bind the fetch scenario via a fake ClientTransport:\n%s", oTest)
+	}
+	oRoot := t.TempDir()
+	if _, err := RenderRoot(sub, oRoot, odata); err != nil {
+		t.Fatal(err)
+	}
+	oStory := string(mustRead(t, filepath.Join(oRoot, "features/0001-todo/stories/todo.manage.md")))
+	if !strings.Contains(oStory, "<!-- id: scenario.todo.manage.fetch -->") {
+		t.Errorf("openapi story missing the fetch scenario:\n%s", oStory)
+	}
 }
+
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return b
+}
+
+// nospace collapses all whitespace so multi-line Swift (the seam renders the deps
+// array across lines, before the CLI's swift-format pass) can be matched stably.
+func nospace(s string) string { return strings.Join(strings.Fields(s), "") }

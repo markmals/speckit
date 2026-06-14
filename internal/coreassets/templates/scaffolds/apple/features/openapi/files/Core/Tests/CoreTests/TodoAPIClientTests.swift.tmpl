@@ -1,0 +1,42 @@
+import Foundation
+import HTTPTypes
+import OpenAPIRuntime
+import TestSupport
+import Testing
+import {{pascal .Name}}Core
+
+@testable import {{pascal .Name}}API
+
+// SPEC: story.todo.manage
+//
+// A canned `ClientTransport` exercises the generated client offline — the analog of
+// an httptest fake server, so `specify verify` proves the API client without a
+// network. Lives in CoreTests (one test target → one event-stream report). The
+// scenario it binds is added to the story only with `--with openapi`.
+struct FakeTransport: ClientTransport {
+    let json: String
+    func send(_ request: HTTPRequest, body: HTTPBody?, baseURL: URL, operationID: String)
+        async throws
+        -> (HTTPResponse, HTTPBody?)
+    {
+        var response = HTTPResponse(status: .ok)
+        response.headerFields[.contentType] = "application/json"
+        return (response, HTTPBody(json))
+    }
+}
+
+@Suite(.spec("story.todo.manage"))
+struct TodoAPIClientTests {
+    @Test(.scenario("scenario.todo.manage.fetch"))
+    func `the client fetches and maps to-dos from the remote API`() async throws {
+        let json =
+            #"[{"id":"00000000-0000-0000-0000-000000000001","label":"Buy flour","isDone":false}]"#
+        let api = TodoAPIClient(
+            serverURL: URL(string: "https://example.com")!,
+            transport: FakeTransport(json: json)
+        )
+        let todos = try await api.listTodos()
+        #expect(todos.count == 1)
+        #expect(todos.first?.label == "Buy flour")
+    }
+}

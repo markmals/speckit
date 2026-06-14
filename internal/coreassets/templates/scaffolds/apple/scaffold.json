@@ -19,6 +19,9 @@
   "features": {
     "swiftdata": {
       "files": "features/swiftdata/files"
+    },
+    "openapi": {
+      "files": "features/openapi/files"
     }
   },
   "target": {

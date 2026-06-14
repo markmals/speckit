@@ -1,0 +1,37 @@
+import Foundation
+import OpenAPIRuntime
+import OpenAPIURLSession
+import {{pascal .Name}}Core
+
+/// A thin, hand-written facade over the generated OpenAPI `Client`. The generated
+/// code (Client, Types, Operations) is internal to this module; this is the public
+/// surface the app and tests use, and it maps the wire schema to the domain `Todo`.
+/// Inject a custom `transport` to exercise it offline (see the bound test).
+public struct TodoAPIClient {
+    private let client: Client
+
+    public init(serverURL: URL, transport: any ClientTransport = URLSessionTransport()) {
+        client = Client(serverURL: serverURL, transport: transport)
+    }
+
+    /// Fetch every to-do from the remote API, mapped to the domain type.
+    public func listTodos() async throws -> [Todo] {
+        let output = try await client.listTodos()
+        switch output {
+        case .ok(let ok):
+            return try ok.body.json.map { wire in
+                Todo(
+                    id: UUID(uuidString: wire.id) ?? UUID(),
+                    label: wire.label,
+                    isDone: wire.isDone
+                )
+            }
+        case .undocumented(let statusCode, _):
+            throw TodoAPIError.unexpectedStatus(statusCode)
+        }
+    }
+}
+
+public enum TodoAPIError: Error, Equatable {
+    case unexpectedStatus(Int)
+}

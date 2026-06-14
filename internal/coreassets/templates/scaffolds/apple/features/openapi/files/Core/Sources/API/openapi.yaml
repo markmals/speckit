@@ -1,0 +1,34 @@
+openapi: 3.1.0
+info:
+  title: Todo API
+  version: 1.0.0
+# The contract is the source of truth. The OpenAPIGenerator build-tool plugin
+# regenerates the Swift Client/Types from this file on every build — edit here, not
+# the generated code. (Changing the contract may need a clean build to bust the
+# plugin's codegen cache.)
+paths:
+  /todos:
+    get:
+      operationId: listTodos
+      responses:
+        '200':
+          description: The to-dos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Todo'
+components:
+  schemas:
+    Todo:
+      type: object
+      required: [id, label, isDone]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        isDone:
+          type: boolean
