@@ -138,12 +138,34 @@ What it cost to find:
   Tuist in `[tools]` doesn't make `mise run test` install it (a fresh machine only
   fetches Tuist on the first app task — `generate`/`build`).
 
-### Slice 3 — `--with` features ⬜ (go-service-shaped)
+### Slice 3 — `--with` features 🟡 (go-service-shaped)
 
-`openapi` (Swift OpenAPI Generator SPM plugin) · `swiftdata` (a `<Name>Persistence`
-target, **strict-memory-safety off** — SwiftData macros are outside the proof
-boundary) · `push` (APNs registration) · `dist` (TestFlight / App Store / Homebrew
-release + signing/notarization advisory, from `appkit-packaging`).
+**`swiftdata` ✅** — `--with swiftdata` adds a `<Name>Persistence` source target (a
+SwiftData `@Model` record + a `SwiftDataTodoStore` mapping the domain `Todo`),
+**strict-memory-safety off** (SwiftData's macros sit outside the proof boundary),
+and a bound persistence test that verifies headlessly against a temp-file (reopened)
+ModelContainer. Proven: `--with swiftdata` → `verify` **3 passed · 1 locked** + app
+build + lint clean; base render unaffected. Two patterns this established for every
+later feature:
+
+- **The `Package.swift` composition seam.** Features can't share a file (they render
+  in nondeterministic map order), but SPM deps/targets are declarative in the
+  manifest. So the **base `Package.swift.tmpl` is the seam**: each feature adds its
+  target/product/deps behind `{{ "{{" }}if .Features.<name>}}` and ships only additive source
+  files. (go-service dodged this with `go get` scripts; SPM has no equivalent, so the
+  seam — the web `providers.tsx` pattern — is the right tool.) The example story is a
+  seam too: `--with swiftdata` adds a third scenario through the same gate.
+- **One test target, always.** `swift test --event-stream-output-path` has each test
+  *target*'s process truncate-write the same file, so **multiple test targets clobber
+  one another's events** and the engine sees only one. A feature's tests therefore
+  land in the single `CoreTests` target (which gains a conditional dependency on the
+  feature's source target), never a target of their own. This also drove extracting
+  the `.spec`/`.scenario` traits into a shared **`TestSupport`** library target
+  (apple-platform-tools' pattern) so every test target imports them.
+
+**Remaining ⬜:** `openapi` (Swift OpenAPI Generator SPM plugin) · `push` (APNs
+registration) · `dist` (TestFlight / App Store / Homebrew release +
+signing/notarization advisory, from `appkit-packaging`).
 
 ### Slice 4 — the apple stack pack ⬜
 

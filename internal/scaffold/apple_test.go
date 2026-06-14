@@ -47,7 +47,7 @@ func TestAppleScaffold(t *testing.T) {
 		"mise.toml", ".swift-format", ".gitignore",
 		"Core/Package.swift",
 		"Core/Sources/Core/Todo.swift", "Core/Sources/Core/TodoList.swift",
-		"Core/Tests/CoreTests/SpecTraits.swift", "Core/Tests/CoreTests/TodoTests.swift",
+		"Core/Tests/Support/SpecTraits.swift", "Core/Tests/CoreTests/TodoTests.swift",
 		// Slice 2 — the Tuist app surface.
 		"Project.swift", "macOS/Info.plist",
 		"macOS/Sources/App/AppDelegate.swift", "macOS/Sources/App/MainWindowController.swift",
@@ -68,6 +68,9 @@ func TestAppleScaffold(t *testing.T) {
 		`.target(name: "GourmandCore", path: "Sources/Core")`,
 		`name: "GourmandCoreTests"`,
 		`path: "Tests/CoreTests"`,
+		// the shared test-support target (the .spec/.scenario traits), depended on by CoreTests.
+		`.target(name: "TestSupport", path: "Tests/Support")`,
+		`dependencies: ["GourmandCore", "TestSupport"]`,
 	} {
 		if !strings.Contains(string(pkg), want) {
 			t.Errorf("Package.swift missing %q:\n%s", want, pkg)
@@ -123,6 +126,7 @@ func TestAppleScaffold(t *testing.T) {
 	test, _ := os.ReadFile(filepath.Join(dir, "Core/Tests/CoreTests/TodoTests.swift"))
 	for _, want := range []string{
 		"@testable import GourmandCore",
+		"import TestSupport",
 		`@Suite(.spec("story.todo.manage"))`,
 		"@Test(.scenario(\"scenario.todo.manage.toggle\"))\n",
 		"func `toggling a to-do flips its completion`()",
@@ -132,10 +136,10 @@ func TestAppleScaffold(t *testing.T) {
 		}
 	}
 
-	// SpecTraits.swift is stack-invariant (no template substitution) and defines the
-	// `.spec`/`.scenario` factories the binding form relies on.
-	traits, _ := os.ReadFile(filepath.Join(dir, "Core/Tests/CoreTests/SpecTraits.swift"))
-	for _, want := range []string{"struct ScenarioTrait: TestTrait", "static func scenario(_ id: String)"} {
+	// SpecTraits lives in the shared TestSupport target (no template substitution) and
+	// exports the public `.spec`/`.scenario` factories the binding form relies on.
+	traits, _ := os.ReadFile(filepath.Join(dir, "Core/Tests/Support/SpecTraits.swift"))
+	for _, want := range []string{"public struct ScenarioTrait: TestTrait", "public static func scenario(_ id: String)"} {
 		if !strings.Contains(string(traits), want) {
 			t.Errorf("SpecTraits.swift missing %q:\n%s", want, traits)
 		}
@@ -168,5 +172,77 @@ func TestAppleScaffold(t *testing.T) {
 	}
 	if rt.Report != "apps/gourmand/Core/test.swift-events.ndjson" || rt.Source != "apps/gourmand/Core" {
 		t.Errorf("target report=%q source=%q", rt.Report, rt.Source)
+	}
+
+	// --with swiftdata: a composition-seam feature. The base Package.swift (the seam)
+	// adds the Persistence target/product behind {{if .Features.swiftdata}}; the feature
+	// ships only additive source files (the @Model record + the SwiftData store + a
+	// bound test). Its scenario is added to the seeded story by the same `.Features`
+	// gate, so a fresh `verify --with swiftdata` proves persistence too.
+	sd, ok := m.Features["swiftdata"]
+	if !ok {
+		t.Fatalf("apple missing the swiftdata feature: %+v", m.Features)
+	}
+	fdata := Data{Name: "gourmand", Dir: "apps/gourmand", Features: map[string]bool{"swiftdata": true}}
+	fdir := t.TempDir()
+	if _, err := Render(sub, fdir, fdata); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RenderFeature(sub, sd, fdir, fdata); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{
+		"Core/Sources/Persistence/TodoRecord.swift",
+		"Core/Sources/Persistence/SwiftDataTodoStore.swift",
+		// the persist test lands in CoreTests (one test target → one event-stream report).
+		"Core/Tests/CoreTests/TodoStoreTests.swift",
+	} {
+		if _, err := os.Stat(filepath.Join(fdir, filepath.FromSlash(p))); err != nil {
+			t.Errorf("swiftdata feature missing %s: %v", p, err)
+		}
+	}
+	// the seam fires: the Persistence source target + product appear only with the
+	// feature on, and CoreTests gains a dependency on it (so the persist test, which
+	// lives in CoreTests, can import it) — but NO separate test target.
+	sdPkg, _ := os.ReadFile(filepath.Join(fdir, "Core/Package.swift"))
+	for _, want := range []string{
+		`.library(name: "GourmandPersistence", targets: ["GourmandPersistence"])`,
+		`name: "GourmandPersistence"`,
+		`path: "Sources/Persistence"`,
+		`dependencies: ["GourmandCore", "TestSupport", "GourmandPersistence"]`,
+	} {
+		if !strings.Contains(string(sdPkg), want) {
+			t.Errorf("swiftdata Package.swift seam missing %q:\n%s", want, sdPkg)
+		}
+	}
+	if strings.Contains(string(sdPkg), "PersistenceTests") {
+		t.Errorf("swiftdata must NOT add a separate test target (clobbers the event stream):\n%s", sdPkg)
+	}
+	// ...and the Persistence target is absent from the default (no-feature) render.
+	if strings.Contains(string(pkg), "GourmandPersistence") {
+		t.Errorf("default Package.swift must not declare the Persistence target:\n%s", pkg)
+	}
+	// the store maps the domain; the bound test names the persist scenario via the trait.
+	store, _ := os.ReadFile(filepath.Join(fdir, "Core/Sources/Persistence/SwiftDataTodoStore.swift"))
+	if !strings.Contains(string(store), "import GourmandCore") || !strings.Contains(string(store), "ModelContainer") {
+		t.Errorf("SwiftDataTodoStore.swift must import the Core and use a ModelContainer:\n%s", store)
+	}
+	sdTest, _ := os.ReadFile(filepath.Join(fdir, "Core/Tests/CoreTests/TodoStoreTests.swift"))
+	for _, want := range []string{`.scenario("scenario.todo.manage.persist")`, "import TestSupport", "import GourmandPersistence"} {
+		if !strings.Contains(string(sdTest), want) {
+			t.Errorf("persistence test missing %q:\n%s", want, sdTest)
+		}
+	}
+	// the seeded story gains the persist scenario only under --with swiftdata.
+	froot := t.TempDir()
+	if _, err := RenderRoot(sub, froot, fdata); err != nil {
+		t.Fatal(err)
+	}
+	sdStory, _ := os.ReadFile(filepath.Join(froot, "features/0001-todo/stories/todo.manage.md"))
+	if !strings.Contains(string(sdStory), "<!-- id: scenario.todo.manage.persist -->") {
+		t.Errorf("swiftdata story missing the persist scenario:\n%s", sdStory)
+	}
+	if strings.Contains(string(story), "scenario.todo.manage.persist") {
+		t.Errorf("default story must not carry the persist scenario:\n%s", story)
 	}
 }

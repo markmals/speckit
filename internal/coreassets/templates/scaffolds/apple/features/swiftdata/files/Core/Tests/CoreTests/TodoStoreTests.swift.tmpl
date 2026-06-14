@@ -1,0 +1,31 @@
+import Foundation
+import TestSupport
+import Testing
+import {{pascal .Name}}Core
+import {{pascal .Name}}Persistence
+
+// SPEC: story.todo.manage
+//
+// Lives in the CoreTests target (not a target of its own) so the whole suite lands
+// in one `swift test --event-stream-output-path` report — multiple test targets
+// clobber that file. It pulls in the Persistence source target via the seam's
+// conditional CoreTests dependency. Runs headlessly (no app/simulator/signing), so
+// `specify verify` proves persistence too. The scenario it binds is added to the
+// story only with `--with swiftdata`.
+@MainActor
+@Suite(.spec("story.todo.manage"))
+struct TodoStoreTests {
+    @Test(.scenario("scenario.todo.manage.persist"))
+    func `a saved to-do survives reopening the store`() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("\(UUID().uuidString).store")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        do {
+            let store = try SwiftDataTodoStore(url: url)
+            try store.save(Todo(label: "Cure the pancetta"))
+        }
+        let reopened = try SwiftDataTodoStore(url: url)
+        #expect(try reopened.all().contains { $0.label == "Cure the pancetta" })
+    }
+}

@@ -16,6 +16,11 @@
       ]
     }
   ],
+  "features": {
+    "swiftdata": {
+      "files": "features/swiftdata/files"
+    }
+  },
   "target": {
     "command": "cd {{.Dir}} && mise run test",
     "format": "swift",

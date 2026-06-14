@@ -273,8 +273,14 @@ Ready) and baked in as `specify work`'s defaults.
     macOS: `mise run build` (BUILD SUCCEEDED) · `test:app` (passed) · `verify` green · lint clean. Gotchas:
     Tuist anchors on the repo `.git` root; the Core needs a `.library` product for the app to consume; a silent
     post-render `swift format` pass normalizes the name-dependent `AppKit`/`<Name>Core` import order.
-  - ⬜ **Slice 3 — `--with` features** (go-service-shaped) — `openapi` (Swift OpenAPI Generator), `swiftdata`
-    (a `<Name>Persistence` target, strict-memory-safety off), `push` (APNs), `dist` (TestFlight/App Store/Homebrew).
+  - 🟡 **Slice 3 — `--with` features** (go-service-shaped): **`swiftdata` ✅** — a `<Name>Persistence` target
+    (SwiftData `@Model` + a store mapping the domain `Todo`, strict-memory-safety off) + a bound persistence
+    test (headless temp-file reopen). `--with swiftdata` → verify **3 passed · 1 locked** + app build + lint,
+    base unaffected. Established two patterns: the **`Package.swift` composition seam** (`{{if .Features.x}}`
+    blocks; features ship only additive files) and **one test target** (`swift test --event-stream-output-path`
+    clobbers across multiple test targets → feature tests live in `CoreTests`; the `.spec`/`.scenario` traits
+    moved to a shared `TestSupport` target). ⬜ Remaining: `openapi` (Swift OpenAPI Generator), `push` (APNs),
+    `dist` (TestFlight/App Store/Homebrew).
   - ⬜ **Slice 4 — the apple stack pack** — project mac-dev-skills' appkit plugin (skills/agent/rules + Xcode MCP)
     into `templates/{skills,rules,agents,commands}`.
   - ⬜ `swift-package` / `swift-cli` (apple-platform-tools' shape) fall out of Slice 1 nearly free — factor after.
