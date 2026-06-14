@@ -266,8 +266,13 @@ Ready) and baked in as `specify work`'s defaults.
     canonical binding (decided 2026-06-14); the engine's `swiftBindRe` + event-stream parser already join it.
     Swift files are `.tmpl` **only** for substitution (speckit's Go CI never compiles them — the inverse of
     the go-service rule).
-  - ⬜ **Slice 2 — Tuist app surface** — `Project.swift` + AppKit (macOS) app/tests, mise `generate`/`build`/
-    `launch`/`test:app`, code-signing off. Verify still points at Core; the app build is a Mac-only secondary.
+  - ✅ **Slice 2 — Tuist app surface** — `Project.swift` (macOS AppKit `.app` + unit-test target, signing off,
+    `bundleId com.example.<name>`) + `macOS/{Info.plist,Sources/App,Tests}` (programmatic `@main` delegate +
+    a window controller reading the Core's `@Observable` model), mise `generate`/`build`/`launch:macos`/
+    `test:app` (Tuist pinned). Verify still points at Core; the app build is a Mac-only secondary. Proven on
+    macOS: `mise run build` (BUILD SUCCEEDED) · `test:app` (passed) · `verify` green · lint clean. Gotchas:
+    Tuist anchors on the repo `.git` root; the Core needs a `.library` product for the app to consume; a silent
+    post-render `swift format` pass normalizes the name-dependent `AppKit`/`<Name>Core` import order.
   - ⬜ **Slice 3 — `--with` features** (go-service-shaped) — `openapi` (Swift OpenAPI Generator), `swiftdata`
     (a `<Name>Persistence` target, strict-memory-safety off), `push` (APNs), `dist` (TestFlight/App Store/Homebrew).
   - ⬜ **Slice 4 — the apple stack pack** — project mac-dev-skills' appkit plugin (skills/agent/rules + Xcode MCP)

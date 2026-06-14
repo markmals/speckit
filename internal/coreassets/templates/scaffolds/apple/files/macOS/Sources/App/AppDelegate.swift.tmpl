@@ -1,0 +1,30 @@
+import AppKit
+
+/// Owns the app lifecycle and the main window. `@main` with an explicit
+/// `static func main()` is the programmatic AppKit entry point (no storyboard):
+/// the default `NSApplicationDelegate.main()` calls `NSApplicationMain`, which
+/// only wires a delegate from a main storyboard — this app is code-only.
+@main
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var windowController: MainWindowController?
+
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.regular)
+        app.run()
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let controller = MainWindowController()
+        controller.showWindow(nil)
+        windowController = controller
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
+}

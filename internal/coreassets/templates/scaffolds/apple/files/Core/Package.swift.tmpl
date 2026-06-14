@@ -8,6 +8,11 @@ import PackageDescription
 let package = Package(
     name: "{{pascal .Name}}",
     platforms: [.macOS(.v14), .iOS(.v17)],
+    products: [
+        // The library product the Tuist app target consumes (`.package(product:)`).
+        // `swift test` doesn't need it, but the app does.
+        .library(name: "{{pascal .Name}}Core", targets: ["{{pascal .Name}}Core"])
+    ],
     targets: [
         .target(name: "{{pascal .Name}}Core", path: "Sources/Core"),
         .testTarget(

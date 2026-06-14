@@ -7,6 +7,13 @@
       "commands": [
         "mise trust"
       ]
+    },
+    {
+      "phase": 1,
+      "silent": true,
+      "commands": [
+        "for d in Core macOS iOS; do if [ -d \"$d\" ]; then swift format --in-place --recursive \"$d\"; fi; done"
+      ]
     }
   ],
   "target": {

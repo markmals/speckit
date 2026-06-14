@@ -107,14 +107,36 @@ Swift file is `.tmpl` iff it contains a template var (`Package.swift.tmpl`,
 `TodoTests.swift.tmpl` import the module name); `SpecTraits.swift`, `Todo.swift`,
 `TodoList.swift` are plain `.swift`.
 
-### Slice 2 — Tuist app surface ⬜
+### Slice 2 — Tuist app surface ✅
 
 `Project.swift` (one macOS AppKit app target + a unit-test target,
-`CODE_SIGNING_ALLOWED=NO`), `macOS/Sources/App` (`@main`, window controller),
-`macOS/Tests`, and mise `generate`/`build`/`launch`/`test:app`. Verify still
-targets Core; iOS/UIKit is a documented mirror, not over-built (gourmand hasn't
-built it yet either). Tuist is pinned via mise; the generated `.xcodeproj`/
-`.xcworkspace`/`Derived/` are gitignored (source of truth is `Project.swift`).
+`CODE_SIGNING_ALLOWED=NO`, `bundleId: com.example.<name>`), `macOS/Info.plist`,
+`macOS/Sources/App` (the programmatic `@main` `AppDelegate` + a
+`MainWindowController` that reads the Core's `@Observable` `TodoList`),
+`macOS/Tests/AppSmokeTests.swift`, and mise `generate`/`build`/`launch:macos`/
+`test:app` (Tuist pinned in `[tools]`). Verify still targets Core; iOS/UIKit is a
+documented mirror, not over-built (gourmand hasn't built it yet either). The
+generated `.xcodeproj`/`.xcworkspace`/`Derived/` are gitignored — source of truth
+is `Project.swift`. Proven on macOS: `mise run build` (BUILD SUCCEEDED) +
+`mise run test:app` (passed) + `verify` (Core, green) + `swift format lint --strict`.
+
+What it cost to find:
+- **Tuist anchors on the repo root** — the closest dir with a `.git` or `Tuist/`.
+  `generate` fails outside a git repo, so the app surface assumes a real SpecKit
+  project (every one is a git repo; gourmand is).
+- **The Core needs a `.library` product.** `swift test` joins the test target to the
+  source target directly, so Slice 1 shipped no `products:`. The Tuist app consumes
+  `.package(product: "<Name>Core")`, which requires the library product — added to
+  `Package.swift.tmpl` (forward-compatible; `swift test` ignores it).
+- **Import order is name-dependent.** `swift-format`'s `OrderedImports` sorts
+  lexicographically, but `import AppKit` vs `import <Name>Core` flips with the name
+  (`AppCore` < `AppKit` < `GourmandCore`) — no fixed template order is clean for all
+  names. Fix: a **silent phase-1 `swift format --in-place`** pass over the rendered
+  member normalizes it. (Run `swift format` directly, not `mise run fmt`, so the
+  format step doesn't drag a Tuist install into `target add`.)
+- **`verify` doesn't pull Tuist.** The `test` task is `swift test` only; pinning
+  Tuist in `[tools]` doesn't make `mise run test` install it (a fresh machine only
+  fetches Tuist on the first app task — `generate`/`build`).
 
 ### Slice 3 — `--with` features ⬜ (go-service-shaped)
 
