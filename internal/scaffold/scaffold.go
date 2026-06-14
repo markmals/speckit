@@ -19,7 +19,11 @@ import (
 
 // Manifest is a scaffold's scaffold.json.
 type Manifest struct {
-	Stack          string             `json:"stack"`
+	Stack string `json:"stack"`
+	// MemberDir is where `target add` places this stack's member by default
+	// (overridable with --dir): "apps" for an app, "cmd" for a go-service, "packages"
+	// for a library. Empty defaults to "apps".
+	MemberDir      string             `json:"memberDir,omitempty"`
 	Scripts        []Script           `json:"scripts,omitempty"`
 	Target         ManifestTarget     `json:"target"`
 	Variables      []Variable         `json:"variables,omitempty"`
@@ -83,10 +87,11 @@ type Script struct {
 // ManifestTarget holds the specs.json target fields as text/template strings
 // (e.g. "{{.Dir}}/junit.xml"), resolved against the Data by RenderTarget.
 type ManifestTarget struct {
-	Command string `json:"command,omitempty"`
-	Format  string `json:"format"`
-	Report  string `json:"report"`
-	Source  string `json:"source"`
+	Command  string `json:"command,omitempty"`
+	Format   string `json:"format"`
+	Report   string `json:"report"`
+	Source   string `json:"source"`
+	Bindings string `json:"bindings,omitempty"` // "strict" (default) | "scoped"
 }
 
 // Variable is a manifest-declared template variable (resolved by the CLI).
@@ -116,7 +121,7 @@ type Data struct {
 }
 
 // RenderedTarget is a manifest's target after substitution — the specs.json entry.
-type RenderedTarget struct{ Command, Format, Report, Source string }
+type RenderedTarget struct{ Command, Format, Report, Source, Bindings string }
 
 var funcs = template.FuncMap{
 	"lower":  strings.ToLower,
@@ -292,6 +297,7 @@ func RenderTarget(m Manifest, data Data) (RenderedTarget, error) {
 	if rt.Source, err = renderString("target.source", m.Target.Source, data); err != nil {
 		return rt, err
 	}
+	rt.Bindings = m.Target.Bindings // a fixed enum, not a template
 	return rt, nil
 }
 

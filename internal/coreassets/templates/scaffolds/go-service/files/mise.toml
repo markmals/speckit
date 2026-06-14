@@ -1,0 +1,29 @@
+# go-service: a Go HTTP daemon. Mise pins the toolchain and exposes the same task
+# names the engine + CI expect; `test` writes the `go test -json` report the
+# engine's gotest format joins.
+[tools]
+go = "1.26"
+
+[tasks.dev]
+description = "run the service"
+run = "go run ."
+
+[tasks.build]
+description = "build the service"
+run = "go build ./..."
+
+[tasks.test]
+description = "run the Go suite, writing the JSON report the engine joins"
+run = "go test -json ./... > test.gotest.json"
+
+[tasks.vet]
+description = "go vet"
+run = "go vet ./..."
+
+[tasks.fmt]
+description = "format in place (gofmt)"
+run = "gofmt -w ."
+
+[tasks."fmt:check"]
+description = "fail if any file needs formatting"
+run = 'test -z "$(gofmt -l .)"'

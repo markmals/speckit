@@ -1,0 +1,20 @@
+{
+  "stack": "go-service",
+  "memberDir": "cmd",
+  "scripts": [
+    {
+      "phase": 0,
+      "commands": [
+        "mise trust",
+        "go mod tidy"
+      ]
+    }
+  ],
+  "target": {
+    "command": "cd {{.Dir}} && mise run test",
+    "format": "gotest",
+    "report": "{{.Dir}}/test.gotest.json",
+    "source": "{{.Dir}}",
+    "bindings": "scoped"
+  }
+}
