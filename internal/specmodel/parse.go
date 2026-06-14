@@ -25,6 +25,11 @@ type Scenario struct {
 
 var scenarioSubID = regexp.MustCompile(`<!--\s*id:\s*(scenario\.[a-z0-9.\-]+)\s*-->`)
 
+// scenarioHeading matches a "Scenario" heading at any markdown level (h2–h6), so
+// both the top-level `## Scenario …` form and the nested `### Scenario N: …` form
+// (under an `## Acceptance Criteria` heading) are recognized.
+var scenarioHeading = regexp.MustCompile(`^(#{2,6})\s+Scenario\b`)
+
 // ParseFrontmatter extracts a spec's frontmatter. ok is false when the content
 // has no frontmatter or no id (e.g. a README) — such files are not specs.
 //
@@ -71,22 +76,25 @@ func parseIDList(s string) []SpecID {
 	return out
 }
 
-// parseScenarios finds "## Scenario ..." headings and the sub-ID comment that
-// follows each one before the next heading.
+// parseScenarios finds "Scenario" headings (at any level, h2–h6) and the sub-ID
+// comment that follows each one before the next heading of the same or shallower
+// level — so a scenario never absorbs the next one's sub-ID.
 func parseScenarios(content string) []Scenario {
 	lines := strings.Split(content, "\n")
 	var out []Scenario
 	for i, line := range lines {
-		if !strings.HasPrefix(line, "## Scenario") {
+		m := scenarioHeading.FindStringSubmatch(line)
+		if m == nil {
 			continue
 		}
-		sc := Scenario{Heading: strings.TrimSpace(strings.TrimPrefix(line, "##")), Line: i + 1}
+		level := len(m[1])
+		sc := Scenario{Heading: strings.TrimSpace(strings.TrimLeft(line, "# ")), Line: i + 1}
 		for j := i + 1; j < len(lines); j++ {
-			if strings.HasPrefix(lines[j], "## ") {
-				break
+			if h := headingLevel(lines[j]); h > 0 && h <= level {
+				break // a new scenario or a shallower section begins here
 			}
-			if m := scenarioSubID.FindStringSubmatch(lines[j]); m != nil {
-				sc.SubID = m[1]
+			if sm := scenarioSubID.FindStringSubmatch(lines[j]); sm != nil {
+				sc.SubID = sm[1]
 				sc.Line = j + 1 // point annotations at the sub-id declaration
 				break
 			}
@@ -94,6 +102,19 @@ func parseScenarios(content string) []Scenario {
 		out = append(out, sc)
 	}
 	return out
+}
+
+// headingLevel returns the ATX heading level of a line (1–6) — the count of
+// leading '#' when followed by a space — or 0 when the line is not a heading.
+func headingLevel(line string) int {
+	n := 0
+	for n < len(line) && line[n] == '#' {
+		n++
+	}
+	if n >= 1 && n < len(line) && line[n] == ' ' {
+		return n
+	}
+	return 0
 }
 
 // LoadLibrary walks specs/ and features/ in fsys and parses every markdown file
