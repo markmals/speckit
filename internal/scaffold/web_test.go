@@ -32,10 +32,9 @@ func TestWebScaffold(t *testing.T) {
 	}
 	for _, p := range []string{
 		"package.json", "mise.toml", "tsconfig.json", "vitest.config.ts",
-		"tsr.config.json", ".oxlintrc.json", ".oxfmtrc.json",
+		"tsr.config.json", ".oxlintrc.json", ".oxfmtrc.json", "components.json",
 		"app/root.tsx", "app/router.tsx", "app/routes.ts", "app/routes/home.tsx",
 		"app/providers.tsx", "pnpm-workspace.yaml",
-		"app/styles/tailwind.css", "app/styles/cva.ts", "app/components/foundation/button.tsx",
 		"app/lib/greeting.ts", "app/lib/greeting.test.ts",
 	} {
 		if _, err := os.Stat(filepath.Join(app, p)); err != nil {
@@ -46,26 +45,49 @@ func TestWebScaffold(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(app, "package.json.tmpl")); !os.IsNotExist(err) {
 		t.Error("package.json.tmpl suffix not stripped")
 	}
-	// package.json wires the #/* subpath import alias + the target name.
+	// package.json carries the target name; the old #/* subpath imports are gone
+	// (the scaffold resolves @/* via tsconfig paths + Vite's native tsconfigPaths).
 	pkg, _ := os.ReadFile(filepath.Join(app, "package.json"))
-	for _, want := range []string{`"name": "web"`, `"#/*": "./app/*"`} {
-		if !strings.Contains(string(pkg), want) {
-			t.Errorf("package.json missing %q:\n%s", want, pkg)
+	if !strings.Contains(string(pkg), `"name": "web"`) {
+		t.Errorf("package.json missing name:\n%s", pkg)
+	}
+	if strings.Contains(string(pkg), "#/") {
+		t.Errorf("package.json should no longer declare #/* subpath imports:\n%s", pkg)
+	}
+	// components.json points the shadcn CLI at the rac-ui registry: the @racket-ui
+	// namespace (resolved per-item over GitHub raw) + the @/ aliases.
+	cj, _ := os.ReadFile(filepath.Join(app, "components.json"))
+	for _, want := range []string{`"@racket-ui"`, "markmals/racket-ui", `"@/components/ui"`} {
+		if !strings.Contains(string(cj), want) {
+			t.Errorf("components.json missing %q:\n%s", want, cj)
 		}
 	}
-	// the foundation ships lucide-react (icons) + tw-animate-css (animation utils):
-	// the deps install with the base, the css imports the latter, and the example
-	// route exercises the former.
-	for _, dep := range []string{"lucide-react", "tw-animate-css"} {
-		if !strings.Contains(m.Scripts[0].Commands[1], dep) {
-			t.Errorf("base install missing %q: %s", dep, m.Scripts[0].Commands[1])
+	// rac-ui replaces the hand-rolled foundation: the shadcn CLI installs
+	// react-aria-components / cva / tailwind-merge / @tabler/icons-react (so the
+	// base `pnpm add` must NOT), while tw-animate-css stays (rac-ui's globals.css
+	// @imports it but doesn't declare it). Phase-0 commands: [1]=pnpm add (prod),
+	// [4]=the shadcn add.
+	baseAdd := m.Scripts[0].Commands[1]
+	if !strings.Contains(baseAdd, "tw-animate-css") {
+		t.Errorf("base install must keep tw-animate-css: %s", baseAdd)
+	}
+	for _, gone := range []string{"react-aria-components", "cva@beta", "tailwind-merge", "lucide-react"} {
+		if strings.Contains(baseAdd, gone) {
+			t.Errorf("base install must not add %q (rac-ui/shadcn installs it): %s", gone, baseAdd)
 		}
 	}
-	if css, _ := os.ReadFile(filepath.Join(app, "app/styles/tailwind.css")); !strings.Contains(string(css), `@import "tw-animate-css"`) {
-		t.Errorf("tailwind.css must import tw-animate-css:\n%s", css)
+	shadcnAdd := m.Scripts[0].Commands[4]
+	for _, want := range []string{"shadcn", "@racket-ui/base", "@racket-ui/button"} {
+		if !strings.Contains(shadcnAdd, want) {
+			t.Errorf("phase-0 shadcn step missing %q: %s", want, shadcnAdd)
+		}
 	}
-	if home, _ := os.ReadFile(filepath.Join(app, "app/routes/home.tsx")); !strings.Contains(string(home), `from "lucide-react"`) {
-		t.Errorf("the example route should exercise lucide-react:\n%s", home)
+	// the example route exercises a rac-ui Button + a Tabler icon.
+	home, _ := os.ReadFile(filepath.Join(app, "app/routes/home.tsx"))
+	for _, want := range []string{`from "@tabler/icons-react"`, `from "@/components/ui/button"`} {
+		if !strings.Contains(string(home), want) {
+			t.Errorf("home.tsx missing %q:\n%s", want, home)
+		}
 	}
 	// vite.config.ts is runtime-specific (the cloudflare runtime is the default).
 	// Render it over the base and assert TanStack Start + React Compiler + Tailwind
@@ -253,9 +275,9 @@ func TestWebScaffold(t *testing.T) {
 	if _, err := RenderFeature(sub, tiptap, ttDir, data); err != nil {
 		t.Fatal(err)
 	}
-	editor, err := os.ReadFile(filepath.Join(ttDir, "app/components/foundation/editor.tsx"))
+	editor, err := os.ReadFile(filepath.Join(ttDir, "app/components/editor.tsx"))
 	if err != nil {
-		t.Errorf("tiptap feature missing app/components/foundation/editor.tsx: %v", err)
+		t.Errorf("tiptap feature missing app/components/editor.tsx: %v", err)
 	}
 	if !strings.Contains(string(editor), "RichTextEditor") || !strings.Contains(string(editor), "useEditor") {
 		t.Errorf("tiptap editor component missing RichTextEditor/useEditor:\n%s", editor)

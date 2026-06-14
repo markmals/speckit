@@ -12,19 +12,26 @@ CLI**. Local dir: `~/Developer/Libraries/racket-ui` (registry items under
 address is **`markmals/racket-ui/<item>`** (NOT `markmals/racket-ui` — published under the
 `racket-ui` name).
 
-## ⛔ Gate: publish `registry.json`, then templatize
+## ✅ Gate RESOLVED (2026-06-14) — the real fix was the per-item distribution
 
-As of 2026-06-14 `github.com/markmals/racket-ui` is **public**, BUT `registry.json` is
-**gitignored** there (untracked) so it isn't at the repo root — and shadcn's GitHub
-registry *requires* `registry.json` at the root. So `shadcn add markmals/racket-ui/…`
-**404s** ("raw.githubusercontent.com did not return a root registry.json file") and the
-templatization **cannot merge** yet (every `target add web` would fail). **Fix first, in
-the racket-ui repo:** regenerate it (`mise run registry-sync`/`registry-build` if stale),
-remove `registry.json` from `.gitignore`, commit + push it (it references the
-already-committed `registry/default/*` source). **Verify:** `pnpm dlx shadcn@latest list
-markmals/racket-ui` succeeds. (To prototype before that's fixed, serve the local build as
-a stand-in: `cd racket-ui/dist && python3 -m http.server 8899`, components.json
-`registries: {"@rac-ui": "http://localhost:8899/r/{name}.json"}`, `shadcn add @rac-ui/<item>`.)
+The handoff said "commit `registry.json`" — that was **necessary but insufficient**.
+The aggregate `registry.json` at the repo root makes the GitHub *shorthand*
+(`markmals/racket-ui/<item>`) + `shadcn list` work, but **every rac-ui item's
+`registryDependencies` is namespaced `@racket-ui/cva`** — and shadcn resolves a
+namespaced dep through the consumer's `components.json` **`registries` map**, which
+needs a **per-item** URL template (`…/{name}.json`). racket-ui's per-item distribution
+(`public/r/*.json`, built by `mise run registry:build` → `shadcn build`) was
+**gitignored**, so `@racket-ui/cva` 404'd and every `base`/`button` add failed
+("Unknown registry @racket-ui" / "…cva.json was not found"). **Fix shipped in
+[racket-ui#1](https://github.com/markmals/racket-ui/pull/1) (merged):** regenerate +
+**commit `public/r/`** and un-gitignore it. The consumer then sets
+`registries: {"@racket-ui": "https://raw.githubusercontent.com/markmals/racket-ui/main/public/r/{name}.json"}`
+and runs `shadcn add @racket-ui/base @racket-ui/button` (namespaced — fetches raw JSON,
+**no `git ls-remote`**, so it also dodges shadcn's flaky 15s cold-start timeout).
+**Templatized + verified green-on-arrival** across node+none, cf+convex (default),
+cf+drizzle, node+drizzle, and node+all-5-features (shipped in speckit; see [[web-scaffold]]).
+(Local stand-in for re-prototyping: `cd racket-ui && python3 -m http.server 8899`,
+`registries: {"@racket-ui": "http://localhost:8899/public/r/{name}.json"}`.)
 
 ## The proven recipe (a real scaffold restructured + installed → fully green)
 
@@ -43,9 +50,11 @@ member root** (components/ui + lib at root; `app/` keeps routes/entry/globals).
    must coexist, so the rule can't be `always` or `never`.
 5. **components.json (new):** `style: new-york`, `tailwind.css: app/globals.css`,
    `iconLibrary: tabler`, aliases `@/components` / `@/lib` / ui `@/components/ui` / utils
-   `@/lib/cva`, registry `markmals/racket-ui`.
+   `@/lib/cva`, and the **`registries` map** `"@racket-ui":
+   "https://raw.githubusercontent.com/markmals/racket-ui/main/public/r/{name}.json"`.
 6. **install script (phase 0, after pnpm install):**
-   `pnpm dlx shadcn@latest add markmals/racket-ui/base markmals/racket-ui/button … --yes`
+   `pnpm dlx shadcn@latest add @racket-ui/base @racket-ui/button --yes` (namespaced — base
+   pulls in `cva` + globals.css + deps; button pulls in `cva` + `components/ui/button.tsx`).
    (`@rac-ui/base` brings globals.css + deps @tabler/icons-react, cva@beta,
    react-aria-components, tailwind-merge + the `lib/cva.ts` helper — identical to the old
    `styles/cva.ts`).
@@ -62,5 +71,5 @@ member root** (components/ui + lib at root; `app/` keeps routes/entry/globals).
 Base + **both runtimes** (vite.config) + **convex/drizzle data variants** (their
 `router.tsx` / `data/*` / `#db`) + **clerk/tiptap/email features** (all reference `#/` —
 e.g. tiptap `editor.tsx` `cx` → `@/lib/cva`, clerk/email css/imports) + `web_test.go`.
-Verify representative combos green-on-arrival against the real registry once published:
-node+none, cloudflare+convex (default), and one feature stacked.
+Verified green-on-arrival against the real registry (racket-ui#1 merged) across the full
+matrix: `{cloudflare,node}` × `{convex,drizzle,none}` + all 5 features stacked.

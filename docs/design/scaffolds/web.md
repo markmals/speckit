@@ -151,18 +151,23 @@ Tasks: `dev` (vite) · `test` (vitest → junit) · `build` (vite; tsdown for li
 `--ssr --no-server` is rejected. Defaults: **`--ssr --server`**, runtime
 **cloudflare**, **`--data convex`**.
 
-## Components (no bundled library)
+## Components (rac-ui via the shadcn CLI)
 
-The app stack's component styles are **Tailwind Plus** (paid; the closed-source
-"Catalyst" set `trove`'s `foundation` adapts). **It can't ship in this MIT repo.**
-So the scaffold:
+The app stack's components come from **[rac-ui](https://github.com/markmals/racket-ui)**
+— a shadcn/ui-compatible registry rebuilt on **React Aria Components + Tailwind v4 +
+cva + Tabler** (React Aria under the hood instead of Radix; original MIT code, no
+Tailwind Plus / Catalyst). The scaffold consumes it through the **official shadcn CLI**:
 
-- ships **no** component library, and **encourages users to build their own** by
-  styling **React Aria Components** with Tailwind (the `foundation` recipe:
-  `react-aria-components` + `cva` + `motion`);
-- **Future direction:** a SpecKit **shadcn registry** serving shadcn-style
-  components that use **React Aria under the hood instead of Radix**, so users can
-  `shadcn add` them. (Not in the first slice.)
+- `components.json` registers the **`@racket-ui` namespace** (resolved per-item over
+  GitHub raw: `…/markmals/racket-ui/main/public/r/{name}.json`) with shadcn-native
+  `@/` aliases; `@/*` → the member root via tsconfig `paths` + **Vite 8's native
+  `resolve.tsconfigPaths`** (no manual alias, no plugin).
+- `target add web` installs the base + a Button at scaffold time
+  (`shadcn add @racket-ui/base @racket-ui/button`); users add more with
+  `pnpm dlx shadcn@latest add @racket-ui/<name>`.
+- Layout: rac-ui lands at `components/ui/*` + `lib/cva.ts` (root); the app keeps
+  `app/` (routes, entry, `app/globals.css`). `import/extensions` is `off` so rac-ui's
+  extensionless imports and TanStack's generated extensioned ones coexist.
 
 ## The binding harness (green on `specify verify web`)
 

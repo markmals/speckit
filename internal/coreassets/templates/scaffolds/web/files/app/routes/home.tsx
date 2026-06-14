@@ -1,9 +1,9 @@
+import { IconRocket } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { RocketIcon } from "lucide-react";
 import { motion } from "motion/react";
 
-import { Button } from "#/components/foundation/button.tsx";
-import { greeting } from "#/lib/greeting.ts";
+import { greeting } from "@/app/lib/greeting.ts";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
     component: Home,
@@ -19,7 +19,7 @@ function Home() {
             <h1 className="text-3xl font-bold">{greeting("world")}</h1>
             <p className="text-neutral-600">A TanStack Start app scaffolded by SpecKit.</p>
             <Button onPress={() => globalThis.alert("Hello from React Aria!")}>
-                <RocketIcon aria-hidden className="size-4" /> Get started
+                <IconRocket aria-hidden className="size-4" /> Get started
             </Button>
         </motion.main>
     );

@@ -5,9 +5,10 @@
       "phase": 0,
       "commands": [
         "mise trust",
-        "pnpm add react react-dom @tanstack/react-router @tanstack/react-start @tanstack/react-query @tanstack/react-router-ssr-query @tanstack/virtual-file-routes react-aria-components cva@beta tailwind-merge motion lucide-react tw-animate-css zod",
+        "pnpm add react react-dom @tanstack/react-router @tanstack/react-start @tanstack/react-query @tanstack/react-router-ssr-query @tanstack/virtual-file-routes motion tw-animate-css zod",
         "pnpm add -D vite @vitejs/plugin-react @rolldown/plugin-babel babel-plugin-react-compiler @tailwindcss/vite tailwindcss vitest vite-plugin-devtools-json @tanstack/router-cli @typescript/native-preview@latest oxlint oxfmt oxlint-tsgolint eslint-plugin-perfectionist eslint-plugin-prefer-let @types/node @types/react @types/react-dom",
-        "pnpm install"
+        "pnpm install",
+        "pnpm dlx shadcn@latest add @racket-ui/base @racket-ui/button --yes"
       ]
     },
     {

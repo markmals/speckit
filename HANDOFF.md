@@ -9,43 +9,37 @@ SpecKit is a spec-driven framework: a Go binary (`specify`) that is both the eng
 
 ---
 
-## ← START HERE: replace the web foundation with **racket-ui** via the shadcn CLI
+## ✅ JUST SHIPPED: web foundation → **racket-ui** via the shadcn CLI
 
-Mark's call: retire the web scaffold's hand-rolled `app/components/foundation/`
-(React-Aria + cva recipe) and instead consume **racket-ui** — a shadcn/ui-compatible
-registry rebuilt on React Aria Components + Tailwind v4 + cva + Tabler — through the
-**official shadcn CLI**.
+The hand-rolled `app/components/foundation/` is retired; the web scaffold now consumes
+**racket-ui** (`markmals/racket-ui`) — a shadcn/ui registry on React Aria + Tailwind v4 +
+cva + Tabler — through the **official shadcn CLI**. Templatized shadcn-native (`@/*` →
+member root via tsconfig `paths` + Vite 8 `resolve.tsconfigPaths`; `components/ui` + `lib`
+at root; `app/` for routes/entry/`globals.css`; a new `components.json` with the
+`@racket-ui` registries map; `#/`·`#db` → `@/`·`@/db`; `import/extensions: off`).
+**Verified green-on-arrival for real across the full matrix** — `{cloudflare,node}` ×
+`{convex,drizzle,none}` + all 5 features stacked. The real precondition (the handoff's
+"commit `registry.json`" was insufficient — racket-ui's per-item `public/r/*.json`
+distribution was gitignored, so the namespaced `@racket-ui/cva` dep 404'd) was fixed in
+[racket-ui#1](https://github.com/markmals/racket-ui/pull/1) (merged). Recipe + gotchas:
+[`.claude/memory/rac-ui-shadcn.md`](.claude/memory/rac-ui-shadcn.md).
 
-**The full recipe is already PROVEN GREEN** on a real scaffold (restructured to
-shadcn-native + racket-ui installed → `fmt:check`/`lint`/`typecheck`/`test`/`build` +
-`specify verify` all pass). **Read [`.claude/memory/rac-ui-shadcn.md`](.claude/memory/rac-ui-shadcn.md)
-first** — it has the exact recipe + every gotcha. Two corrections to that note:
+## ← START HERE: finish the web scaffold (remaining `--with` + modes)
 
-1. **The address is `markmals/racket-ui`** (the library was published under that name,
-   NOT `markmals/rac-ui`). Local dir: `~/Developer/Libraries/racket-ui`. So the install
-   is `pnpm dlx shadcn@latest add markmals/racket-ui/base markmals/racket-ui/button …`.
+Next web slices, in order:
 
-2. **⚠️ PRECONDITION — `registry.json` is missing from the published repo, so shadcn 404s.**
-   `markmals/racket-ui` is public, but `registry.json` is **gitignored** there (untracked),
-   so it isn't at the repo root. shadcn's GitHub registry *requires* `registry.json` at the
-   root — `shadcn add markmals/racket-ui/…` currently fails ("raw.githubusercontent.com did
-   not return a root registry.json file"). **Fix this first, in the racket-ui repo:**
-   regenerate it (`mise run registry-sync`/`registry-build` there if stale), remove
-   `registry.json` from `.gitignore`, commit + push it (it references the already-committed
-   `registry/default/*` source files). **Verify it's fixed:**
-   `pnpm dlx shadcn@latest list markmals/racket-ui` must succeed.
+1. **`--with sentry`** — the client provider rides the same `Wrap`/`providers.tsx` seam
+   (like posthog), BUT `@sentry/vite-plugin` also touches `vite.config.ts` — the **runtime**
+   axis. So mirror the seam in BOTH `runtime/{cloudflare,node}/files/vite.config.ts` with a
+   `{{if .Features.sentry}}` block (the provider seam fix, applied to the runtime axis).
+2. **`--with tanstack-db`** (intersects the `--data` axis) and **`--with electron`** (a
+   bigger shell change).
+3. **`--ssr`/`--spa` modes** (trove proves SPA is needed — per-app) and **Varlock + `.vscode`**
+   (Slice 5), plus the web-development **pack refresh** to this stack.
 
-**Then templatize** (atomic — every combo must stay green; do NOT half-migrate):
-apply the recipe across the base web scaffold + **both runtime** `vite.config.ts` files +
-the **convex/drizzle** data variants + the **clerk/tiptap/email** features (all reference
-`#/`) + `web_test.go`. Verify representative combos green-on-arrival against the **real**
-GitHub registry — node+none, cloudflare+convex (default), and one feature stacked — then
-`mise run ci`, PR, merge.
-
-Notes: this supersedes Slice 4f's `lucide-react` (→ Tabler); **keep `tw-animate-css`**
-(racket-ui's `globals.css` `@import`s it but doesn't declare it). racket-ui is still
-original React-Aria + cva (+ Tabler) — no Catalyst/paid code, so the "no paid components"
-rule below still holds.
+Prototype-first / resolve-by-running, then green-on-arrival across the affected combos
+(see the web-scaffold + dev-workflow memories — esp. **verify combos SERIALLY**, the
+type-aware `tsgolint` lint flakes under parallel-install contention).
 
 ---
 
@@ -67,7 +61,9 @@ rule below still holds.
 - **go-service stack ✅** (#19) — a runnable Go HTTP daemon → `cmd/<name>` (verifies via the
   Tier-1 `gotest` format). Introduced **stack-aware member placement** (`Manifest.memberDir`):
   the first piece of **incremental member-add** (Mark's monorepo approach).
-- **racket-ui recipe ✅ recorded** (#20) — proven, gated on the publish fix above.
+- **racket-ui foundation ✅ shipped** — the web scaffold's UI now comes from `markmals/racket-ui`
+  via the shadcn CLI (see the JUST SHIPPED section above); racket-ui's per-item distribution
+  published in [racket-ui#1](https://github.com/markmals/racket-ui/pull/1).
 
 ## How to work in this repo (conventions that bite if ignored)
 
