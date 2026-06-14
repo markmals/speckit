@@ -184,6 +184,15 @@ Ready) and baked in as `specify work`'s defaults.
     (animation utilities) to the base web foundation — both actually used in trove. tailwind.css imports
     tw-animate-css; the example route exercises a lucide icon (so neither is a dead dep). Green-on-arrival
     verified. (Deferred `@clerk/themes`: would be a dead dep without an opinionated theme choice.)
+  - 🔒 **Replace the hand-rolled foundation with rac-ui via the official shadcn CLI (recipe proven; blocked
+    on publish).** rac-ui (`~/Developer/Libraries/rac-ui`, `github.com/markmals/rac-ui`) is a shadcn/ui-compatible
+    registry on React Aria + Tailwind v4 + cva + Tabler. The full restructure recipe is **verified green** on a
+    real scaffold (shadcn-native `@/*`→member-root via Vite 8 `resolve.tsconfigPaths`; `components/ui`+`lib` at root,
+    `app/` for routes/entry/globals; `import/extensions: off`; `shadcn add markmals/rac-ui/base …`; foundation +
+    `styles/cva.ts` + `tailwind.css` removed; lucide→Tabler). **Blocked:** Mark publishes `github.com/markmals/rac-ui`
+    public first, then templatize across base+variants+features+web_test + verify end-to-end + merge. Full recipe +
+    gotchas in [`.claude/memory/rac-ui-shadcn.md`](.claude/memory/rac-ui-shadcn.md). (This supersedes Slice 4f's
+    lucide; tw-animate-css stays — rac-ui's globals imports it.)
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
