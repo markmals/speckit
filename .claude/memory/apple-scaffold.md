@@ -4,7 +4,7 @@ The `apple` stack scaffold (`internal/coreassets/templates/scaffolds/apple/`).
 Design: [`docs/design/scaffolds/apple.md`](../../docs/design/scaffolds/apple.md).
 Baseline + reference repos: gourmand (Tuist app, the convert target),
 apple-platform-tools (raw SwiftPM, the binding reference), mac-dev-skills (the
-AppKit agent pack). Built in slices; **Slice 1 (headless Core harness) shipped
+AppKit agent pack). Built in slices; **Slice 1 (headless Core) + Slice 2 (Tuist app surface) shipped
 2026-06-14**.
 
 ## The things that cost real time
@@ -52,6 +52,30 @@ AppKit agent pack). Built in slices; **Slice 1 (headless Core harness) shipped
   `lineBreakBeforeEachArgument: true`); without a config swift-format defaults to
   2-space and lint fails. To author lint-clean templates: write the file, run
   `swift format --in-place` against that config, then templatize the formatted output.
+
+## Slice 2 (Tuist app surface) gotchas
+
+- **Tuist anchors on the repo root** (closest `.git` or `Tuist/` dir) — `tuist
+  generate` fails outside a git repo. Fine in practice (every SpecKit project is a
+  git repo); the e2e must `git init` the throwaway project before building the app.
+- **The Core package needs a `.library` product** for the Tuist app to consume
+  (`.package(product: "<Name>Core")`). Slice 1 shipped none (swift test joins the
+  test target to the source target directly); added to `Package.swift.tmpl` —
+  forward-compatible, swift test ignores it.
+- **Import order is name-dependent** → a **silent phase-1 `swift format --in-place`**
+  pass normalizes it. `OrderedImports` sorts lexicographically, but `import AppKit`
+  vs `import <Name>Core` flips with the name (`AppCore` < `AppKit` < `GourmandCore`),
+  so no fixed template order is clean for all names. Run `swift format` DIRECTLY in
+  the script (not `mise run fmt`) so it doesn't drag a Tuist install into `target add`;
+  use the `if [ -d ]; then … fi` form so the loop exits 0 when `iOS/` is absent.
+- **`@main` for AppKit** = `@main @MainActor final class AppDelegate: NSObject,
+  NSApplicationDelegate` with an explicit `static func main()` (programmatic; the
+  default delegate `main()` calls `NSApplicationMain`, which needs a storyboard).
+- **`verify` does NOT pull Tuist** — `test` is `swift test` only; the `[tools]` tuist
+  pin only fetches on the first app task (`generate`/`build`). Proven: verify ran in
+  ~7s with no download.
+- App-level tests (`macOS/Tests`, `tuist test`) are a **Mac-only secondary**, never
+  the verify gate — verify always targets the headless Core.
 
 - **Structure-only Go test**: `internal/scaffold/apple_test.go` asserts the rendered
   tree + the dynamic-module/static-dir wiring + story↔`.scenario` id agreement. The

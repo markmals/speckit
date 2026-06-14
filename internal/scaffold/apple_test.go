@@ -48,6 +48,10 @@ func TestAppleScaffold(t *testing.T) {
 		"Core/Package.swift",
 		"Core/Sources/Core/Todo.swift", "Core/Sources/Core/TodoList.swift",
 		"Core/Tests/CoreTests/SpecTraits.swift", "Core/Tests/CoreTests/TodoTests.swift",
+		// Slice 2 — the Tuist app surface.
+		"Project.swift", "macOS/Info.plist",
+		"macOS/Sources/App/AppDelegate.swift", "macOS/Sources/App/MainWindowController.swift",
+		"macOS/Tests/AppSmokeTests.swift",
 	} {
 		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(p))); err != nil {
 			t.Errorf("missing %s: %v", p, err)
@@ -59,12 +63,57 @@ func TestAppleScaffold(t *testing.T) {
 	pkg, _ := os.ReadFile(filepath.Join(dir, "Core/Package.swift"))
 	for _, want := range []string{
 		`name: "Gourmand"`,
+		// the library product the Tuist app consumes (Slice 2 — swift test alone doesn't need it).
+		`.library(name: "GourmandCore", targets: ["GourmandCore"])`,
 		`.target(name: "GourmandCore", path: "Sources/Core")`,
 		`name: "GourmandCoreTests"`,
 		`path: "Tests/CoreTests"`,
 	} {
 		if !strings.Contains(string(pkg), want) {
 			t.Errorf("Package.swift missing %q:\n%s", want, pkg)
+		}
+	}
+
+	// Slice 2 — the Tuist app project consumes the Core package's product, builds a
+	// macOS AppKit app target + a unit-test target, and ships with code-signing off.
+	proj, _ := os.ReadFile(filepath.Join(dir, "Project.swift"))
+	for _, want := range []string{
+		`name: "Gourmand"`,
+		`.package(path: "Core")`,
+		`"CODE_SIGNING_ALLOWED": "NO"`,
+		`bundleId: "com.example.gourmand"`,
+		`product: .app`,
+		`.package(product: "GourmandCore")`,
+		`sources: ["macOS/Sources/**"]`,
+		`name: "GourmandTests"`,
+		`product: .unitTests`,
+	} {
+		if !strings.Contains(string(proj), want) {
+			t.Errorf("Project.swift missing %q:\n%s", want, proj)
+		}
+	}
+
+	// The AppKit view layer links the Core (its @Observable model); the entry point is
+	// the programmatic @main delegate; the app test @testable-imports the app module.
+	win, _ := os.ReadFile(filepath.Join(dir, "macOS/Sources/App/MainWindowController.swift"))
+	if !strings.Contains(string(win), "import GourmandCore") || !strings.Contains(string(win), `window.title = "Gourmand"`) {
+		t.Errorf("MainWindowController.swift must import the Core and title the window:\n%s", win)
+	}
+	del, _ := os.ReadFile(filepath.Join(dir, "macOS/Sources/App/AppDelegate.swift"))
+	if !strings.Contains(string(del), "@main") || !strings.Contains(string(del), "static func main()") {
+		t.Errorf("AppDelegate.swift must be the programmatic @main entry:\n%s", del)
+	}
+	app, _ := os.ReadFile(filepath.Join(dir, "macOS/Tests/AppSmokeTests.swift"))
+	if !strings.Contains(string(app), "@testable import Gourmand") {
+		t.Errorf("AppSmokeTests.swift must @testable-import the app module:\n%s", app)
+	}
+
+	// The mise config pins Tuist and exposes the app loop (generate/build/test:app),
+	// with the scheme named after the app.
+	mise, _ := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	for _, want := range []string{`tuist = "`, "[tasks.build]", "tuist xcodebuild build -scheme Gourmand", `[tasks."test:app"]`} {
+		if !strings.Contains(string(mise), want) {
+			t.Errorf("mise.toml missing %q:\n%s", want, mise)
 		}
 	}
 
