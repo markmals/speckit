@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @theme {
     --font-sans: "Inter var", ui-sans-serif, system-ui, sans-serif;

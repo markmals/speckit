@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RocketIcon } from "lucide-react";
 import { motion } from "motion/react";
 
 import { Button } from "#/components/foundation/button.tsx";
@@ -17,7 +18,9 @@ function Home() {
         >
             <h1 className="text-3xl font-bold">{greeting("world")}</h1>
             <p className="text-neutral-600">A TanStack Start app scaffolded by SpecKit.</p>
-            <Button onPress={() => globalThis.alert("Hello from React Aria!")}>Get started</Button>
+            <Button onPress={() => globalThis.alert("Hello from React Aria!")}>
+                <RocketIcon aria-hidden className="size-4" /> Get started
+            </Button>
         </motion.main>
     );
 }

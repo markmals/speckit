@@ -180,6 +180,10 @@ Ready) and baked in as `specify work`'s defaults.
     `Wrap`/`providers.tsx` seam; note it also adds a vite plugin, which touches `vite.config.ts` — the
     *runtime* axis — so handle that overlap), then **tanstack-db** (intersects the `--data` axis) /
     **electron** (a bigger shell change).
+  - ✅ **Slice 4f — foundation extras (trove parity).** Added `lucide-react` (icons) + `tw-animate-css`
+    (animation utilities) to the base web foundation — both actually used in trove. tailwind.css imports
+    tw-animate-css; the example route exercises a lucide icon (so neither is a dead dep). Green-on-arrival
+    verified. (Deferred `@clerk/themes`: would be a dead dep without an opinionated theme choice.)
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
