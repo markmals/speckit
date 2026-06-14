@@ -219,14 +219,14 @@ Ready) and baked in as `specify work`'s defaults.
   manifest's `memberDir`): `target add … --stack go-service` lands in `cmd/<name>` (web stays `apps/`),
   the first piece of **incremental member-add** (Mark's monorepo call). Also plumbed `target.bindings`
   manifest→config.
-  - ✅ **Shared root `go.mod` (monorepo composition)** (PR #24). go-service is now `sharedModule`: members
+  - ✅ **Shared root `go.mod` (monorepo composition)** (shipped via #27). go-service is now `sharedModule`: members
     compose into ONE repo-root `go.mod` (each a `cmd/<name>` sharing `internal/`, trove's shape) instead
     of a self-contained module per member. `target add` creates the root `go.mod` if the repo isn't a
     module yet (module path from the git origin remote → `host/owner/repo`, else the dir base name) and a
     second member just joins it; members render no `go.mod` of their own. Verified: two members compose,
     `go build ./...` sees both, each `verify` green. (`scaffold.SharedModule` + `cmd/specify`
     `ensureRootGoMod`/`deriveModulePath`.)
-  - ✅ **`--with openapi` (contract-first via oapi-codegen)** (PR pending). troved's defining pattern: the
+  - ✅ **`--with openapi` (contract-first via oapi-codegen)** (shipped via #27). troved's defining pattern: the
     feature overwrites `main.go`/`greeting.go`/`greeting_test.go` with the **strict-server** wiring, ships
     `openapi.yaml` (the contract, with an `x-spec` trace) + `oapi-codegen.yaml`, and adds phase-ordered
     install scripts (`go get` the runtime + the `oapi-codegen` **tool** directive → generate
@@ -235,7 +235,7 @@ Ready) and baked in as `specify work`'s defaults.
     contract. Verified green-on-arrival: `target add … --with openapi` → `go build`/`fmt:check`/`vet`/`test`
     + `specify verify` (2 passed · 1 locked), module path from the git remote. (Also fixed: the default base
     `main.go` shipped a literal unrendered `{{kebab .Name}}` in its package comment.)
-  - ✅ **`--with sqlite` (store + migrations + flag/env config)** (PR pending). Additive (like the web
+  - ✅ **`--with sqlite` (store + migrations + flag/env config)** (shipped via #27). Additive (like the web
     email/stripe features — overwrites no shared file, so it composes with the base AND `--with openapi`):
     ships a member-private `internal/store` package (pure-Go **glebarez** SQLite — busy_timeout + single
     conn; embedded `migrations/*.sql` applied once via a `_migrations` table; a settings KV + a roundtrip
@@ -244,7 +244,7 @@ Ready) and baked in as `specify work`'s defaults.
     `go get` script, tidied by the base phase-5 `go mod tidy`. Verified green-on-arrival: base+sqlite AND
     **openapi+sqlite** (17 files, both deps) → `go build`/`fmt:check`/`vet`/`specify verify` (2 passed ·
     1 locked; the untagged store test runs + passes, out of scenario scope under `bindings: scoped`).
-  - ✅ **`--with client` (external-service client + httptest idiom)** (PR pending). Additive, **pure stdlib**
+  - ✅ **`--with client` (external-service client + httptest idiom)** (shipped via #27). Additive, **pure stdlib**
     (no deps/scripts): a member-private `internal/services` package — trove's pattern — with a bounded
     `http.Client` (DefaultTimeout), a `GetJSON` helper, a typed `APIError` for non-2xx, `SanitizeURLError`
     (strips the `*url.Error` URL so a key in a query string never logs), an example `Client` (project only

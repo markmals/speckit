@@ -1,9 +1,17 @@
 # Design — stack scaffolding
 
-**Status:** built (web stack green end-to-end). The sub-decisions — plain
-`specs.json` (no JSONC), keep `{{ }}` with escaping, and **phased post-render
-scripts that resolve versions by running `pnpm add` rather than hardcoding
-them** — are resolved into this doc and implemented.
+**Status:** built. Two stacks are green end-to-end — **web** (TanStack Start;
+`--data`/`--runtime` variants + `--with` feature add-ons; UI from the racket-ui
+shadcn registry) and **go-service** (a Go HTTP daemon; members compose into one
+repo-root `go.mod` via `sharedModule`; `--with openapi`/`sqlite`/`client`). Beyond
+the original decisions (plain `specs.json`, keep `{{ }}` with escaping, phased
+post-render scripts that resolve versions by *running* `pnpm add`/`go get`), the
+implementation added: **variants** (`--data`/`--runtime`, rendered over the base),
+**features** (`--with`, rendered last), **`sharedModule`** (a repo-root module
+shared by members), `Data.Module` (so a member imports its own generated/internal
+packages by full path), and **`specify target register`** (onboard an existing
+member — see below). The mechanics live in `internal/scaffold`; this doc is the
+rationale.
 
 ## Motivation
 
@@ -27,14 +35,46 @@ handlebars, and target SpecKit's stacks.)
 ## Command
 
 ```
-specify target add <name> --stack <stack> [--dir <path>] [--product <p>] [--with <feature>...]
+specify target add <name> --stack <stack> [--dir <path>] [--product <p>] [--data <k>] [--runtime <k>] [--with <feature>...] [--no-install]
 ```
 
 - `<name>` — the target's key in `.speckit/specs.json` (e.g. `web`, `consumer-web`).
-- `--stack` — which scaffold. The roster is **evidence-based** — only stacks Mark has actually worked on (per `~/Developer` + the `markmals` / `markmals-archive` GitHub accounts). **App stacks:** `web` · `website` · `apple` · `android` · `go-cli` · `node-cli`. **Library stacks:** `swift-package` · `swift-cli` · `ts-lib` · `vscode-extension` — these set the product `kind: library` ([library-products.md](library-products.md)).
-- `--dir` — where to scaffold (default `apps/<name>`).
+- `--stack` — which scaffold. The roster is **evidence-based** — only stacks Mark has actually worked on (per `~/Developer` + the `markmals` / `markmals-archive` GitHub accounts). **App stacks:** `web` · `website` · `apple` · `android` · `go-cli` · `go-service` · `node-cli`. **Library stacks:** `swift-package` · `swift-cli` · `ts-lib` · `vscode-extension` — these set the product `kind: library` ([library-products.md](library-products.md)).
+- `--dir` — where to scaffold (default `<memberDir>/<name>`, where `memberDir` is the manifest's placement — `apps` for web, `cmd` for go-service, `packages` for a library).
 - `--product` — optional product label written onto the target.
-- `--with` — optional add-ons the scaffold declares (e.g. `--with convex`).
+- `--data` / `--runtime` — **variants**: selectable axes the manifest declares (e.g. web's `--data convex|drizzle|none` × `--runtime cloudflare|node`), each rendered *over* the base.
+- `--with` — optional **features** (add-ons), rendered *last* (e.g. `--with openapi`, `--with clerk`).
+- `--no-install` — skip the post-render scripts (offline / CI).
+
+## Composition model (variants, features, shared modules)
+
+Three layers render in order — **base → variants (`--data`/`--runtime`) → features
+(`--with`)** — so later layers overwrite shared files (a data variant's `router.tsx`,
+a feature's `main.go`) deterministically. Features are a Go map (non-deterministic
+iteration), so two features must never write the same file; cross-cutting composition
+goes through a **seam** instead (e.g. the web provider seam `app/providers.tsx`, where
+each provider feature contributes a `{{if .Features.<name>}}` block). Each variant/
+feature contributes its own deps (`pnpm add`/`go get`) and phased scripts.
+
+**`sharedModule`** (manifest flag) makes a stack's members compose into ONE repo-root
+module rather than a self-contained one each — go-service: `target add` writes a root
+`go.mod` if the repo isn't a module yet (module path from the git remote, else the dir
+name) and a second member just joins it. `Data.Module` carries that path into templates
+so a member imports its own generated/internal packages by full path.
+
+## Registering an existing member
+
+```
+specify target register <name> --stack <stack> [--dir <path>] [--format/--command/--report/--source/--bindings ...]
+```
+
+`target add` is for *new* members (it renders files + installs). To adopt SpecKit in a
+repo whose code already exists, `target register` records the member as a target in
+`.speckit/specs.json` **without** rendering or installing anything. It seeds the verify
+wiring from the stack's scaffold manifest when one exists (web, go-service) via the same
+`RenderTarget`; for stacks without a scaffold — or a member wired differently — the
+fields come from flags (flags override the manifest defaults). This is the onboarding
+path for converting a Workbench-shaped repo like trove.
 
 **Flag-driven and non-interactive by default** — the primary caller is an agent,
 which passes args. (Prompts for a human TTY can come later; not v1.) Lives under
@@ -200,12 +240,18 @@ Non-JS stacks use the same shape with their own tools (`swift build`,
 
 1. ✅ The `target add` command + the manifest/loader + the `text/template`
    renderer (FuncMap, `.tmpl` handling, escape literal `{{`) + the specs.json
-   load→add→write + the phased post-render script runner.
-2. ✅ The **web** scaffold end-to-end: `target add web` → `pnpm add` (resolves +
-   pins real versions) → `pnpm install` → `mise run test` → `specify verify web`
-   green + locked, the moment it's created.
-3. Next: **apple** — it exercises the other report format (`swift`) and the most
-   distinct harness (`SpecTraits.swift`), proving the contract generalizes.
+   load→add→write + the phased post-render script runner; plus **variants**
+   (`--data`/`--runtime`), **features** (`--with`), **`sharedModule`**, and
+   **`target register`**.
+2. ✅ The **web** scaffold end-to-end — `{cloudflare,node} × {convex,drizzle,none}`
+   + `--with` clerk·tiptap·posthog·email·stripe, UI from the racket-ui shadcn
+   registry — green + locked the moment it's created.
+3. ✅ The **go-service** scaffold — a Go HTTP daemon in `cmd/<name>`, members
+   sharing one repo-root `go.mod`, `--with openapi`/`sqlite`/`client` (the
+   trove-shaped contract-first + persistent + external-client service).
+4. Next: **apple** — it exercises the other report format (`swift`) and the most
+   distinct harness (`SpecTraits.swift`), proving the contract generalizes; then
+   **ts-lib** + **go-cli** (the remaining trove member shapes).
 
 The remaining stacks follow one at a time — each gated on its tooling preview
 (above), then a manifest + template tree + harness, parallelizable the way the
