@@ -255,9 +255,26 @@ Ready) and baked in as `specify work`'s defaults.
   - ✅ **trove-parity series complete** — all four bundles (root `go.mod` · openapi · sqlite · client)
     compose into one troved-shaped green-on-arrival service. ⬜ Still later: pnpm-workspace membership +
     repo-root `internal/` sharing land with the broader monorepo slice; the protocol `x-spec` coverage reader.
-- ⬜ **Per-stack scaffold builds** — **apple next** (exercises the `swift` report format + the
-  `SpecTraits.swift` harness), then the rest one at a time, each gated on a tooling preview.
-  node-cli already spec'd ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
+- 🟡 **Per-stack scaffold builds** — **apple in progress** ([scaffolds/apple.md](docs/design/scaffolds/apple.md)):
+  - ✅ **Slice 1 — headless Core harness** — `specify target add <name> --stack apple` renders a
+    self-contained SwiftPM package (`apps/<name>/Core`, a `@Observable` view-model + a pure domain
+    type), the `SpecTraits.swift` binding harness, an example bound story, and the `swift`-format
+    target wiring (`swift test --event-stream-output-path … --event-stream-version 0`). Verify target
+    is the **headless Core** — no Tuist, Xcode project, simulator, or signing — so it's green-on-arrival
+    with only the Xcode Swift toolchain. Verified end-to-end on a Mac: `scan` clean · `verify` (2 passed ·
+    1 locked) · `swift build` · `swift format lint --strict` all green. The `.scenario()` trait is the
+    canonical binding (decided 2026-06-14); the engine's `swiftBindRe` + event-stream parser already join it.
+    Swift files are `.tmpl` **only** for substitution (speckit's Go CI never compiles them — the inverse of
+    the go-service rule).
+  - ⬜ **Slice 2 — Tuist app surface** — `Project.swift` + AppKit (macOS) app/tests, mise `generate`/`build`/
+    `launch`/`test:app`, code-signing off. Verify still points at Core; the app build is a Mac-only secondary.
+  - ⬜ **Slice 3 — `--with` features** (go-service-shaped) — `openapi` (Swift OpenAPI Generator), `swiftdata`
+    (a `<Name>Persistence` target, strict-memory-safety off), `push` (APNs), `dist` (TestFlight/App Store/Homebrew).
+  - ⬜ **Slice 4 — the apple stack pack** — project mac-dev-skills' appkit plugin (skills/agent/rules + Xcode MCP)
+    into `templates/{skills,rules,agents,commands}`.
+  - ⬜ `swift-package` / `swift-cli` (apple-platform-tools' shape) fall out of Slice 1 nearly free — factor after.
+  - Then the rest one at a time, each gated on a tooling preview. node-cli already spec'd
+    ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
 - ⬜ **Feature-folder templates** (minor) — `NARRATIVE`/story/model/view-model/error templates
   under `.speckit/templates/feature/` so the commands scaffold faster (today they point at
   `specs/CONVENTIONS.md`, which works).

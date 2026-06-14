@@ -1,0 +1,21 @@
+# {{.Name}} — an Apple app. The spec-provable behaviour lives in a headless
+# SwiftPM package (Core/) that builds and tests with `swift test` alone, so
+# `specify verify` never needs Tuist, an Xcode project, a simulator, or signing.
+#
+# Swift comes from the active Xcode toolchain (not pinned by mise). `mise run
+# test` writes the Swift Testing event stream the engine's `swift` format joins.
+[tasks.test]
+description = "run the Core suite, writing the event-stream report the engine joins"
+run = "swift test --package-path Core --event-stream-output-path test.swift-events.ndjson --event-stream-version 0"
+
+[tasks.build]
+description = "build the Core package"
+run = "swift build --package-path Core"
+
+[tasks.fmt]
+description = "format Swift sources in place (swift-format)"
+run = "swift format --in-place --recursive Core/Sources Core/Tests"
+
+[tasks.lint]
+description = "lint Swift sources (swift-format, strict)"
+run = "swift format lint --strict --recursive Core/Sources Core/Tests"

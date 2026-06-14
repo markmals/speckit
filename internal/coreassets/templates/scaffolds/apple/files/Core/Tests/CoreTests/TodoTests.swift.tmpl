@@ -1,0 +1,27 @@
+import Foundation
+import Testing
+
+@testable import {{pascal .Name}}Core
+
+// SPEC: story.todo.manage
+//
+// The suite binds to its story via `.spec`; each test binds to its Gherkin
+// scenario via `.scenario`. Function names are descriptive raw identifiers —
+// Swift Testing reports them as the display name, which is the identity the
+// engine joins against the event-stream report. The scenario ID lives in the
+// trait (source), never in the test name.
+@Suite(.spec("story.todo.manage"))
+struct TodoManageTests {
+    @Test(.scenario("scenario.todo.manage.toggle"))
+    func `toggling a to-do flips its completion`() {
+        #expect(Todo(label: "Knead the dough").toggled().isDone == true)
+    }
+
+    @Test(.scenario("scenario.todo.manage.add"))
+    func `adding a to-do appends it to the observable list`() {
+        let list = TodoList()
+        list.add("Preheat the oven")
+        #expect(list.items.count == 1)
+        #expect(list.items.first?.label == "Preheat the oven")
+    }
+}

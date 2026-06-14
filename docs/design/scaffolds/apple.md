@@ -1,0 +1,146 @@
+# Apple scaffold — design
+
+**Status:** stack baseline set by Mark (2026-06-14); **Slice 1 shipped** (the
+headless Core harness). Grounded in two real repos: `gourmand` (a Tuist app —
+the convert/scaffold target) and `apple-platform-tools` (a raw SwiftPM package —
+the binding reference), plus the `mac-dev-skills` AppKit plugin (the agent pack).
+
+> An `apple` target is a native Apple **app** (`kind: app`). Its spec-provable
+> behaviour lives in a **headless SwiftPM `Core` package** that builds and tests
+> with `swift test` alone; the Tuist-generated app surface (AppKit / UIKit) sits
+> on top. `specify verify` runs the Core — never Tuist, an Xcode project, a
+> simulator, or signing — so it stays green-on-arrival with only the Xcode
+> toolchain.
+
+## The stack (baseline)
+
+| concern | choice |
+| --- | --- |
+| language · concurrency · state | **Swift** · **Swift Concurrency** · **Swift Observation** (`@Observable`) |
+| views | **UIKit** (iOS/iPadOS/tvOS/visionOS) · **AppKit** (macOS) · **SwiftUI** (watchOS) |
+| database | **SwiftData** |
+| networking · OpenAPI | **URLSession** · **Swift OpenAPI Generator** |
+| push | **APNs** |
+| tests · format/lint | **Swift Testing** · **swift-format** |
+| package · project mgr | **Swift Package Manager** · **Tuist** |
+| IDE MCP · distribution | **Xcode MCP** · **TestFlight · App Store · Homebrew · web** |
+
+`gourmand`'s practical implementation overrides this baseline wherever they
+differ. Note the deliberate **UIKit/AppKit (not SwiftUI)** choice for the primary
+platforms — it is why the agent pack is the AppKit-centric `mac-dev-skills`.
+
+## Why the verify target is the headless Core
+
+In both reference repos all spec-provable behaviour is a pure, UI-free package
+(`gourmand`'s `Core` = `GourmandCore` + `GourmandPersistence`; `apple-platform-tools`
+is itself a multi-target package). Pointing `verify` at that package sidesteps the
+entire "can't run Xcode/Tuist/simulator/signing in CI" problem: `swift test` is
+headless, deterministic, and needs no project generation. The Tuist app is
+scaffolded as the buildable product, but its AppKit-wiring tests are a Mac-only
+secondary, never the gate.
+
+## The binding (canonical: the `.scenario()` trait)
+
+Decided 2026-06-14: the scaffold emits — and the engine treats as canonical — the
+Swift Testing **trait** form, matching `apple-platform-tools`:
+
+```swift
+@Suite(.spec("story.todo.manage"))
+struct TodoManageTests {
+    @Test(.scenario("scenario.todo.manage.toggle"))
+    func `toggling a to-do flips its completion`() { #expect(…) }
+}
+```
+
+`SpecTraits.swift` defines the `.spec`/`.scenario` factories. The engine already
+joins this with **zero** changes: `internal/engine/verify.go:swiftBindRe` reads
+`@Test(.scenario("…")) func \`name\`` from source (the scenario id lives in the
+trait, the identity is the raw-identifier function name), and
+`internal/reports/events.go:ParseSwiftEvents` reads the test outcomes from the
+event-stream NDJSON, where the `displayName` equals that same function name.
+`gourmand`'s legacy `@Test("[scenario.id] …")` display-name form is **not**
+canonical — converting gourmand migrates its tests to the trait (mechanical).
+
+## Composition (base → variants → features), built in slices
+
+### Slice 1 — headless Core harness ✅
+
+`specify target add <name> --stack apple [--dir apps/<name>]` renders into the
+member dir:
+
+```
+apps/<name>/
+  mise.toml          test (writes the event stream) · build · fmt · lint
+  .swift-format      lineLength 100, 4-space, lineBreakBeforeEachArgument
+  .gitignore         .build, .swiftpm, the report, Tuist Derived/, *.xcodeproj…
+  Core/
+    Package.swift    name {{pascal .Name}}, target {{pascal .Name}}Core …
+    Sources/Core/    Todo.swift (pure domain) · TodoList.swift (@Observable)
+    Tests/CoreTests/ SpecTraits.swift (static) · TodoTests.swift (bound)
+```
+
+…plus the seeded example story `features/0001-todo/stories/todo.manage.md` (two
+scenarios, both green) into the project root. Target wiring:
+
+```json
+"command": "cd {{.Dir}} && mise run test",
+"format":  "swift",
+"report":  "{{.Dir}}/Core/test.swift-events.ndjson",
+"source":  "{{.Dir}}/Core",
+"bindings": "scoped"
+```
+
+The mise `test` task runs
+`swift test --package-path Core --event-stream-output-path test.swift-events.ndjson --event-stream-version 0`
+— the report lands at `Core/…` because `--event-stream-output-path` resolves
+relative to `--package-path`.
+
+**Dynamic module name over a static dir.** The renderer substitutes file
+*contents* (and strips `.tmpl`), but **not directory names**. So the package dir
+is the static `Sources/Core` / `Tests/CoreTests`, and `Package.swift` names the
+module `{{pascal .Name}}Core` via an explicit `path:` — giving `GourmandCore`-style
+names without a templated directory.
+
+**`.tmpl` is for substitution only.** Unlike go-service (whose base `files/` is a
+Go package the speckit suite compiles), speckit's CI never compiles Swift. A
+Swift file is `.tmpl` iff it contains a template var (`Package.swift.tmpl`,
+`TodoTests.swift.tmpl` import the module name); `SpecTraits.swift`, `Todo.swift`,
+`TodoList.swift` are plain `.swift`.
+
+### Slice 2 — Tuist app surface ⬜
+
+`Project.swift` (one macOS AppKit app target + a unit-test target,
+`CODE_SIGNING_ALLOWED=NO`), `macOS/Sources/App` (`@main`, window controller),
+`macOS/Tests`, and mise `generate`/`build`/`launch`/`test:app`. Verify still
+targets Core; iOS/UIKit is a documented mirror, not over-built (gourmand hasn't
+built it yet either). Tuist is pinned via mise; the generated `.xcodeproj`/
+`.xcworkspace`/`Derived/` are gitignored (source of truth is `Project.swift`).
+
+### Slice 3 — `--with` features ⬜ (go-service-shaped)
+
+`openapi` (Swift OpenAPI Generator SPM plugin) · `swiftdata` (a `<Name>Persistence`
+target, **strict-memory-safety off** — SwiftData macros are outside the proof
+boundary) · `push` (APNs registration) · `dist` (TestFlight / App Store / Homebrew
+release + signing/notarization advisory, from `appkit-packaging`).
+
+### Slice 4 — the apple stack pack ⬜
+
+Project `mac-dev-skills`' `appkit` plugin into `templates/{skills,rules,agents,
+commands}`: the `appkit-dev` agent, the design/grounding rules (sdk-api/sdk-search
+verification, accessibility identifiers, semantic colors/typography), and the
+**Xcode MCP** wiring (a new harness dimension no prior stack has).
+
+## Product kind & sibling stacks
+
+`apple` → `kind: app`. `swift-package` / `swift-cli` (apple-platform-tools' shape:
+a flat package/CLI, `kind: library`) reuse Slice 1's Core templates at the repo
+root and fall out nearly free — factored after the app slices.
+
+## Method note
+
+Prototype-first / resolve-by-running, on a Mac: build the real Core green in a
+throwaway dir (`swift test` + the event stream + `swift format lint --strict`),
+then templatize, then prove green-on-arrival via a fresh
+`specify target add … --stack apple` → `specify verify`. speckit's own Linux/Go
+CI validates the rendered **structure** (`internal/scaffold/apple_test.go`), not
+the Swift build.

@@ -249,9 +249,14 @@ Non-JS stacks use the same shape with their own tools (`swift build`,
 3. ✅ The **go-service** scaffold — a Go HTTP daemon in `cmd/<name>`, members
    sharing one repo-root `go.mod`, `--with openapi`/`sqlite`/`client` (the
    trove-shaped contract-first + persistent + external-client service).
-4. Next: **apple** — it exercises the other report format (`swift`) and the most
-   distinct harness (`SpecTraits.swift`), proving the contract generalizes; then
-   **ts-lib** + **go-cli** (the remaining trove member shapes).
+4. 🟡 The **apple** scaffold — exercises the other report format (`swift`,
+   event-stream NDJSON) and the most distinct harness (`SpecTraits.swift`'s
+   `.scenario()` trait), proving the contract generalizes. **Slice 1 shipped**:
+   the headless SwiftPM `Core` is the verify target (no Tuist/Xcode/simulator/
+   signing needed), green-on-arrival on the Xcode toolchain alone. Remaining
+   slices (Tuist app surface, `--with` features, the AppKit pack) in
+   [scaffolds/apple.md](scaffolds/apple.md). Then **ts-lib** + **go-cli** (the
+   remaining trove member shapes).
 
 The remaining stacks follow one at a time — each gated on its tooling preview
 (above), then a manifest + template tree + harness, parallelizable the way the
