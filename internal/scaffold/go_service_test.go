@@ -68,4 +68,59 @@ func TestGoServiceScaffold(t *testing.T) {
 			t.Errorf("seeded test missing the leading-comment binding for %q", scen)
 		}
 	}
+
+	// --with openapi: the contract-first feature. It overwrites main.go / greeting.go
+	// / greeting_test.go with the oapi-codegen (strict-server) wiring, adds the
+	// contract + codegen config, and carries the go-get + generate scripts. Members
+	// import the generated api package by full module path, so the render needs Module.
+	feat, ok := m.Features["openapi"]
+	if !ok || len(feat.Scripts) == 0 {
+		t.Fatalf("go-service missing the openapi feature with codegen scripts: %+v", m.Features)
+	}
+	oapiDir := t.TempDir()
+	fdata := Data{Name: "daemon", Dir: "cmd/daemon", Module: "example.com/acme", Features: map[string]bool{"openapi": true}}
+	if _, err := Render(sub, oapiDir, fdata); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RenderFeature(sub, feat, oapiDir, fdata); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"openapi.yaml", "oapi-codegen.yaml", "main.go", "greeting.go", "greeting_test.go"} {
+		if _, err := os.Stat(filepath.Join(oapiDir, p)); err != nil {
+			t.Errorf("openapi feature missing %s: %v", p, err)
+		}
+	}
+	// the generated api package is imported by full module path ({{.Module}}/{{.Dir}}).
+	wantImport := `"example.com/acme/cmd/daemon/internal/api"`
+	mainGo, _ := os.ReadFile(filepath.Join(oapiDir, "main.go"))
+	for _, want := range []string{wantImport, "api.HandlerFromMux", "api.NewStrictHandler"} {
+		if !strings.Contains(string(mainGo), want) {
+			t.Errorf("openapi main.go missing %q:\n%s", want, mainGo)
+		}
+	}
+	greetGo, _ := os.ReadFile(filepath.Join(oapiDir, "greeting.go"))
+	for _, want := range []string{wantImport, "api.GreetRequestObject", "api.Greet200JSONResponse"} {
+		if !strings.Contains(string(greetGo), want) {
+			t.Errorf("openapi greeting.go missing %q:\n%s", want, greetGo)
+		}
+	}
+	// the contract carries the operation + the x-spec trace; oapi-codegen config
+	// targets the strict server.
+	oapiYaml, _ := os.ReadFile(filepath.Join(oapiDir, "openapi.yaml"))
+	for _, want := range []string{"operationId: greet", "x-spec: story.greeting.greet", "title: daemon API"} {
+		if !strings.Contains(string(oapiYaml), want) {
+			t.Errorf("openapi.yaml missing %q:\n%s", want, oapiYaml)
+		}
+	}
+	if cfg, _ := os.ReadFile(filepath.Join(oapiDir, "oapi-codegen.yaml")); !strings.Contains(string(cfg), "strict-server: true") {
+		t.Errorf("oapi-codegen.yaml must enable strict-server:\n%s", cfg)
+	}
+	// the conditional mise generate task renders only when openapi is selected.
+	if mise, _ := os.ReadFile(filepath.Join(oapiDir, "mise.toml")); !strings.Contains(string(mise), "[tasks.generate]") {
+		t.Errorf("openapi mise.toml missing the generate task:\n%s", mise)
+	}
+	// ...and is absent from the default (no-feature) render.
+	if mise, _ := os.ReadFile(filepath.Join(dir, "mise.toml")); strings.Contains(string(mise), "[tasks.generate]") {
+		t.Errorf("default mise.toml must not carry the generate task:\n%s", mise)
+	}
 }

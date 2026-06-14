@@ -226,8 +226,16 @@ Ready) and baked in as `specify work`'s defaults.
     second member just joins it; members render no `go.mod` of their own. Verified: two members compose,
     `go build ./...` sees both, each `verify` green. (`scaffold.SharedModule` + `cmd/specify`
     `ensureRootGoMod`/`deriveModulePath`.)
-  - 🔄 **trove-parity bundles** (Mark wants all four; sequenced as green-on-arrival PRs): root `go.mod` ✅;
-    **OpenAPI + oapi-codegen** (contract-first API, troved's pattern) — *in progress*; **SQLite store +
+  - ✅ **`--with openapi` (contract-first via oapi-codegen)** (PR pending). troved's defining pattern: the
+    feature overwrites `main.go`/`greeting.go`/`greeting_test.go` with the **strict-server** wiring, ships
+    `openapi.yaml` (the contract, with an `x-spec` trace) + `oapi-codegen.yaml`, and adds phase-ordered
+    install scripts (`go get` the runtime + the `oapi-codegen` **tool** directive → generate
+    `internal/api/api.gen.go` → `go mod tidy`). Members import the generated package by full module path
+    (needs `Data.Module` = `resolveModulePath`). A conditional `mise run generate` task regenerates from the
+    contract. Verified green-on-arrival: `target add … --with openapi` → `go build`/`fmt:check`/`vet`/`test`
+    + `specify verify` (2 passed · 1 locked), module path from the git remote. (Also fixed: the default base
+    `main.go` shipped a literal unrendered `{{kebab .Name}}` in its package comment.)
+  - 🔄 **Remaining trove-parity bundles** (Mark wants all four; green-on-arrival PRs): **SQLite store +
     migrations + flag/env config**; **external-service client + httptest** idiom. pnpm-workspace membership
     lands with the broader monorepo slice.
 - ⬜ **Per-stack scaffold builds** — **apple next** (exercises the `swift` report format + the

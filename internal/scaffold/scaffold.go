@@ -118,9 +118,13 @@ type Feature struct {
 
 // Data is the text/template context every scaffold sees.
 type Data struct {
-	Name     string
-	Dir      string
-	Product  string
+	Name    string
+	Dir     string
+	Product string
+	// Module is the repo-root Go module path (e.g. github.com/markmals/trove) for
+	// SharedModule stacks, so a member can import its own generated/internal
+	// packages by full path (`{{.Module}}/{{.Dir}}/internal/api`). Empty otherwise.
+	Module   string
 	Vars     map[string]string
 	Features map[string]bool
 }

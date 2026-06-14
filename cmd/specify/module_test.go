@@ -28,28 +28,33 @@ func TestModuleFromRemote(t *testing.T) {
 func TestEnsureRootGoMod(t *testing.T) {
 	dir := t.TempDir()
 
-	// First call creates go.mod (no git remote → falls back to the dir base name).
-	created, err := ensureRootGoMod(dir)
+	// No go.mod yet → resolveModulePath derives the dir base name, and
+	// ensureRootGoMod writes it.
+	mp := resolveModulePath(dir)
+	if mp != filepath.Base(dir) {
+		t.Errorf("resolveModulePath(no go.mod) = %q, want dir base %q", mp, filepath.Base(dir))
+	}
+	created, err := ensureRootGoMod(dir, mp)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !created {
 		t.Fatal("expected ensureRootGoMod to create go.mod")
 	}
-	b, err := os.ReadFile(filepath.Join(dir, "go.mod"))
-	if err != nil {
-		t.Fatalf("go.mod not written: %v", err)
-	}
 	want := "module " + filepath.Base(dir)
-	if got := string(b); !strings.Contains(got, want) || !strings.Contains(got, "go "+goModVersion) {
-		t.Errorf("go.mod = %q, want module %q + go %s", got, want, goModVersion)
+	if b, _ := os.ReadFile(filepath.Join(dir, "go.mod")); !strings.Contains(string(b), want) || !strings.Contains(string(b), "go "+goModVersion) {
+		t.Errorf("go.mod = %q, want module %q + go %s", b, want, goModVersion)
 	}
 
-	// Second call is a no-op — a prior member (or hand-authored module) wins.
+	// With a go.mod present, resolveModulePath reads its module line and
+	// ensureRootGoMod is a no-op — a prior member (or hand-authored module) wins.
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/keep\n\ngo 1.26\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	created, err = ensureRootGoMod(dir)
+	if got := resolveModulePath(dir); got != "example.com/keep" {
+		t.Errorf("resolveModulePath(existing) = %q, want example.com/keep", got)
+	}
+	created, err = ensureRootGoMod(dir, "example.com/should-not-be-written")
 	if err != nil {
 		t.Fatal(err)
 	}

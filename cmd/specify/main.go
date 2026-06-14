@@ -250,6 +250,11 @@ func targetAddCmd() *cobra.Command {
 				return fmt.Errorf("--data %q requires --runtime %q (got %q)", resolvedData, dataVariant.RequiresRuntime, resolvedRuntime)
 			}
 			data := scaffold.Data{Name: name, Dir: dir, Product: product, Features: features, Vars: map[string]string{}}
+			// Shared-module stacks resolve the repo's Go module path so members can
+			// import their own generated/internal packages by full path.
+			if m.SharedModule {
+				data.Module = resolveModulePath(".")
+			}
 
 			written, err := scaffold.Render(sub, dir, data)
 			if err != nil {
@@ -307,7 +312,7 @@ func targetAddCmd() *cobra.Command {
 			// instead of a self-contained module per member. Create it if the repo
 			// isn't a Go module yet; a second member just joins it.
 			if m.SharedModule {
-				created, err := ensureRootGoMod(".")
+				created, err := ensureRootGoMod(".", data.Module)
 				if err != nil {
 					return err
 				}
@@ -430,19 +435,36 @@ const goModVersion = "1.26"
 // (go-service) compose into ONE root go.mod — each a cmd/<name> sharing internal/
 // packages — instead of a self-contained module per member. No-op (returns false)
 // when a go.mod already exists: a prior member, or a hand-authored module like a
-// converted trove. Reports whether it created the file.
-func ensureRootGoMod(projectRoot string) (bool, error) {
+// converted trove. modulePath is the resolved path to write (so it matches the
+// member templates' imports). Reports whether it created the file.
+func ensureRootGoMod(projectRoot, modulePath string) (bool, error) {
 	gomod := filepath.Join(projectRoot, "go.mod")
 	if _, err := os.Stat(gomod); err == nil {
 		return false, nil
 	} else if !os.IsNotExist(err) {
 		return false, err
 	}
-	content := fmt.Sprintf("module %s\n\ngo %s\n", deriveModulePath(projectRoot), goModVersion)
+	content := fmt.Sprintf("module %s\n\ngo %s\n", modulePath, goModVersion)
 	if err := os.WriteFile(gomod, []byte(content), 0o644); err != nil {
 		return false, err
 	}
 	return true, nil
+}
+
+// resolveModulePath is the module path a shared-module member should import its
+// own packages under: the existing repo-root go.mod's module line if the repo is
+// already a module (a prior member, or a converted trove), else the path
+// deriveModulePath would create. Both paths agree, so member imports match the
+// go.mod ensureRootGoMod writes.
+func resolveModulePath(projectRoot string) string {
+	if b, err := os.ReadFile(filepath.Join(projectRoot, "go.mod")); err == nil {
+		for _, line := range strings.Split(string(b), "\n") {
+			if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
+				return strings.TrimSpace(rest)
+			}
+		}
+	}
+	return deriveModulePath(projectRoot)
 }
 
 // deriveModulePath picks a Go module path for a new root go.mod: the repo's

@@ -6,11 +6,36 @@
     {
       "phase": 0,
       "commands": [
-        "mise trust",
+        "mise trust"
+      ]
+    },
+    {
+      "phase": 5,
+      "commands": [
         "go mod tidy"
       ]
     }
   ],
+  "features": {
+    "openapi": {
+      "files": "features/openapi/files",
+      "scripts": [
+        {
+          "phase": 1,
+          "commands": [
+            "go get github.com/oapi-codegen/runtime",
+            "go get -tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen"
+          ]
+        },
+        {
+          "phase": 2,
+          "commands": [
+            "mkdir -p internal/api && go tool oapi-codegen -config oapi-codegen.yaml openapi.yaml"
+          ]
+        }
+      ]
+    }
+  },
   "target": {
     "command": "cd {{.Dir}} && mise run test",
     "format": "gotest",

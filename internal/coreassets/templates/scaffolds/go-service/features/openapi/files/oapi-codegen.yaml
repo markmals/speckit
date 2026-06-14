@@ -1,0 +1,10 @@
+# oapi-codegen config — generates the Go server from openapi.yaml. Regenerate
+# with `mise run generate` (or `go tool oapi-codegen -config oapi-codegen.yaml
+# openapi.yaml`). strict-server gives typed request/response objects over the
+# std-http (net/http) router.
+package: api
+output: internal/api/api.gen.go
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
