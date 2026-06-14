@@ -193,6 +193,14 @@ Ready) and baked in as `specify work`'s defaults.
   [library-products.md](docs/design/library-products.md). Roster is evidence-based (web ·
   website · apple · android · go-cli · node-cli · swift-package · swift-cli · ts-lib ·
   vscode-extension; dropped rust-cli/windows/linux/browser-extension).
+- ✅ **`go-service` scaffold (Tier-2 structural, trove's daemon).** A new stack: a runnable Go HTTP
+  daemon (net/http ServeMux + graceful shutdown + a scenario-bound httptest) that's green-on-arrival
+  via the **Tier-1 gotest format + Go leading-comment bindings + scoped mode** (dogfoods Tier 1:
+  `verify` → 2 passed · 1 locked · drift clean). Introduces **stack-aware member placement** (the
+  manifest's `memberDir`): `target add … --stack go-service` lands in `cmd/<name>` (web stays `apps/`),
+  the first piece of **incremental member-add** (Mark's monorepo call). Also plumbed `target.bindings`
+  manifest→config. ⬜ Follow-ups: a shared **root go.mod** (today each go-service is a self-contained
+  module) + pnpm-workspace membership land with the monorepo slice; openapi/oapi-codegen wiring is later.
 - ⬜ **Per-stack scaffold builds** — **apple next** (exercises the `swift` report format + the
   `SpecTraits.swift` harness), then the rest one at a time, each gated on a tooling preview.
   node-cli already spec'd ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
