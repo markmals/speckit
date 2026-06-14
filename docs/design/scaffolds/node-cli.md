@@ -26,8 +26,9 @@
 
 **Mise** (env + tasks + toolchain, monorepo) · **pnpm** · **tsdown** · **Vitest** ·
 **Oxfmt/Prettier** · **Oxlint/ESLint** · **tsgo** · `node:sqlite` + Drizzle ·
-fetch · **Evlog** · **Varlock** · **GitHub Actions**. (Same Mise monorepo + the
-`_.path = node_modules/.bin` trick as `web`.)
+fetch · **Evlog** · Varlock _(deferred — the web stack ships Vite-native
+`.env.local` instead, since the reference apps don't wire Varlock)_ · **GitHub
+Actions**. (Same Mise monorepo + the `_.path = node_modules/.bin` trick as `web`.)
 
 ## What the scaffold wires
 

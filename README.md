@@ -13,7 +13,7 @@ There are two halves to working in SpecKit, and the README covers both:
 
 ## Status
 
-Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`), the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`), and stack scaffolding (`target add`) — the **web** stack (TanStack Start + Vitest) and the **go-service** stack (a Go HTTP daemon, placed in `cmd/`) land green on `verify` out of the box. In progress: a published release (and the Homebrew/Mise install that depends on it), the remaining stack scaffolds (Apple next), the `check`/`self upgrade`/`extension`/`preset` commands, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
+Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`), the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`), and stack scaffolding (`target add`/`target register`). Two stacks land green on `verify` out of the box: the **web** stack (TanStack Start + Vitest, UI from the [racket-ui](https://github.com/markmals/racket-ui) shadcn registry; data `convex`/`drizzle`/`none` × runtime `cloudflare`/`node`; `--with` clerk·tiptap·posthog·email·stripe) and the **go-service** stack (a Go HTTP daemon in `cmd/`, members composing into one repo-root `go.mod`; `--with` openapi·sqlite·client for a contract-first, persistent, trove-shaped service). `specify target register` onboards a member that already exists (no scaffolding) — the path for adopting SpecKit in an existing repo. In progress: a published release (and the Homebrew/Mise install that depends on it), the remaining stack scaffolds (Apple next), the `check`/`self upgrade`/`extension`/`preset` commands, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
 
 ## Install
 
@@ -92,7 +92,13 @@ First scaffold the target. `target add` lays down a runnable starter on the reco
 specify target add web --stack web   # TanStack Start + Vitest, green on `verify` immediately
 ```
 
-It arrives green on purpose: the scaffold seeds one example spec, one bound test, and a `// SPEC:` pointer, so your agent extends a working spec→test→verify loop instead of wiring one from scratch. (`--dir` to place it, `--product` to label it, `--no-install` to skip the install.)
+It arrives green on purpose: the scaffold seeds one example spec, one bound test, and a `// SPEC:` pointer, so your agent extends a working spec→test→verify loop instead of wiring one from scratch. (`--dir` to place it, `--product` to label it, `--with <feature>` to add an add-on, `--no-install` to skip the install.)
+
+Adopting SpecKit in a repo whose code already exists? `target register` records an existing member as a target — it writes no files and runs nothing, just adds the `.speckit/specs.json` entry (seeded from the stack's scaffold when there is one, or wired with `--format`/`--command`/`--report`/`--source`/`--bindings` flags):
+
+```sh
+specify target register api --stack go-service --dir cmd/api   # existing member → a verifiable target
+```
 
 Then have your agent plan and implement the feature natively, **tests first**, with each test bound to the scenario it proves:
 
@@ -241,6 +247,7 @@ Run `specify <command>`. Reporting commands print a styled summary by default an
 | --- | --- |
 | `specify init [name] --integration <agent>` | Create a project wired for your agent (`claude`, `codex`, `copilot`, `generic`). `--here` sets up the current directory; `--force` merges into a non-empty one. |
 | `specify target add <name> --stack <stack>` | Scaffold a runnable starter for a target on its stack, register it in `.speckit/specs.json`, project the stack's pack, and install deps (versions resolved by running the package manager). `--dir`, `--product`, `--with <feature>`, `--no-install`. |
+| `specify target register <name> --stack <stack>` | Register an **existing** member as a target (no scaffolding, no install) — for adopting SpecKit in a repo that already has code. Seeds the verify wiring from the stack's scaffold, or set it with `--format`/`--command`/`--report`/`--source`/`--bindings`. `--dir`, `--product`. |
 
 ### Work with the spec library
 
