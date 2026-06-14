@@ -69,7 +69,7 @@ before code.
 | --- | --- |
 | agent · IDE | **Claude Code** · **Visual Studio Code** |
 | toolchain · tasks · shell env | **Mise** |
-| environment variables | **Varlock** |
+| environment variables | Vite-native **`.env.local`** (Varlock deferred — the reference apps don't wire it) |
 | CI/CD | **GitHub Actions** |
 | error tracking & crash reporting | **Sentry** |
 | feature flags · analytics | **PostHog** |
@@ -90,7 +90,7 @@ animations via **View Transitions**, Zod, **Astro** i18n, Drizzle +
 **Default — the green-on-arrival starter:**
 - **TanStack Start** + Router (virtual routes) + Query; React 19 + React Compiler; TanStack DevTools.
 - **Mise** (monorepo) driving pnpm · Vite · Vitest · tsdown · **Oxfmt** · **Oxlint** · tsgo. (Prettier/ESLint belong to the Astro `website` stack, since oxc can't handle `.astro`.)
-- **Tailwind CSS** + **React Aria**; **Motion**; **Zod**.
+- **Tailwind v4** + **rac-ui** (React Aria via the shadcn CLI); **Motion**; **Zod**.
 - **Data:** `--data convex` (default) · `drizzle` (D1) · `none` (data-less shell). **Convex stays
   green-on-arrival via an _anonymous local deployment_** — the install runs
   `CONVEX_AGENT_MODE=anonymous convex dev --once` (no account/login) to generate
@@ -98,8 +98,10 @@ animations via **View Transitions**, Zod, **Astro** i18n, Drizzle +
   native-build gate. `drizzle`'s D1 driver needs the Cloudflare runtime, so it ships with that
   slice (not `node:sqlite`).
 - **Runtime/deploy:** Cloudflare (default) · Node-local; the SSR/server matrix below.
-- **Project glue:** **Varlock** for env vars, a **GitHub Actions** CI workflow (runs the
-  Mise `test`/`lint`/`check` tasks), `.vscode` settings.
+- **Project glue:** Vite-native **`.env.local`** for env vars (Varlock deferred — the
+  reference apps don't wire it), a **GitHub Actions** CI workflow (runs the Mise
+  `test`/`lint`/`check` tasks), and **`.vscode`** settings (oxc as formatter + lint-on-save,
+  tsgo as the type checker, Tailwind IntelliSense for `cva`/`cx`, recommended extensions).
 
 **Optional `--with`:** `clerk` (auth) · `stripe` (payments) · `email` (Resend + React
 Email) · `tiptap` (rich text) · `tanstack-db` (local-first) · `electron` (desktop) ·

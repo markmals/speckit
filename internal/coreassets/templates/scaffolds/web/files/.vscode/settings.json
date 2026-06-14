@@ -1,0 +1,49 @@
+{
+    "js/ts.experimental.useTsgo": true,
+    "typescript.native-preview.tsdk": "./node_modules/@typescript/native-preview",
+
+    "oxc.enable.oxlint": true,
+    "oxc.enable.oxfmt": true,
+
+    "editor.codeActionsOnSave": {
+        "source.fixAll.oxc": "always",
+        "source.addMissingImports.ts": "explicit",
+        "source.removeUnused.ts": "never"
+    },
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "file",
+
+    "[typescript]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+
+    "tailwindCSS.classFunctions": ["cva", "cx"],
+
+    "files.exclude": {
+        "**/.tanstack": true,
+        "**/.wrangler": true,
+        "**/dist": true,
+        "**/app/routes.gen.ts": true,
+        "**/worker-configuration.d.ts": true
+    },
+
+    "biome.enabled": false,
+    "prettier.enable": false,
+    "eslint.enable": false
+}

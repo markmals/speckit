@@ -33,6 +33,7 @@ func TestWebScaffold(t *testing.T) {
 	for _, p := range []string{
 		"package.json", "mise.toml", "tsconfig.json", "vitest.config.ts",
 		"tsr.config.json", ".oxlintrc.json", ".oxfmtrc.json", "components.json",
+		".vscode/settings.json", ".vscode/extensions.json",
 		"app/root.tsx", "app/router.tsx", "app/routes.ts", "app/routes/home.tsx",
 		"app/providers.tsx", "pnpm-workspace.yaml",
 		"app/lib/greeting.ts", "app/lib/greeting.test.ts",
@@ -60,6 +61,13 @@ func TestWebScaffold(t *testing.T) {
 	for _, want := range []string{`"@racket-ui"`, "markmals/racket-ui", `"@/components/ui"`} {
 		if !strings.Contains(string(cj), want) {
 			t.Errorf("components.json missing %q:\n%s", want, cj)
+		}
+	}
+	// .vscode wires the toolchain: oxc as the formatter and tsgo as the type checker.
+	vsc, _ := os.ReadFile(filepath.Join(app, ".vscode/settings.json"))
+	for _, want := range []string{"oxc.oxc-vscode", "useTsgo", `"cva"`} {
+		if !strings.Contains(string(vsc), want) {
+			t.Errorf(".vscode/settings.json missing %q:\n%s", want, vsc)
 		}
 	}
 	// rac-ui replaces the hand-rolled foundation: the shadcn CLI installs

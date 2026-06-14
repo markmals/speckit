@@ -36,7 +36,12 @@ is the *only* renderer with skip-existing=true, so re-running `target add` will
 that seam. New `.tmpl` files are rendered *before* the skip check, so they must
 parse against the fixed `scaffold.Data{Name,Dir,Product,Vars,Features}`. New embedded
 files must live under `internal/coreassets/templates/` (the `//go:embed all:templates`
-prefix is what pulls in dotdirs like `.github`).
+prefix is what pulls in dotdirs like `.github`). **Gotcha:** a scaffold dotdir template
+whose name matches a rule in the repo-ROOT `.gitignore` (e.g. `.vscode/`) is silently
+dropped from commits — `go:embed` reads the working tree so it builds + tests green
+*locally*, but a fresh clone / CI lacks the files and the render test fails there. Add a
+negation (`!/internal/coreassets/templates/scaffolds/<stack>/files/.vscode/` + `…/**`) and
+confirm with `git check-ignore`. (Same class as racket-ui's gitignored `public/r`.)
 
 **Verify scaffold combos SERIALLY, not in parallel.** The web scaffold's `lint`
 runs `oxlint --type-aware` via `tsgolint` (a native typescript-go binary). Under the
