@@ -200,6 +200,28 @@ Ready) and baked in as `specify work`'s defaults.
 
 ## P4 · Engine & workflow enhancements
 
+- 🔄 **Trove adoption — Tier 1 (engine readiness, in review).** Makes the engine able to scan +
+  verify a real Workbench-shaped repo (trove, the first conversion). Validated end-to-end against
+  `~/Developer/Projects/trove`: `scan` clean (was 46 findings), `verify` joins trove's Go bindings
+  (4 scenarios passed, 0 dangling/unbound, 2 honestly unjoinable cross-target). Changes:
+  - **`protocol` kind** — a contract kind (`protocol.<producer>.<op>`, dir `specs/protocol/`, no
+    scenarios) in `internal/specmodel`; cleared trove's 17 I2s. The `x-spec`/OpenAPI binding reader
+    for protocol *coverage* stays deferred (Tier-1 leaves protocol specs scanning clean + drift-tracked).
+  - **Filename rule accepts both** the id-tail stem (`engine.scan.md`) and the full-id stem
+    (`story.engine.scan.md`) — cleared trove's 29 I1s; backward-compatible.
+  - **Scenario headings at any level** — `parseScenarios` now also reads nested `### Scenario N:`
+    under `## Acceptance Criteria` (trove's form; an audit miss — bindings were dangling until this).
+  - **Go + generic `// [scenario.id]` binding reader** — `.go` added to `sourceExts`; a line-oriented
+    leading-comment reader binds the tag to the next `func Test…` (Go) or `it/test(…)` title (TS).
+  - **`gotest` report format** — parses `go test -json` (top-level funcs; subtests rolled up; skips
+    omitted).
+  - **`bindings: scoped` (decision-for-mark)** — opt-in per-target relaxation so a partially-bound
+    suite (untagged unit tests) verifies what it does bind; **default stays `strict`** (untagged =
+    unbound D12 violation), so the scaffold + SpecKit's own repo are unchanged. ⚠️ This softens the
+    documented "every untagged test is a hard error" philosophy *only when opted in* — confirm the
+    name/shape.
+  ⬜ Tier-1 follow-ups deferred to a later milestone: protocol `x-spec` coverage reader, an
+  `init`-into-existing path that authors `.speckit/specs.json`, and the `go-service` stack pack/scaffold.
 - ✅ **Richer CI annotations (P1 fast-follow).** `--format github` now extends past the
   firewall: `verify` annotates unjoinable scenarios at their spec line + dangling bindings at
   the test line; `parity` annotates each non-conforming cell at its spec line; the firewall
@@ -207,10 +229,9 @@ Ready) and baked in as `specify work`'s defaults.
   `specmodel.Scenario` carries its line, and `engine.SpecLocations` maps scenarios → spec
   file:line. The gate action runs `verify`/`parity --format github`. (Verified: a repro with
   an unjoinable scenario + a dangling binding emits the expected `::error file=…,line=…::`.)
-- ⬜ **Scanner — multi-framework bindings.** Support the forms `CONVENTIONS.md` documents but
-  the scanner doesn't yet read: MSTest `[TestProperty("scenario", …)]`, kotlin
-  `@Tag("scenario:…")`, generic `// [scenario.id]` comment. (Today: Swift traits + Vitest
-  titles only.)
+- 🔄 **Scanner — multi-framework bindings.** ✅ generic `// [scenario.id]` leading comment (Go +
+  JS/TS) shipped with Tier 1. ⬜ Still unread: MSTest `[TestProperty("scenario", …)]`, kotlin
+  `@Tag("scenario:…")`. (Today: Swift traits, Vitest titles, and the leading-comment form.)
 - ⬜ **Product-rollup render** — `cover`/`parity` grouping + per-product verdict. `ProductTargets()`
   exists; lands with the multi-target slice.
 - ⬜ **triaging-defects skill** — reframe around **GitHub Issues** (Pillar 2 supersedes the old

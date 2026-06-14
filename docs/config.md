@@ -27,6 +27,14 @@ trailing commas).
       "report": "apps/ios/.build/tests.ndjson",
       "source": "apps/ios/Tests",
       "product": "consumer-app"
+    },
+    "daemon": {
+      "stack": "go-service",
+      "command": "go test -json ./cmd/... ./internal/... > .speckit/daemon.gotest.json",
+      "format": "gotest",
+      "report": ".speckit/daemon.gotest.json",
+      "source": "cmd",
+      "bindings": "scoped"
     }
   }
 }
@@ -35,8 +43,18 @@ trailing commas).
 Field by field: `version` is this file's schema version; `agent` is who `init`
 projected for; `paths` (optional, defaults shown) locates the spec library; each
 **target** carries a `stack` (selects its platform pack — see below), the verify
-wiring (`command` to run, `report` `format` ∈ `junit`/`swift`, `report` path,
-`source` dir scanned for bindings), and an optional `product` label.
+wiring (`command` to run, `report` `format` ∈ `junit`/`swift`/`gotest`, `report`
+path, `source` dir scanned for bindings), an optional `product` label, and an
+optional `bindings` mode.
+
+- **`format`** — how the test report is parsed: `junit` (Vitest, Gradle), `swift`
+  (Swift Testing's event stream), or `gotest` (the NDJSON `go test -json` writes;
+  the join identity is the `func Test…` name).
+- **`bindings`** — how an untagged test (one that binds no scenario) is treated:
+  `strict` (the default — every test must prove a scenario, an untagged one is an
+  unbound D12 violation) or `scoped` (untagged tests are out of scope, so a suite
+  that mixes scenario tests with plain unit tests still verifies what it binds).
+  A failing bound test and a dangling binding remain violations in both modes.
 
 ### What the engine does with it
 
@@ -47,9 +65,9 @@ wiring (`command` to run, `report` `format` ∈ `junit`/`swift`, `report` path,
 - `specify drift <target>` · `cover <spec-id>` · `parity <target>` read that
   per-target lock.
 - `specify scan` validates this file when it's present: every target needs a
-  valid `format` (`junit` | `swift`), a `report`, and a `source`. An absent
-  `specs.json` is fine — engine commands that need a target just tell you to
-  configure one.
+  valid `format` (`junit` | `swift` | `gotest`), a `report`, and a `source`, and
+  any `bindings` value must be `strict` or `scoped`. An absent `specs.json` is
+  fine — engine commands that need a target just tell you to configure one.
 
 A **target is the atomic unit**: a globally-unique name with its own lock. The
 `platform` vocabulary from earlier builds is gone — it's `target` everywhere now.
