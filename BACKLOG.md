@@ -286,8 +286,15 @@ Ready) and baked in as `specify work`'s defaults.
     unbound D12 violation), so the scaffold + SpecKit's own repo are unchanged. ⚠️ This softens the
     documented "every untagged test is a hard error" philosophy *only when opted in* — confirm the
     name/shape.
-  ⬜ Tier-1 follow-ups deferred to a later milestone: protocol `x-spec` coverage reader, an
-  `init`-into-existing path that authors `.speckit/specs.json`, and the `go-service` stack pack/scaffold.
+  ⬜ Tier-1 follow-ups: protocol `x-spec` coverage reader (still deferred). ✅ go-service stack/scaffold
+  (shipped, with the trove-parity feature set). ✅ **onboarding an existing repo** — `specify target
+  register <name> --stack <s>` records an existing member as a target in `.speckit/specs.json` without
+  scaffolding/installing (seeds the wiring from the stack's scaffold manifest when it has one — web,
+  go-service — else takes `--format`/`--command`/`--report`/`--source`/`--bindings` flags; flags override
+  manifest defaults). Smoke-tested on real trove: registered `troved` (go-service) + a TS package, `scan`
+  clean. **The next step (converting trove) is the target decomposition** — which scenarios/tests scope to
+  which target (trove's bound tests span `cmd/troved` + `internal/`), reconciling scenario ids, and the
+  per-member wiring — plus the deferred protocol `x-spec` reader + product-rollup render.
 - ✅ **Richer CI annotations (P1 fast-follow).** `--format github` now extends past the
   firewall: `verify` annotates unjoinable scenarios at their spec line + dangling bindings at
   the test line; `parity` annotates each non-conforming cell at its spec line; the firewall

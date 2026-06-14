@@ -40,6 +40,14 @@ specify scan
 ```sh
 # 3. target add — register a target so verify knows how to run its tests
 specify target add web --stack web   # green on verify out of the box
+
+# …or, adopting SpecKit in a repo whose code already exists, register the member
+# in place (writes no files, runs nothing) — seeded from the stack's scaffold, or
+# wired explicitly when the member differs / its stack has no scaffold:
+specify target register api --stack go-service --dir cmd/api
+specify target register lib --stack ts-lib --dir packages/lib \
+  --format junit --command "cd packages/lib && mise run test" \
+  --report packages/lib/junit.xml --source packages/lib/src --bindings scoped
 ```
 
 ```text
