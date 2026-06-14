@@ -5,7 +5,7 @@ Design: [`docs/design/scaffolds/apple.md`](../../docs/design/scaffolds/apple.md)
 Baseline + reference repos: gourmand (Tuist app, the convert target),
 apple-platform-tools (raw SwiftPM, the binding reference), mac-dev-skills (the
 AppKit agent pack). Built in slices; **Slice 1 (headless Core) + Slice 2 (Tuist app surface) + Slice 3
-`swiftdata` shipped 2026-06-14**.
+`swiftdata` + `openapi` shipped 2026-06-14**.
 
 ## The things that cost real time
 
@@ -101,6 +101,19 @@ AppKit agent pack). Built in slices; **Slice 1 (headless Core) + Slice 2 (Tuist 
   OFF (SwiftData macros are outside the proof); test headlessly with a temp-file
   `ModelConfiguration(url:)` reopen (real persistence proof, no app/simulator). The
   feature test uses plain `import <Name>Persistence` (public API), not `@testable`.
+- **OpenAPI specifics** (`--with openapi`): the **Swift OpenAPI Generator** build-tool
+  plugin generates `Client`/`Types` from `Sources/API/openapi.yaml` at build time.
+  - **SwiftPM arg order**: package `dependencies:` must come **after `products:` and
+    before `targets:`** — wrong order → "argument 'products' must precede 'dependencies'".
+  - Generated code is `internal` (config `accessModifier: internal`); expose a public
+    hand-written facade (`TodoAPIClient`) that maps the wire schema to the domain — the
+    test only touches the facade + the public `ClientTransport`.
+  - Test offline with a **fake `ClientTransport`** returning canned JSON (the
+    httptest-fakeServer analog). Needs `import HTTPTypes` (transitive via OpenAPIRuntime).
+  - First build resolves swift-openapi-* (network, ~35s cold) + runs codegen; cached
+    after. Changing the contract may need a clean build to bust the codegen cache.
+  - The example is reshaped around `Todo` (fetch `[Todo]` from `/todos`) so it stays in
+    the existing story (`scenario.todo.manage.fetch`), like swiftdata's persist scenario.
 
 - **Structure-only Go test**: `internal/scaffold/apple_test.go` asserts the rendered
   tree + the dynamic-module/static-dir wiring + story↔`.scenario` id agreement. The

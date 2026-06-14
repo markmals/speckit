@@ -37,3 +37,13 @@ against the headless Core package.
 - When the store is closed and reopened
 - Then the to-do is still present
 {{- end}}
+{{- if .Features.openapi}}
+
+## Scenario: fetching to-dos from the remote API
+
+<!-- id: scenario.todo.manage.fetch -->
+
+- Given the remote API returns a list of to-dos
+- When the client fetches them
+- Then they are mapped to domain to-dos
+{{- end}}

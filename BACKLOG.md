@@ -279,8 +279,11 @@ Ready) and baked in as `specify work`'s defaults.
     base unaffected. Established two patterns: the **`Package.swift` composition seam** (`{{if .Features.x}}`
     blocks; features ship only additive files) and **one test target** (`swift test --event-stream-output-path`
     clobbers across multiple test targets → feature tests live in `CoreTests`; the `.spec`/`.scenario` traits
-    moved to a shared `TestSupport` target). ⬜ Remaining: `openapi` (Swift OpenAPI Generator), `push` (APNs),
-    `dist` (TestFlight/App Store/Homebrew).
+    moved to a shared `TestSupport` target). **`openapi` ✅** — `--with openapi`: a contract-first `<Name>API`
+    target via the **Swift OpenAPI Generator** build-tool plugin (codegen at build time) + a public
+    `TodoAPIClient` facade + a fake-`ClientTransport` test (offline-verifiable). `--with openapi` → verify 3
+    passed; `--with swiftdata --with openapi` → 4 passed + app build. (Seam gotcha: SPM needs `dependencies`
+    after `products`.) ⬜ Remaining: `push` (APNs), `dist` (TestFlight/App Store/Homebrew).
   - ⬜ **Slice 4 — the apple stack pack** — project mac-dev-skills' appkit plugin (skills/agent/rules + Xcode MCP)
     into `templates/{skills,rules,agents,commands}`.
   - ⬜ `swift-package` / `swift-cli` (apple-platform-tools' shape) fall out of Slice 1 nearly free — factor after.

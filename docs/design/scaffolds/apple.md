@@ -163,9 +163,25 @@ later feature:
   the `.spec`/`.scenario` traits into a shared **`TestSupport`** library target
   (apple-platform-tools' pattern) so every test target imports them.
 
-**Remaining ⬜:** `openapi` (Swift OpenAPI Generator SPM plugin) · `push` (APNs
-registration) · `dist` (TestFlight / App Store / Homebrew release +
-signing/notarization advisory, from `appkit-packaging`).
+**`openapi` ✅** — `--with openapi` adds a contract-first API client via the **Swift
+OpenAPI Generator** build-tool plugin: an `<Name>API` target (the plugin generates
+`Client`/`Types` from `Sources/API/openapi.yaml` at build time, kept internal), a
+public `TodoAPIClient` facade that maps the wire schema to the domain `Todo`, and a
+bound test that drives the generated client through a **fake `ClientTransport`** —
+the analog of go-service's httptest server, so it verifies offline. Proven: `--with
+openapi` → `verify` **3 passed**, and `--with swiftdata --with openapi` → **4
+passed** + app build, base unaffected. Specifics:
+- The seam adds the `swift-openapi-{generator,runtime,urlsession}` package deps —
+  **after `products`, before `targets`** (SwiftPM enforces that argument order; got
+  it wrong once). The first `verify`/build resolves them (network) and runs codegen
+  (~35s cold); after that it's cached.
+- The generated code is `internal`, so the public facade is the only surface the app
+  and tests touch — no `accessModifier: public` needed.
+- Changing the contract may need a clean build to bust the plugin's codegen cache
+  (a fresh scaffold always codegens clean).
+
+**Remaining ⬜:** `push` (APNs registration) · `dist` (TestFlight / App Store /
+Homebrew release + signing/notarization advisory, from `appkit-packaging`).
 
 ### Slice 4 — the apple stack pack ⬜
 
