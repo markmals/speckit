@@ -12,3 +12,4 @@ skill.
 - [Dev workflow](dev-workflow.md) — the CI gate, golden regen, the dual exit-code convention, scaffold gotchas
 - [Web scaffold](web-scaffold.md) — feature/variant composition, the provider `Wrap` seam, and the toolchain gotchas when adding a `--with`
 - [racket-ui via shadcn](rac-ui-shadcn.md) — the proven recipe to replace the foundation with racket-ui (`markmals/racket-ui`) via the shadcn CLI; **gated on committing `registry.json` to that repo's root**
+- [Apple scaffold](apple-scaffold.md) — the `apple` stack: verify=headless Core, the swift event-stream command, the dynamic-module/static-dir `path:` trick, `.tmpl`-for-substitution-only, the `.scenario()` binding

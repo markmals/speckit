@@ -1,0 +1,19 @@
+{
+  "stack": "apple",
+  "memberDir": "apps",
+  "scripts": [
+    {
+      "phase": 0,
+      "commands": [
+        "mise trust"
+      ]
+    }
+  ],
+  "target": {
+    "command": "cd {{.Dir}} && mise run test",
+    "format": "swift",
+    "report": "{{.Dir}}/Core/test.swift-events.ndjson",
+    "source": "{{.Dir}}/Core",
+    "bindings": "scoped"
+  }
+}
