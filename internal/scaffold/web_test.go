@@ -53,6 +53,20 @@ func TestWebScaffold(t *testing.T) {
 			t.Errorf("package.json missing %q:\n%s", want, pkg)
 		}
 	}
+	// the foundation ships lucide-react (icons) + tw-animate-css (animation utils):
+	// the deps install with the base, the css imports the latter, and the example
+	// route exercises the former.
+	for _, dep := range []string{"lucide-react", "tw-animate-css"} {
+		if !strings.Contains(m.Scripts[0].Commands[1], dep) {
+			t.Errorf("base install missing %q: %s", dep, m.Scripts[0].Commands[1])
+		}
+	}
+	if css, _ := os.ReadFile(filepath.Join(app, "app/styles/tailwind.css")); !strings.Contains(string(css), `@import "tw-animate-css"`) {
+		t.Errorf("tailwind.css must import tw-animate-css:\n%s", css)
+	}
+	if home, _ := os.ReadFile(filepath.Join(app, "app/routes/home.tsx")); !strings.Contains(string(home), `from "lucide-react"`) {
+		t.Errorf("the example route should exercise lucide-react:\n%s", home)
+	}
 	// vite.config.ts is runtime-specific (the cloudflare runtime is the default).
 	// Render it over the base and assert TanStack Start + React Compiler + Tailwind
 	// + the cloudflare() plugin, plus wrangler.jsonc and the pnpm build allowlist.
