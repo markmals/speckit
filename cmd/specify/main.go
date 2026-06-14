@@ -800,7 +800,7 @@ func verifyConfigFor(root, target string) (engine.VerifyConfig, error) {
 	if !ok {
 		return engine.VerifyConfig{}, fmt.Errorf("target %q not in %s (have: %s)", target, config.File, strings.Join(targetNames(cfg), ", "))
 	}
-	return engine.VerifyConfig{Command: t.Command, Format: t.Format, Report: t.Report, Source: t.Source}, nil
+	return engine.VerifyConfig{Command: t.Command, Format: t.Format, Report: t.Report, Source: t.Source, Bindings: t.Bindings}, nil
 }
 
 // targetNames lists the configured target names, sorted.

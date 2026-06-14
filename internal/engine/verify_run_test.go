@@ -80,6 +80,76 @@ func TestVerifyGreenWritesLock(t *testing.T) {
 	}
 }
 
+const goDemoSpec = `---
+id: story.demo.cli
+kind: story
+---
+
+# Story: demo cli
+
+## Acceptance Criteria
+
+### Scenario 1: convert
+
+<!-- id: scenario.demo.cli.convert -->
+
+- Given a file
+`
+
+// A Go test suite that mixes a scenario-bound test (leading // [scenario] comment)
+// with a plain untagged unit test, plus the go test -json report both produce.
+const goDemoSource = "// [scenario.demo.cli.convert]\nfunc TestConvert(t *testing.T) {}\n\nfunc TestHelper(t *testing.T) {}\n"
+const goDemoReport = "{\"Action\":\"pass\",\"Package\":\"x\",\"Test\":\"TestConvert\"}\n{\"Action\":\"pass\",\"Package\":\"x\",\"Test\":\"TestHelper\"}\n"
+
+func setupGoVerifyProject(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	writeSpecFile(t, root, "features/0001-cli/stories/demo.cli.md", goDemoSpec)
+	writeSpecFile(t, root, "cmd/x/x_test.go", goDemoSource)
+	writeSpecFile(t, root, "cmd/x/report.gotest.json", goDemoReport)
+	return root
+}
+
+// scoped bindings + the gotest format + a nested ### Scenario + a Go leading-comment
+// binding, end to end: the untagged TestHelper is out of scope (not an unbound
+// violation), so the suite still verifies and locks the scenario it does bind.
+//
+// SPEC: story.engine.verify (scenario.engine.verify.source-bound-join)
+func TestVerifyGoScopedBindings(t *testing.T) {
+	root := setupGoVerifyProject(t)
+	cfg := VerifyConfig{Format: "gotest", Report: "cmd/x/report.gotest.json", Source: "cmd/x", Bindings: "scoped"}
+	v, locked, err := Verify(root, "go", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Unbound) != 0 {
+		t.Errorf("scoped mode must drop unbound (untagged) tests, got %+v", v.Unbound)
+	}
+	if !v.Green() {
+		t.Fatalf("expected green under scoped bindings: %+v", v)
+	}
+	if len(locked) != 1 || locked[0] != "story.demo.cli" {
+		t.Fatalf("expected story.demo.cli locked, got %v", locked)
+	}
+}
+
+// strict (the default) flags the same untagged test as an unbound D12 violation —
+// proving scoped is an opt-in relaxation, not a change to the default contract.
+func TestVerifyStrictFlagsUntaggedTest(t *testing.T) {
+	root := setupGoVerifyProject(t)
+	cfg := VerifyConfig{Format: "gotest", Report: "cmd/x/report.gotest.json", Source: "cmd/x"} // Bindings "" = strict
+	v, locked, err := Verify(root, "go", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Unbound) == 0 {
+		t.Error("strict mode must flag the untagged TestHelper as unbound")
+	}
+	if v.Green() || len(locked) != 0 {
+		t.Errorf("an unbound test must block green + lock in strict mode: green=%v locked=%v", v.Green(), locked)
+	}
+}
+
 // SPEC: story.engine.lock (scenario.engine.lock.no-write-on-red)
 func TestVerifyRedWritesNoLock(t *testing.T) {
 	root := setupVerifyProject(t, junitReport(true, false)) // scenario b fails

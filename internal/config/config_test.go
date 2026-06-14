@@ -79,6 +79,33 @@ func TestValidateCatchesBadTargets(t *testing.T) {
 	}
 }
 
+// the gotest format and the scoped bindings mode validate; an unknown bindings
+// mode is rejected.
+func TestValidateGoTestAndBindings(t *testing.T) {
+	root := writeConfig(t, `{
+  "targets": {
+    "daemon": { "format": "gotest", "report": "r.json", "source": "cmd", "bindings": "scoped" },
+    "web":    { "format": "junit", "report": "j.xml", "source": "app" }
+  }
+}`)
+	cfg, _, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if errs := cfg.Validate(); len(errs) != 0 {
+		t.Errorf("gotest format + scoped bindings should validate clean, got %v", errs)
+	}
+
+	bad := writeConfig(t, `{ "targets": { "x": { "format": "gotest", "report": "r", "source": "s", "bindings": "loose" } } }`)
+	cfg, _, err = Load(bad)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if errs := cfg.Validate(); len(errs) == 0 {
+		t.Error("an unknown bindings mode must be rejected")
+	}
+}
+
 func TestSharedTargetListsBothProducts(t *testing.T) {
 	root := writeConfig(t, `{
   "targets": {

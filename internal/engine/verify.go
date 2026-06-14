@@ -104,6 +104,12 @@ func sortIDs(ids []specmodel.SpecID) {
 var (
 	swiftBindRe  = regexp.MustCompile("@Test\\(\\.scenario\\(\"(scenario\\.[a-z0-9.\\-]+)\"\\)\\)\\s*func `([^`]+)`")
 	vitestBindRe = regexp.MustCompile(`it\("(\[(scenario\.[a-z0-9.\-]+)\][^"]*)"`)
+
+	// the language-agnostic leading-comment form: `// [scenario.id]` on a line of
+	// its own above a test declaration (Go `func Test…`, or a JS/TS `it/test(…)`).
+	scenarioTagRe = regexp.MustCompile(`//\s*\[(scenario\.[a-z0-9.\-]+)\]`)
+	goTestFuncRe  = regexp.MustCompile(`^\s*func\s+(Test[A-Za-z0-9_]*)\s*\(`)
+	jsTestRe      = regexp.MustCompile("^\\s*(?:it|test)(?:\\.\\w+)?\\s*\\(\\s*[\"'`]([^\"'`]+)[\"'`]")
 )
 
 // bindingsInContent extracts scenario↔test bindings from one source file's
@@ -123,6 +129,51 @@ func bindingsInContent(path, src string) []Binding {
 	}
 	add(swiftBindRe, 1, 2)  // @Test(.scenario("…")) func `…`
 	add(vitestBindRe, 2, 1) // it("[scenario.…] …"
+	bs = append(bs, leadingCommentBindings(path, src)...)
+	return bs
+}
+
+// leadingCommentBindings reads the language-agnostic leading-comment form: one
+// or more `// [scenario.<id>]` comment lines immediately above a test
+// declaration. Each pending tag binds to the NEXT test's report identity — a Go
+// `func Test…` name (how `go test` reports it) or a JS/TS `it/test(…)` title
+// (how Vitest reports it). Blank lines and continuation `//` comments between the
+// tag and the test are tolerated (multi-line comment blocks); any other code
+// line clears the pending tags so a stray tag never binds a distant test.
+func leadingCommentBindings(path, src string) []Binding {
+	goSource := filepath.Ext(path) == ".go"
+	type pending struct {
+		id   specmodel.SpecID
+		line int
+	}
+	var pend []pending
+	var bs []Binding
+	for i, line := range strings.Split(src, "\n") {
+		if m := scenarioTagRe.FindStringSubmatch(line); m != nil {
+			pend = append(pend, pending{specmodel.SpecID(m[1]), i + 1})
+			continue
+		}
+		if t := strings.TrimSpace(line); t == "" || strings.HasPrefix(t, "//") {
+			continue // blank or continuation comment — keep the pending tags
+		}
+		if len(pend) == 0 {
+			continue
+		}
+		var identity string
+		if goSource {
+			if m := goTestFuncRe.FindStringSubmatch(line); m != nil {
+				identity = m[1]
+			}
+		} else if m := jsTestRe.FindStringSubmatch(line); m != nil {
+			identity = m[1]
+		}
+		if identity != "" {
+			for _, p := range pend {
+				bs = append(bs, Binding{Scenario: p.id, Identity: identity, File: filepath.ToSlash(path), Line: p.line})
+			}
+		}
+		pend = pend[:0] // a code line consumes (or, if not a test, discards) the tags
+	}
 	return bs
 }
 

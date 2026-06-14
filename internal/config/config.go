@@ -45,10 +45,15 @@ type Target struct {
 	Products []string `json:"products,omitempty"`
 	Stack    string   `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|node-cli|swift-package|swift-cli|ts-lib|vscode-extension
 	Command  string   `json:"command,omitempty"`
-	Format   string   `json:"format"` // junit | swift
+	Format   string   `json:"format"` // junit | swift | gotest
 	Report   string   `json:"report"`
 	Source   string   `json:"source"`
-	Deploy   *Deploy  `json:"deploy,omitempty"`
+	// Bindings is how untagged tests are treated: "strict" (default — every test
+	// must bind a scenario) or "scoped" (untagged tests are out of scope, so a
+	// suite mixing scenario tests with plain unit tests still verifies what it
+	// binds). See engine.VerifyConfig.
+	Bindings string  `json:"bindings,omitempty"`
+	Deploy   *Deploy `json:"deploy,omitempty"`
 }
 
 // Deploy is a target's optional deploy manifest: which platform it ships to, and
@@ -159,11 +164,16 @@ func (c Config) Validate() []error {
 	}
 	for name, t := range c.Targets {
 		switch t.Format {
-		case "junit", "swift":
+		case "junit", "swift", "gotest":
 		case "":
-			errs = append(errs, fmt.Errorf("target %q: missing format (junit|swift)", name))
+			errs = append(errs, fmt.Errorf("target %q: missing format (junit|swift|gotest)", name))
 		default:
-			errs = append(errs, fmt.Errorf("target %q: unknown format %q (want junit|swift)", name, t.Format))
+			errs = append(errs, fmt.Errorf("target %q: unknown format %q (want junit|swift|gotest)", name, t.Format))
+		}
+		switch t.Bindings {
+		case "", "strict", "scoped":
+		default:
+			errs = append(errs, fmt.Errorf("target %q: unknown bindings mode %q (want strict|scoped)", name, t.Bindings))
 		}
 		if t.Report == "" {
 			errs = append(errs, fmt.Errorf("target %q: missing report path", name))
