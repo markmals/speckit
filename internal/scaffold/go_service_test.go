@@ -30,22 +30,26 @@ func TestGoServiceScaffold(t *testing.T) {
 	if m.Target.Format != "gotest" || m.Target.Bindings != "scoped" {
 		t.Errorf("target format=%q bindings=%q, want gotest / scoped", m.Target.Format, m.Target.Bindings)
 	}
+	// Members compose into ONE repo-root go.mod (trove's shape), so the stack is
+	// shared-module and ships NO per-member go.mod — `target add` creates the root
+	// one (see cmd/specify ensureRootGoMod), tested there.
+	if !m.SharedModule {
+		t.Error("go-service must be sharedModule (members share a root go.mod)")
+	}
 
 	dir := t.TempDir()
 	data := Data{Name: "daemon", Dir: "cmd/daemon"}
 	if _, err := Render(sub, dir, data); err != nil {
 		t.Fatal(err)
 	}
-	for _, p := range []string{"go.mod", "main.go", "greeting.go", "greeting_test.go", "mise.toml", ".gitignore"} {
+	for _, p := range []string{"main.go", "greeting.go", "greeting_test.go", "mise.toml", ".gitignore"} {
 		if _, err := os.Stat(filepath.Join(dir, p)); err != nil {
 			t.Errorf("missing %s: %v", p, err)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(dir, "go.mod.tmpl")); !os.IsNotExist(err) {
-		t.Error("go.mod.tmpl suffix not stripped")
-	}
-	if gomod, _ := os.ReadFile(filepath.Join(dir, "go.mod")); !strings.Contains(string(gomod), "module daemon") {
-		t.Errorf("go.mod module not rendered from the target name: %s", gomod)
+	// the member carries no go.mod of its own — it joins the shared root module.
+	if _, err := os.Stat(filepath.Join(dir, "go.mod")); !os.IsNotExist(err) {
+		t.Error("a shared-module member must not render its own go.mod")
 	}
 
 	// the seeded story (root/) + the test bindings must agree, or a fresh verify

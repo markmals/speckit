@@ -210,8 +210,17 @@ Ready) and baked in as `specify work`'s defaults.
   `verify` → 2 passed · 1 locked · drift clean). Introduces **stack-aware member placement** (the
   manifest's `memberDir`): `target add … --stack go-service` lands in `cmd/<name>` (web stays `apps/`),
   the first piece of **incremental member-add** (Mark's monorepo call). Also plumbed `target.bindings`
-  manifest→config. ⬜ Follow-ups: a shared **root go.mod** (today each go-service is a self-contained
-  module) + pnpm-workspace membership land with the monorepo slice; openapi/oapi-codegen wiring is later.
+  manifest→config.
+  - ✅ **Shared root `go.mod` (monorepo composition).** go-service is now `sharedModule`: members
+    compose into ONE repo-root `go.mod` (each a `cmd/<name>` sharing `internal/`, trove's shape) instead
+    of a self-contained module per member. `target add` creates the root `go.mod` if the repo isn't a
+    module yet (module path from the git origin remote → `host/owner/repo`, else the dir base name) and a
+    second member just joins it; members render no `go.mod` of their own. Verified: two members compose,
+    `go build ./...` sees both, each `verify` green. (`scaffold.SharedModule` + `cmd/specify`
+    `ensureRootGoMod`/`deriveModulePath`.)
+  - ⬜ Follow-ups: **OpenAPI + oapi-codegen** (contract-first API, troved's pattern), **SQLite store +
+    migrations + flag/env config**, and the **external-service client + httptest** idiom (the trove-parity
+    bundles); pnpm-workspace membership lands with the broader monorepo slice.
 - ⬜ **Per-stack scaffold builds** — **apple next** (exercises the `swift` report format + the
   `SpecTraits.swift` harness), then the rest one at a time, each gated on a tooling preview.
   node-cli already spec'd ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).

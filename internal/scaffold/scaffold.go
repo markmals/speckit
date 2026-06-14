@@ -23,7 +23,12 @@ type Manifest struct {
 	// MemberDir is where `target add` places this stack's member by default
 	// (overridable with --dir): "apps" for an app, "cmd" for a go-service, "packages"
 	// for a library. Empty defaults to "apps".
-	MemberDir      string             `json:"memberDir,omitempty"`
+	MemberDir string `json:"memberDir,omitempty"`
+	// SharedModule makes members of this stack compose into ONE repo-root go.mod
+	// (each member a cmd/<name> sharing internal/ packages — trove's shape) rather
+	// than a self-contained module per member. `target add` creates the root go.mod
+	// if the repo isn't a module yet; members render no go.mod of their own.
+	SharedModule   bool               `json:"sharedModule,omitempty"`
 	Scripts        []Script           `json:"scripts,omitempty"`
 	Target         ManifestTarget     `json:"target"`
 	Variables      []Variable         `json:"variables,omitempty"`

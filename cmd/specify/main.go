@@ -302,6 +302,20 @@ func targetAddCmd() *cobra.Command {
 			}
 			written = append(written, gh...)
 
+			// Shared-module stacks (go-service) compose into ONE repo-root go.mod —
+			// each member a cmd/<name> sharing internal/ packages (trove's shape) —
+			// instead of a self-contained module per member. Create it if the repo
+			// isn't a Go module yet; a second member just joins it.
+			if m.SharedModule {
+				created, err := ensureRootGoMod(".")
+				if err != nil {
+					return err
+				}
+				if created {
+					written = append(written, "go.mod")
+				}
+			}
+
 			rt, err := scaffold.RenderTarget(m, data)
 			if err != nil {
 				return err
@@ -405,6 +419,71 @@ func featuresEmpty(root string) bool {
 		return true // absent
 	}
 	return len(es) == 0
+}
+
+// goModVersion is the Go directive seeded into a freshly created shared root
+// go.mod; the scaffold's phase-0 `go mod tidy` normalizes it afterward. Kept in
+// lockstep with the go-service mise.toml pin.
+const goModVersion = "1.26"
+
+// ensureRootGoMod makes the project a single Go module so shared-module members
+// (go-service) compose into ONE root go.mod — each a cmd/<name> sharing internal/
+// packages — instead of a self-contained module per member. No-op (returns false)
+// when a go.mod already exists: a prior member, or a hand-authored module like a
+// converted trove. Reports whether it created the file.
+func ensureRootGoMod(projectRoot string) (bool, error) {
+	gomod := filepath.Join(projectRoot, "go.mod")
+	if _, err := os.Stat(gomod); err == nil {
+		return false, nil
+	} else if !os.IsNotExist(err) {
+		return false, err
+	}
+	content := fmt.Sprintf("module %s\n\ngo %s\n", deriveModulePath(projectRoot), goModVersion)
+	if err := os.WriteFile(gomod, []byte(content), 0o644); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// deriveModulePath picks a Go module path for a new root go.mod: the repo's
+// origin remote mapped to host/owner/repo (e.g. github.com/markmals/trove), else
+// the project directory's base name. Offline — reads only local git config.
+func deriveModulePath(projectRoot string) string {
+	out, err := exec.Command("git", "-C", projectRoot, "remote", "get-url", "origin").Output()
+	if err == nil {
+		if mp := moduleFromRemote(strings.TrimSpace(string(out))); mp != "" {
+			return mp
+		}
+	}
+	if abs, err := filepath.Abs(projectRoot); err == nil {
+		return filepath.Base(abs)
+	}
+	return filepath.Base(projectRoot)
+}
+
+// moduleFromRemote maps a git remote URL to a Go module path (host/owner/repo),
+// or "" if it can't. Handles https://, ssh://, and scp-style git@host:owner/repo.
+func moduleFromRemote(url string) string {
+	url = strings.TrimSuffix(url, ".git")
+	if url == "" {
+		return ""
+	}
+	// scp-style: git@github.com:owner/repo
+	if !strings.Contains(url, "://") && strings.Contains(url, "@") && strings.Contains(url, ":") {
+		url = url[strings.Index(url, "@")+1:]
+		return strings.Replace(url, ":", "/", 1)
+	}
+	// scheme://[user@]host/owner/repo
+	if i := strings.Index(url, "://"); i != -1 {
+		url = url[i+3:]
+		if at := strings.Index(url, "@"); at != -1 {
+			if slash := strings.Index(url, "/"); slash == -1 || at < slash {
+				url = url[at+1:]
+			}
+		}
+		return url
+	}
+	return ""
 }
 
 // runIn runs one scaffold script command (a developer/SpecKit-controlled shell

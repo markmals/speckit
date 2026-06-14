@@ -1,6 +1,7 @@
 {
   "stack": "go-service",
   "memberDir": "cmd",
+  "sharedModule": true,
   "scripts": [
     {
       "phase": 0,
