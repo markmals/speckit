@@ -184,17 +184,20 @@ Ready) and baked in as `specify work`'s defaults.
     (animation utilities) to the base web foundation — both actually used in trove. tailwind.css imports
     tw-animate-css; the example route exercises a lucide icon (so neither is a dead dep). Green-on-arrival
     verified. (Deferred `@clerk/themes`: would be a dead dep without an opinionated theme choice.)
-  - 🔒 **Replace the hand-rolled foundation with racket-ui via the official shadcn CLI (recipe proven;
-    blocked on `registry.json`).** racket-ui (`~/Developer/Libraries/racket-ui`, `github.com/markmals/racket-ui`)
-    is a shadcn/ui-compatible registry on React Aria + Tailwind v4 + cva + Tabler. The full restructure recipe is
-    **verified green** on a real scaffold (shadcn-native `@/*`→member-root via Vite 8 `resolve.tsconfigPaths`;
-    `components/ui`+`lib` at root, `app/` for routes/entry/globals; `import/extensions: off`;
-    `shadcn add markmals/racket-ui/base …`; foundation + `styles/cva.ts` + `tailwind.css` removed; lucide→Tabler).
-    **Blocked precondition:** the repo is public but `registry.json` is gitignored/missing from its root, so
-    `shadcn add markmals/racket-ui/…` 404s — commit `registry.json` to the racket-ui repo first (verify with
-    `shadcn list markmals/racket-ui`), THEN templatize across base+variants+features+web_test + verify end-to-end +
-    merge. Full recipe + gotchas + the corrected address in [`.claude/memory/rac-ui-shadcn.md`](.claude/memory/rac-ui-shadcn.md).
-    (Supersedes Slice 4f's lucide; tw-animate-css stays — racket-ui's globals imports it.)
+  - ✅ **Replaced the hand-rolled foundation with racket-ui via the official shadcn CLI.** racket-ui
+    (`github.com/markmals/racket-ui`) is a shadcn/ui-compatible registry on React Aria + Tailwind v4 + cva + Tabler.
+    Templatized shadcn-native: `@/*`→member-root via tsconfig `paths` + **Vite 8 `resolve.tsconfigPaths`**;
+    `components/ui`+`lib/cva.ts` at root, `app/` for routes/entry/`globals.css`; `import/extensions: off`; a new
+    `components.json` with the **`@racket-ui` registries map** (per-item GitHub raw); phase-0
+    `shadcn add @racket-ui/base @racket-ui/button`; foundation + `styles/cva.ts` + `tailwind.css` removed;
+    lucide→Tabler; `#/`·`#db`→`@/`·`@/db`; tiptap editor → `app/components/editor.tsx`. **Precondition (the real
+    blocker, not just the missing `registry.json`):** racket-ui's per-item distribution `public/r/*.json` was
+    gitignored, so the namespaced `@racket-ui/cva` dep 404'd — fixed + merged in
+    [racket-ui#1](https://github.com/markmals/racket-ui/pull/1). **Verified green-on-arrival** for real across
+    node+none, cf+convex (default), cf+drizzle, node+drizzle, and node+clerk+posthog+tiptap+email+stripe
+    (fmt:check/lint/typecheck/test/build + `specify verify`). Recipe + gotchas in
+    [`.claude/memory/rac-ui-shadcn.md`](.claude/memory/rac-ui-shadcn.md). (Superseded Slice 4f's lucide;
+    tw-animate-css stays — racket-ui's globals imports it.)
   - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
     and the web-development **pack refresh** to this stack.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the

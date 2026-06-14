@@ -27,6 +27,25 @@ prototype-first discipline for adding one. Engine: `internal/scaffold` (see
   carries **no files** (posthog is the model). `clerk` is orthogonal — it owns
   `root.tsx` (the HTML doc), so it composes with Wrap providers for free.
 
+## Foundation = rac-ui via the shadcn CLI (shadcn-native layout)
+
+The hand-rolled `app/components/foundation/` is **retired**; components come from
+**rac-ui** (`markmals/racket-ui`) via the official shadcn CLI — see [[rac-ui-shadcn]].
+Structural consequences for the templates:
+
+- **`@/*` → the member root** (tsconfig `paths` + Vite 8 `resolve.tsconfigPaths`; no
+  `baseUrl`, no plugin). App code is `@/app/*`; rac-ui is `@/components/ui/*` + `@/lib/cva`
+  (root). The old `#/*`/`#db/*` package subpath imports are gone (`#db` → `@/db`).
+- shadcn writes to root-relative targets (`components/ui/*`, `lib/cva.ts`,
+  `app/globals.css`) at install time — those files are **NOT in the templates**, so
+  `web_test.go` must not assert them. `components.json` IS templated (registries map +
+  `@/` aliases). fmt/lint stay scoped to `app/` (rac-ui vendored code is typechecked +
+  built but not linted).
+- `import/extensions` is **`off`** (rac-ui imports are extensionless, TanStack codegen
+  carries extensions — both must coexist). `tw-animate-css` stays a base dep (rac-ui's
+  globals.css `@import`s it but doesn't declare it); `react-aria-components`/`cva@beta`/
+  `tailwind-merge`/Tabler are installed BY shadcn (dropped from the base `pnpm add`).
+
 ## Gotchas that cost real time
 
 - **JSX `{{` collides with Go template delims.** A `.tmpl` JSX file can't contain
@@ -40,7 +59,7 @@ prototype-first discipline for adding one. Engine: `internal/scaffold` (see
   The base now ships one (was missing only on node+none); variants overwrite it.
 - **`prefer-let` lint:** function-local bindings must be `let` (even if never
   reassigned); a non-exported top-level `const` must be `let` or `UPPER_CASE`
-  (exported `const` is fine). Match `app/components/foundation/button.tsx`.
+  (exported `const` is fine). Match `app/router.tsx`.
 
 ## Verifying a new feature (never assert green)
 

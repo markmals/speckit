@@ -3,8 +3,8 @@ import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { ConvexProvider } from "convex/react";
 
-import { convex, queryClient } from "#/data/convex.ts";
-import { Providers } from "#/providers.tsx";
+import { convex, queryClient } from "@/app/data/convex.ts";
+import { Providers } from "@/app/providers.tsx";
 
 import { routeTree } from "./routes.gen.ts";
 

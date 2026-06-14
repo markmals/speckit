@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
-import { Providers } from "#/providers.tsx";
+import { Providers } from "@/app/providers.tsx";
 
 import { routeTree } from "./routes.gen.ts";
 

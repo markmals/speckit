@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-import { WelcomeEmail } from "#/emails/welcome.tsx";
+import { WelcomeEmail } from "@/app/emails/welcome.tsx";
 
 let resend = new Resend(process.env.RESEND_API_KEY);
 

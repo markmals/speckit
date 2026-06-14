@@ -1,7 +1,7 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
-import { cx } from "#/styles/cva.ts";
+import { cx } from "@/lib/cva";
 
 export interface RichTextEditorProps {
     /** Initial document content, as HTML. */
@@ -15,9 +15,9 @@ export interface RichTextEditorProps {
 }
 
 /**
- * A minimal rich-text editor built on Tiptap + StarterKit, styled with the
- * foundation's cva/Tailwind tokens. Drop it into a route or wrap it in a form
- * field; read changes through `onUpdate`.
+ * A minimal rich-text editor built on Tiptap + StarterKit, styled with rac-ui's
+ * cva/Tailwind tokens. Drop it into a route or wrap it in a form field; read
+ * changes through `onUpdate`.
  */
 export function RichTextEditor({
     className,

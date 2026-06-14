@@ -38,4 +38,13 @@ parse against the fixed `scaffold.Data{Name,Dir,Product,Vars,Features}`. New emb
 files must live under `internal/coreassets/templates/` (the `//go:embed all:templates`
 prefix is what pulls in dotdirs like `.github`).
 
+**Verify scaffold combos SERIALLY, not in parallel.** The web scaffold's `lint`
+runs `oxlint --type-aware` via `tsgolint` (a native typescript-go binary). Under the
+CPU/memory contention of several concurrent `pnpm install` + `vite build` combos it
+**flakily crashes** (`SIGSEGV`) or emits **false `TS2307: Cannot find module …`**
+(while `tsgo` typecheck resolves the same module fine). Run combos one at a time —
+or re-run `lint` once the parallel jobs finish (it goes 8/8 green serially). Don't
+chase those failures as real lint errors. Heavy installs can run in the background;
+just don't overlap the quality/lint steps.
+
 See [[engine-boundaries]] for what the engine may read.
