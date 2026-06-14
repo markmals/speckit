@@ -184,19 +184,27 @@ Ready) and baked in as `specify work`'s defaults.
     (animation utilities) to the base web foundation — both actually used in trove. tailwind.css imports
     tw-animate-css; the example route exercises a lucide icon (so neither is a dead dep). Green-on-arrival
     verified. (Deferred `@clerk/themes`: would be a dead dep without an opinionated theme choice.)
-  - 🔒 **Replace the hand-rolled foundation with racket-ui via the official shadcn CLI (recipe proven;
-    blocked on `registry.json`).** racket-ui (`~/Developer/Libraries/racket-ui`, `github.com/markmals/racket-ui`)
-    is a shadcn/ui-compatible registry on React Aria + Tailwind v4 + cva + Tabler. The full restructure recipe is
-    **verified green** on a real scaffold (shadcn-native `@/*`→member-root via Vite 8 `resolve.tsconfigPaths`;
-    `components/ui`+`lib` at root, `app/` for routes/entry/globals; `import/extensions: off`;
-    `shadcn add markmals/racket-ui/base …`; foundation + `styles/cva.ts` + `tailwind.css` removed; lucide→Tabler).
-    **Blocked precondition:** the repo is public but `registry.json` is gitignored/missing from its root, so
-    `shadcn add markmals/racket-ui/…` 404s — commit `registry.json` to the racket-ui repo first (verify with
-    `shadcn list markmals/racket-ui`), THEN templatize across base+variants+features+web_test + verify end-to-end +
-    merge. Full recipe + gotchas + the corrected address in [`.claude/memory/rac-ui-shadcn.md`](.claude/memory/rac-ui-shadcn.md).
-    (Supersedes Slice 4f's lucide; tw-animate-css stays — racket-ui's globals imports it.)
-  - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
-    and the web-development **pack refresh** to this stack.
+  - ✅ **Replaced the hand-rolled foundation with racket-ui via the official shadcn CLI.** racket-ui
+    (`github.com/markmals/racket-ui`) is a shadcn/ui-compatible registry on React Aria + Tailwind v4 + cva + Tabler.
+    Templatized shadcn-native: `@/*`→member-root via tsconfig `paths` + **Vite 8 `resolve.tsconfigPaths`**;
+    `components/ui`+`lib/cva.ts` at root, `app/` for routes/entry/`globals.css`; `import/extensions: off`; a new
+    `components.json` with the **`@racket-ui` registries map** (per-item GitHub raw); phase-0
+    `shadcn add @racket-ui/base @racket-ui/button`; foundation + `styles/cva.ts` + `tailwind.css` removed;
+    lucide→Tabler; `#/`·`#db`→`@/`·`@/db`; tiptap editor → `app/components/editor.tsx`. **Precondition (the real
+    blocker, not just the missing `registry.json`):** racket-ui's per-item distribution `public/r/*.json` was
+    gitignored, so the namespaced `@racket-ui/cva` dep 404'd — fixed + merged in
+    [racket-ui#1](https://github.com/markmals/racket-ui/pull/1). **Verified green-on-arrival** for real across
+    node+none, cf+convex (default), cf+drizzle, node+drizzle, and node+clerk+posthog+tiptap+email+stripe
+    (fmt:check/lint/typecheck/test/build + `specify verify`). Recipe + gotchas in
+    [`.claude/memory/rac-ui-shadcn.md`](.claude/memory/rac-ui-shadcn.md). (Superseded Slice 4f's lucide;
+    tw-animate-css stays — racket-ui's globals imports it.)
+  - ✅ **Slice 5 — `.vscode` + pack refresh** (Varlock deferred). Ships `.vscode/{settings,extensions}.json`
+    in the base scaffold (adapted from trove): oxc as the formatter + lint/fix-on-save, **tsgo** as the type
+    checker (`useTsgo` + the native-preview tsdk), Tailwind IntelliSense for `cva`/`cx`, and recommended
+    extensions (oxc · tailwindcss · native-preview · todo-highlight). **web-development pack refreshed** to
+    rac-ui (the stack table + the "UI components come from rac-ui via shadcn" idiom; dropped the Tailwind Plus
+    reference). **Varlock deferred** — the reference apps don't wire it; env stays Vite-native `.env.local`
+    (design doc updated). `.vscode` is inert to the build (outside `app/`); render-tested + a full combo stays green.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
   "actor is human" rule for libraries; `story`+`domain`+`error` apply, UI kinds don't) and the
   stacks **`swift-package`**, **`swift-cli`**, **`ts-lib`**, **`vscode-extension`**. Engine
@@ -211,16 +219,17 @@ Ready) and baked in as `specify work`'s defaults.
   manifest's `memberDir`): `target add … --stack go-service` lands in `cmd/<name>` (web stays `apps/`),
   the first piece of **incremental member-add** (Mark's monorepo call). Also plumbed `target.bindings`
   manifest→config.
-  - ✅ **Shared root `go.mod` (monorepo composition).** go-service is now `sharedModule`: members
+  - ✅ **Shared root `go.mod` (monorepo composition)** (PR #24). go-service is now `sharedModule`: members
     compose into ONE repo-root `go.mod` (each a `cmd/<name>` sharing `internal/`, trove's shape) instead
     of a self-contained module per member. `target add` creates the root `go.mod` if the repo isn't a
     module yet (module path from the git origin remote → `host/owner/repo`, else the dir base name) and a
     second member just joins it; members render no `go.mod` of their own. Verified: two members compose,
     `go build ./...` sees both, each `verify` green. (`scaffold.SharedModule` + `cmd/specify`
     `ensureRootGoMod`/`deriveModulePath`.)
-  - ⬜ Follow-ups: **OpenAPI + oapi-codegen** (contract-first API, troved's pattern), **SQLite store +
-    migrations + flag/env config**, and the **external-service client + httptest** idiom (the trove-parity
-    bundles); pnpm-workspace membership lands with the broader monorepo slice.
+  - 🔄 **trove-parity bundles** (Mark wants all four; sequenced as green-on-arrival PRs): root `go.mod` ✅;
+    **OpenAPI + oapi-codegen** (contract-first API, troved's pattern) — *in progress*; **SQLite store +
+    migrations + flag/env config**; **external-service client + httptest** idiom. pnpm-workspace membership
+    lands with the broader monorepo slice.
 - ⬜ **Per-stack scaffold builds** — **apple next** (exercises the `swift` report format + the
   `SpecTraits.swift` harness), then the rest one at a time, each gated on a tooling preview.
   node-cli already spec'd ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
