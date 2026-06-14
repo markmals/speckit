@@ -198,8 +198,13 @@ Ready) and baked in as `specify work`'s defaults.
     (fmt:check/lint/typecheck/test/build + `specify verify`). Recipe + gotchas in
     [`.claude/memory/rac-ui-shadcn.md`](.claude/memory/rac-ui-shadcn.md). (Superseded Slice 4f's lucide;
     tw-animate-css stays — racket-ui's globals imports it.)
-  - ⬜ **Slice 5 — Varlock + `.vscode`** (the references don't wire Varlock — deferred/optional),
-    and the web-development **pack refresh** to this stack.
+  - ✅ **Slice 5 — `.vscode` + pack refresh** (Varlock deferred). Ships `.vscode/{settings,extensions}.json`
+    in the base scaffold (adapted from trove): oxc as the formatter + lint/fix-on-save, **tsgo** as the type
+    checker (`useTsgo` + the native-preview tsdk), Tailwind IntelliSense for `cva`/`cx`, and recommended
+    extensions (oxc · tailwindcss · native-preview · todo-highlight). **web-development pack refreshed** to
+    rac-ui (the stack table + the "UI components come from rac-ui via shadcn" idiom; dropped the Tailwind Plus
+    reference). **Varlock deferred** — the reference apps don't wire it; env stays Vite-native `.env.local`
+    (design doc updated). `.vscode` is inert to the build (outside `app/`); render-tested + a full combo stays green.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
   "actor is human" rule for libraries; `story`+`domain`+`error` apply, UI kinds don't) and the
   stacks **`swift-package`**, **`swift-cli`**, **`ts-lib`**, **`vscode-extension`**. Engine

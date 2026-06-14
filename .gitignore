@@ -5,6 +5,10 @@
 *.tmp
 .vscode/
 .idea/
+# …but DO track the web scaffold's .vscode/ template — it's an embedded asset that
+# ships to generated apps, not this repo's local editor config.
+!/internal/coreassets/templates/scaffolds/web/files/.vscode/
+!/internal/coreassets/templates/scaffolds/web/files/.vscode/**
 
 # Environment (real values live in local .env files)
 .env

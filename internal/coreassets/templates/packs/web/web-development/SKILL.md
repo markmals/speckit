@@ -1,6 +1,6 @@
 ---
 name: web-development
-description: Use when writing or modifying web target code. Covers React + TanStack Start/Router/Query/DB/Form + Convex + Clerk + Tailwind v4 + React Aria + Motion + Zod idioms, and points at /llms.txt endpoints for first-party docs. Complementary to `implementing-a-spec` (process) and `web-verification` (visual verification loop).
+description: Use when writing or modifying web target code. Covers React + TanStack Start/Router/Query/DB/Form + Convex + Clerk + Tailwind v4 + rac-ui (React Aria via shadcn) + Motion + Zod idioms, and points at /llms.txt endpoints for first-party docs. Complementary to `implementing-a-spec` (process) and `web-verification` (visual verification loop).
 ---
 
 # Web Development
@@ -24,8 +24,8 @@ The web target is the **reference implementation**. Build features here first; e
 | Hotkeys              | TanStack Hotkeys                           | [llms.txt](https://tanstack.com/llms.txt)                                      |
 | Backend              | Convex                                     | [llms.txt](https://docs.convex.dev/llms.txt)                                   |
 | Auth                 | Clerk                                      | [llms.txt](https://clerk.com/docs/llms.txt)                                    |
-| Unstyled UI          | React Aria Components                      | [llms.txt](https://react-spectrum.adobe.com/llms.txt)                          |
-| Styling              | Tailwind v4 (+ Tailwind Plus blocks)       | [tailwindcss.com/docs](https://tailwindcss.com/docs) _(no /llms.txt yet)_      |
+| UI components        | rac-ui (React Aria via the shadcn CLI)     | [racket-ui](https://github.com/markmals/racket-ui) · [react-spectrum](https://react-spectrum.adobe.com/llms.txt) |
+| Styling              | Tailwind v4 + cva (rac-ui)                 | [tailwindcss.com/docs](https://tailwindcss.com/docs) _(no /llms.txt yet)_      |
 | Animation            | Motion                                     | [motion.dev/docs](https://motion.dev/docs)                                     |
 | Validation           | Zod                                        | [zod.dev](https://zod.dev/)                                                    |
 | Relational / edge DB | Drizzle (`node:sqlite` or Cloudflare D1)   | [orm.drizzle.team](https://orm.drizzle.team/docs)                              |
@@ -127,9 +127,9 @@ Structured logging goes through **Evlog**, not `console.log`, in anything that s
 - Prefer utility classes over `@apply`. Reach for `@apply` only for repeated patterns that are genuinely component-level (focus rings, button bases).
 - Tailwind v4 reads the config from CSS, not a JS config file. Live with it — don't shim a v3-style `tailwind.config.js`.
 
-### React Aria over hand-rolled accessibility
+### UI components come from rac-ui (React Aria under the hood)
 
-Use React Aria Components for any interactive primitive (Button, Select, Menu, Dialog, Listbox, etc.). Don't reach for `<button>` + manual ARIA — Aria handles focus, keyboard, screen reader semantics for you.
+The scaffold installs [rac-ui](https://github.com/markmals/racket-ui) — a shadcn/ui-compatible registry built on **React Aria Components** + Tailwind v4 + cva + Tabler — via the shadcn CLI. Add a component with `pnpm dlx shadcn@latest add @racket-ui/<name>` (e.g. `card`, `dialog`, `input`); it lands in `components/ui/` (member root) and imports the `cva`/`cx` helpers from `@/lib/cva`. Restyle and compose the generated components in place — don't hand-roll `<button>` + manual ARIA (rac-ui/React Aria handles focus, keyboard, and screen-reader semantics), and don't vendor a paid set (Tailwind Plus / Catalyst).
 
 ### Oxlint and Oxfmt
 
