@@ -13,7 +13,7 @@ There are two halves to working in SpecKit, and the README covers both:
 
 ## Status
 
-Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`), the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`), and stack scaffolding (`target add`) — the **web** stack (TanStack Start + Vitest) lands green on `verify` out of the box. In progress: a published release (and the Homebrew/Mise install that depends on it), the remaining stack scaffolds (Apple next), the `check`/`self upgrade`/`extension`/`preset` commands, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
+Implemented and tested on Linux, macOS, and Windows: project scaffolding (`init`), the full engine (`scan`, `verify`, `lock`, `drift`, `cover`, `parity`, `gate`), and stack scaffolding (`target add`) — the **web** stack (TanStack Start + Vitest) and the **go-service** stack (a Go HTTP daemon, placed in `cmd/`) land green on `verify` out of the box. In progress: a published release (and the Homebrew/Mise install that depends on it), the remaining stack scaffolds (Apple next), the `check`/`self upgrade`/`extension`/`preset` commands, and the `claude-pack` (lifecycle hooks and review subagents) and `github-pack` (a CI action, spec→issues, worktree helpers). Until a release is cut, install from source.
 
 ## Install
 

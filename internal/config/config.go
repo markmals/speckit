@@ -43,7 +43,7 @@ type Paths struct {
 type Target struct {
 	Product  string   `json:"product,omitempty"`
 	Products []string `json:"products,omitempty"`
-	Stack    string   `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|node-cli|swift-package|swift-cli|ts-lib|vscode-extension
+	Stack    string   `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|go-service|node-cli|swift-package|swift-cli|ts-lib|vscode-extension
 	Command  string   `json:"command,omitempty"`
 	Format   string   `json:"format"` // junit | swift | gotest
 	Report   string   `json:"report"`

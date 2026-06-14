@@ -212,9 +212,6 @@ func targetAddCmd() *cobra.Command {
 			if stack == "" {
 				return fmt.Errorf("target add: --stack required")
 			}
-			if dir == "" {
-				dir = filepath.Join("apps", name)
-			}
 			sub, err := fs.Sub(coreassets.FS, "templates/scaffolds/"+stack)
 			if err != nil {
 				return err
@@ -222,6 +219,15 @@ func targetAddCmd() *cobra.Command {
 			m, err := scaffold.LoadManifest(sub)
 			if err != nil {
 				return fmt.Errorf("unknown or invalid stack %q: %w", stack, err)
+			}
+			// Default placement is stack-specific (the manifest's memberDir): a web
+			// app lands in apps/, a go-service in cmd/, a library in packages/.
+			if dir == "" {
+				memberDir := m.MemberDir
+				if memberDir == "" {
+					memberDir = "apps"
+				}
+				dir = filepath.Join(memberDir, name)
 			}
 			features := map[string]bool{}
 			for _, f := range with {
@@ -302,7 +308,7 @@ func targetAddCmd() *cobra.Command {
 			}
 			if err := config.AddTarget(".", name, config.Target{
 				Stack: stack, Product: product,
-				Command: rt.Command, Format: rt.Format, Report: rt.Report, Source: rt.Source,
+				Command: rt.Command, Format: rt.Format, Report: rt.Report, Source: rt.Source, Bindings: rt.Bindings,
 			}); err != nil {
 				return err
 			}
