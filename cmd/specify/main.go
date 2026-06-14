@@ -191,6 +191,7 @@ func packsCmd() *cobra.Command {
 func targetCmd() *cobra.Command {
 	c := &cobra.Command{Use: "target", Short: "Scaffold and register targets"}
 	c.AddCommand(targetAddCmd())
+	c.AddCommand(targetRegisterCmd())
 	return c
 }
 
@@ -380,6 +381,121 @@ func targetAddCmd() *cobra.Command {
 	c.Flags().StringArrayVar(&with, "with", nil, "optional scaffold features (repeatable)")
 	c.Flags().BoolVar(&noInstall, "no-install", false, "skip the scaffold's post-render scripts (dependency install, codegen)")
 	return c
+}
+
+// targetRegisterCmd registers an EXISTING member as a target in .speckit/specs.json
+// without scaffolding or installing anything — the onboarding path for adopting
+// SpecKit in a repo whose code already exists (converting a Workbench-shaped repo
+// like trove). It seeds the target's test wiring from the stack's scaffold manifest
+// when one exists (web, go-service); for stacks without a scaffold (ts-lib, go-cli)
+// — or to match a member wired differently than the scaffold — pass the fields as
+// flags. Unlike `target add`, it writes no files and runs no scripts.
+func targetRegisterCmd() *cobra.Command {
+	var stack, dir, product, format, command, report, source, bindings string
+	c := &cobra.Command{
+		Use:   "register <name> [flags]",
+		Short: "Register an existing member as a target (no scaffolding)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return registerTarget(".", regOpts{
+				name: args[0], stack: stack, dir: dir, product: product,
+				format: format, command: command, report: report, source: source, bindings: bindings,
+			})
+		},
+	}
+	c.Flags().StringVar(&stack, "stack", "", "the member's stack (selects its pack + seeds wiring from its scaffold, if any)")
+	c.Flags().StringVar(&dir, "dir", "", "the existing member's path (default: <memberDir>/<name> from the stack)")
+	c.Flags().StringVar(&product, "product", "", "product label for the target")
+	c.Flags().StringVar(&format, "format", "", "report format (junit|swift|gotest) — overrides the stack default")
+	c.Flags().StringVar(&command, "command", "", "test command that produces the report — overrides the stack default")
+	c.Flags().StringVar(&report, "report", "", "report path the engine joins (root-relative) — overrides the stack default")
+	c.Flags().StringVar(&source, "source", "", "source dir scanned for bindings — overrides the stack default")
+	c.Flags().StringVar(&bindings, "bindings", "", "binding mode (strict|scoped) — overrides the stack default")
+	return c
+}
+
+// regOpts are the inputs to registerTarget (the flags of `target register`).
+type regOpts struct {
+	name, stack, dir, product, format, command, report, source, bindings string
+}
+
+// registerTarget records an existing member as a target under root's
+// .speckit/specs.json. Stack-manifest defaults fill the wiring; non-empty opts
+// override them. It validates the member dir exists and the assembled wiring is
+// complete + well-formed before writing.
+func registerTarget(root string, o regOpts) error {
+	if !validTargetName(o.name) {
+		return fmt.Errorf("target register: name %q is not a safe slug (alphanumeric, . _ -)", o.name)
+	}
+
+	// Seed wiring from the stack's scaffold manifest when it has one (web,
+	// go-service). Stacks without a scaffold (ts-lib, go-cli) leave rt empty — the
+	// fields then come from flags.
+	var rt scaffold.RenderedTarget
+	if o.stack != "" {
+		if sub, err := fs.Sub(coreassets.FS, "templates/scaffolds/"+o.stack); err == nil {
+			if m, err := scaffold.LoadManifest(sub); err == nil {
+				if o.dir == "" {
+					memberDir := m.MemberDir
+					if memberDir == "" {
+						memberDir = "apps"
+					}
+					o.dir = filepath.Join(memberDir, o.name)
+				}
+				rt, _ = scaffold.RenderTarget(m, scaffold.Data{Name: o.name, Dir: o.dir, Product: o.product})
+			}
+		}
+	}
+	if o.dir == "" {
+		return fmt.Errorf("target register: --dir is required (the existing member's path) for a stack without a scaffold")
+	}
+	if fi, err := os.Stat(filepath.Join(root, o.dir)); err != nil || !fi.IsDir() {
+		return fmt.Errorf("target register: member dir %q does not exist under the project — register is for existing members; use `target add` to scaffold a new one", o.dir)
+	}
+
+	// Flag overrides win over the manifest defaults.
+	t := config.Target{
+		Stack:    o.stack,
+		Product:  o.product,
+		Command:  firstNonEmpty(o.command, rt.Command),
+		Format:   firstNonEmpty(o.format, rt.Format),
+		Report:   firstNonEmpty(o.report, rt.Report),
+		Source:   firstNonEmpty(o.source, rt.Source),
+		Bindings: firstNonEmpty(o.bindings, rt.Bindings),
+	}
+	if t.Format == "" || t.Report == "" || t.Source == "" {
+		return fmt.Errorf("target register: incomplete wiring — provide --format, --report, and --source (stack %q has no scaffold to derive them from)", o.stack)
+	}
+	if t.Format != "junit" && t.Format != "swift" && t.Format != "gotest" {
+		return fmt.Errorf("target register: unknown --format %q (want junit|swift|gotest)", t.Format)
+	}
+	if t.Bindings != "" && t.Bindings != "strict" && t.Bindings != "scoped" {
+		return fmt.Errorf("target register: unknown --bindings %q (want strict|scoped)", t.Bindings)
+	}
+
+	if err := config.AddTarget(root, o.name, t); err != nil {
+		return err
+	}
+	// Project the stack's pack (agent skills) when an agent is configured — same as
+	// `target add`. Skipped on a config that has no agent yet (e.g. a fresh
+	// register before `init`).
+	if o.stack != "" {
+		if cfg, found, _ := config.Load(root); found && cfg.Agent != "" {
+			if _, err := project.ProjectPacks(root, coreassets.FS, cfg.Agent, []string{o.stack}); err != nil {
+				fmt.Fprintf(os.Stderr, "specify: pack projection skipped: %v\n", err)
+			}
+		}
+	}
+	fmt.Printf("✓ registered target %q (%s) → %s\n  next: specify verify %s\n", o.name, t.Format, o.dir, o.name)
+	return nil
+}
+
+// firstNonEmpty returns a if it's non-empty, else b.
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 // resolveVariant picks an axis option (runtime/data): the flag value, else the
