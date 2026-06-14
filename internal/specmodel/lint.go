@@ -47,11 +47,16 @@ func Lint(specs []Spec) []Finding {
 				fmt.Sprintf("id %q does not start with kind prefix %q", s.ID, pfx)})
 		}
 		// I1 — filename ↔ id (singular files like CONVENTIONS/NARRATIVE are exempt).
+		// Two conventions are accepted: the kind-prefix-stripped tail
+		// (subscriptions.subscribe.md) and the full dotted id
+		// (story.subscriptions.subscribe.md). Both round-trip filename↔id
+		// deterministically; a library may use either (or, like some, a mix —
+		// trove keeps the story. prefix but drops protocol.).
 		if !s.Kind.Singular() {
 			stem := strings.TrimSuffix(path.Base(s.Path), ".md")
-			if tail := idTail(s.ID); stem != tail {
+			if tail := idTail(s.ID); stem != tail && stem != string(s.ID) {
 				findings = append(findings, Finding{s.Path, "I1",
-					fmt.Sprintf("filename stem %q does not match id tail %q", stem, tail)})
+					fmt.Sprintf("filename stem %q matches neither id tail %q nor id %q", stem, tail, s.ID)})
 			}
 		}
 		// I5 — depends-on resolution.

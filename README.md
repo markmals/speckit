@@ -157,7 +157,7 @@ Because SpecKit uses the same spec conventions as the Workbench template, **the 
      }
    }
    ```
-   `format` is `junit` (Vitest, Gradle) or `swift` (Swift Testing's event stream). See [docs/config.md](docs/config.md) for the full schema and the optional `product` label. Then:
+   `format` is `junit` (Vitest, Gradle), `swift` (Swift Testing's event stream), or `gotest` (`go test -json`). See [docs/config.md](docs/config.md) for the full schema, the optional `product` label, and the `bindings` mode. Then:
    ```sh
    specify verify web
    ```
@@ -326,7 +326,7 @@ Deeper, kept-current walkthroughs live in [`docs/`](docs/). Two axes — pick yo
 ## Concepts
 
 - **The lock.** `.speckit/lock/<target>/<spec-id>.json` holds the spec content hash last verified green, sharded per spec so parallel worktrees never conflict. `verify` is the only writer; drift is hash-mismatch-or-missing — never file timestamps (git doesn't preserve them).
-- **The join.** The scenario↔test binding is declared in *source*; outcomes come from the runner's report, matched by test identity. Any unjoinable scenario or untagged test is a hard error.
+- **The join.** The scenario↔test binding is declared in *source* (a `// SPEC:`/`// [scenario.id]` comment, a Swift trait, a Vitest title); outcomes come from the runner's report, matched by test identity. An unjoinable scenario or a dangling binding is always a hard error; an untagged test is too under the default `strict` bindings, or out of scope under `scoped` (for suites that mix scenario tests with plain unit tests — see [docs/config.md](docs/config.md)).
 - **Parity.** Deviation-presence and test-outcome are crossed on **independent axes**, so a `(deviates:)` marker can never suppress a failing test.
 
 ## Project layout

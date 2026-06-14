@@ -18,6 +18,30 @@ func decl(ids ...specmodel.SpecID) map[specmodel.SpecID]bool {
 	return m
 }
 
+// SPEC: story.engine.verify (scenario.engine.verify.source-bound-join)
+func TestLeadingCommentBindingGo(t *testing.T) {
+	src := "// [scenario.demo.cli.convert]\nfunc TestConvert(t *testing.T) {}\n\nfunc TestHelper(t *testing.T) {}\n"
+	bs := bindingsInContent("cmd/x/x_test.go", src)
+	if len(bs) != 1 {
+		t.Fatalf("expected 1 Go binding (TestHelper is untagged), got %d: %+v", len(bs), bs)
+	}
+	if bs[0].Scenario != "scenario.demo.cli.convert" || bs[0].Identity != "TestConvert" || bs[0].Line != 1 {
+		t.Errorf("Go leading-comment binding wrong: %+v", bs[0])
+	}
+}
+
+// SPEC: story.engine.verify (scenario.engine.verify.source-bound-join)
+func TestLeadingCommentBindingTS(t *testing.T) {
+	src := "describe(\"x\", () => {\n    // [scenario.demo.cli.convert]\n    it(\"does the thing\", () => {})\n})\n"
+	bs := bindingsInContent("web/x.test.ts", src)
+	if len(bs) != 1 {
+		t.Fatalf("expected 1 TS binding, got %d: %+v", len(bs), bs)
+	}
+	if bs[0].Scenario != "scenario.demo.cli.convert" || bs[0].Identity != "does the thing" {
+		t.Errorf("TS leading-comment binding wrong: %+v", bs[0])
+	}
+}
+
 // SPEC: story.engine.verify (scenario.engine.verify.green-writes-lock)
 func TestJoinGreen(t *testing.T) {
 	v := Join(

@@ -54,6 +54,32 @@ func TestLintFilenameMismatch(t *testing.T) {
 	}
 }
 
+// Both filename conventions pass I1: the kind-stripped tail (a.b.md) and the full
+// dotted id (story.subscriptions.subscribe.md) — a library may use either or, like
+// trove, a mix.
+func TestLintAcceptsBothFilenameConventions(t *testing.T) {
+	specs := []Spec{
+		{Frontmatter: Frontmatter{ID: "story.subscriptions.subscribe", Kind: KindStory},
+			Path: "features/0001/stories/story.subscriptions.subscribe.md"},
+		{Frontmatter: Frontmatter{ID: "story.a.b", Kind: KindStory},
+			Path: "features/0001/stories/a.b.md"},
+	}
+	if hasInvariant(Lint(specs), "I1") {
+		t.Errorf("full-id and id-tail filenames must both pass I1: %+v", Lint(specs))
+	}
+}
+
+// A well-formed protocol spec lints clean: protocol is a valid kind (no I2), its
+// protocol. prefix agrees with the id (no I3), and as a contract kind it bears no
+// scenarios so I6 never applies.
+func TestLintProtocolKindClean(t *testing.T) {
+	specs := []Spec{{Frontmatter: Frontmatter{ID: "protocol.troved.search", Kind: KindProtocol},
+		Path: "specs/protocol/troved.search.md"}}
+	if f := Lint(specs); len(f) != 0 {
+		t.Errorf("a well-formed protocol spec should lint clean, got %+v", f)
+	}
+}
+
 // SPEC: story.engine.scan (scenario.engine.scan.missing-scenario-id)
 func TestLintMissingScenarioID(t *testing.T) {
 	specs := []Spec{{

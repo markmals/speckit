@@ -37,3 +37,17 @@ func TestParseScenarios(t *testing.T) {
 		t.Errorf("scenario 2 should have no sub-id, got %q", sc[1].SubID)
 	}
 }
+
+// Scenarios are also recognized when nested as `### Scenario N:` under an
+// `## Acceptance Criteria` heading (trove's form); the same-or-shallower break
+// keeps scenario 1 from absorbing scenario 2's sub-id.
+func TestParseScenariosNestedHeading(t *testing.T) {
+	md := "## Acceptance Criteria\n\n### Scenario 1: convert\n\n<!-- id: scenario.x.y.convert -->\n- Given\n\n### Scenario 2: fail\n\n<!-- id: scenario.x.y.fail -->\n- Given\n"
+	sc := parseScenarios(md)
+	if len(sc) != 2 {
+		t.Fatalf("expected 2 nested scenarios, got %d: %+v", len(sc), sc)
+	}
+	if sc[0].SubID != "scenario.x.y.convert" || sc[1].SubID != "scenario.x.y.fail" {
+		t.Errorf("nested ### Scenario sub-ids not parsed: %+v", sc)
+	}
+}

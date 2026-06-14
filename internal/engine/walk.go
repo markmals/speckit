@@ -8,8 +8,10 @@ import (
 )
 
 // sourceExts are the test-source extensions ScanBindings reads — the binding
-// formats it understands (Swift Testing traits, Vitest titles) live in these.
-var sourceExts = map[string]bool{".swift": true, ".ts": true, ".tsx": true, ".js": true, ".mjs": true}
+// formats it understands (Swift Testing traits, Vitest titles, and the
+// language-agnostic leading `// [scenario.id]` comment for Go + JS/TS) live in
+// these.
+var sourceExts = map[string]bool{".swift": true, ".ts": true, ".tsx": true, ".js": true, ".mjs": true, ".go": true}
 
 // walkSourceFiles walks dir and calls fn for each readable file, skipping any
 // directory that should never hold spec bindings: .git, node_modules, and every

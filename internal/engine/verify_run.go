@@ -17,9 +17,16 @@ import (
 // Normally supplied by the target pack's verify adapter.
 type VerifyConfig struct {
 	Command string `json:"command,omitempty"`
-	Format  string `json:"format"` // "junit" | "swift"
+	Format  string `json:"format"` // "junit" | "swift" | "gotest"
 	Report  string `json:"report"` // report path, relative to root
 	Source  string `json:"source"` // test source dir, relative to root
+	// Bindings selects how an untagged test (one that binds no scenario) is
+	// treated: "strict" (default) makes it an unbound D12 violation — every test
+	// must prove a scenario; "scoped" treats untagged tests as out of scope, so a
+	// suite that mixes scenario tests with plain unit tests verifies the scenarios
+	// it does bind. Dangling (binding a nonexistent scenario) and failing bound
+	// tests remain violations in both modes.
+	Bindings string `json:"bindings,omitempty"`
 }
 
 // joinTarget runs the target's command (if any), parses the report, scans
@@ -51,6 +58,8 @@ func joinTarget(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.Spec
 		results, err = reports.ParseJUnit(data)
 	case "swift":
 		results, err = reports.ParseSwiftEvents(data)
+	case "gotest":
+		results, err = reports.ParseGoTest(data)
 	default:
 		return VerifyResult{}, nil, nil, fmt.Errorf("unknown report format %q", cfg.Format)
 	}
@@ -93,7 +102,13 @@ func joinTarget(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.Spec
 		}
 	}
 
-	return Join(declared, results, bindings), inScope, specScenarios, nil
+	result := Join(declared, results, bindings)
+	if cfg.Bindings == "scoped" {
+		// Untagged tests are out of scope, not D12 unbound violations — so a
+		// partially-bound suite verifies the scenarios it does bind.
+		result.Unbound = nil
+	}
+	return result, inScope, specScenarios, nil
 }
 
 // Verify runs a target's tests, joins outcomes to declared scenarios, and

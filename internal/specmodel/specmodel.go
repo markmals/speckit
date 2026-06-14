@@ -20,6 +20,7 @@ const (
 	KindDomain       Kind = "domain"
 	KindViewModel    Kind = "view-model"
 	KindError        Kind = "error"
+	KindProtocol     Kind = "protocol"
 	KindArchitecture Kind = "architecture"
 	KindDesignSystem Kind = "design-system"
 	KindConventions  Kind = "conventions"
@@ -30,7 +31,7 @@ const (
 // truth the scanner validates `kind:` frontmatter against.
 var Kinds = []Kind{
 	KindNarrative, KindStory, KindUseCase, KindFlow, KindDomain,
-	KindViewModel, KindError, KindArchitecture, KindDesignSystem, KindConventions,
+	KindViewModel, KindError, KindProtocol, KindArchitecture, KindDesignSystem, KindConventions,
 }
 
 // Prefix is the dotted ID prefix a kind's IDs must start with (CONVENTIONS.md
@@ -50,6 +51,8 @@ func (k Kind) Prefix() string {
 		return "vm."
 	case KindError:
 		return "error."
+	case KindProtocol:
+		return "protocol."
 	case KindNarrative:
 		return "narrative."
 	default:

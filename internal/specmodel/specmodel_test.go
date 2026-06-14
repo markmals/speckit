@@ -20,6 +20,7 @@ func TestKindPrefixes(t *testing.T) {
 		KindStory:       "story.",
 		KindUseCase:     "usecase.",
 		KindError:       "error.",
+		KindProtocol:    "protocol.",
 		KindConventions: "", // singular cross-cutting kind: ID is just the kind name
 	}
 	for k, want := range cases {
