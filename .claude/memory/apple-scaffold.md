@@ -4,8 +4,8 @@ The `apple` stack scaffold (`internal/coreassets/templates/scaffolds/apple/`).
 Design: [`docs/design/scaffolds/apple.md`](../../docs/design/scaffolds/apple.md).
 Baseline + reference repos: gourmand (Tuist app, the convert target),
 apple-platform-tools (raw SwiftPM, the binding reference), mac-dev-skills (the
-AppKit agent pack). Built in slices; **Slice 1 (headless Core) + Slice 2 (Tuist app surface) shipped
-2026-06-14**.
+AppKit agent pack). Built in slices; **Slice 1 (headless Core) + Slice 2 (Tuist app surface) + Slice 3
+`swiftdata` shipped 2026-06-14**.
 
 ## The things that cost real time
 
@@ -76,6 +76,31 @@ AppKit agent pack). Built in slices; **Slice 1 (headless Core) + Slice 2 (Tuist 
   ~7s with no download.
 - App-level tests (`macOS/Tests`, `tuist test`) are a **Mac-only secondary**, never
   the verify gate — verify always targets the headless Core.
+
+## Slice 3 (`--with` features) gotchas — established by `swiftdata`
+
+- **`Package.swift` is the composition seam.** Features render in nondeterministic
+  map order and must never write the same shared file, but SPM deps/targets are
+  declarative in the manifest. So the BASE `Package.swift.tmpl` carries each feature's
+  target/product/deps behind `{{if .Features.<name>}}`; the feature ships ONLY additive
+  source files (new dirs). This is the web `providers.tsx` seam, not the go-service
+  `go get`-script approach (SPM has no `go get` equivalent). The example story
+  (`root/.../todo.manage.md.tmpl`) is a seam too — features add scenarios via the same
+  `{{if}}` gate. (Also: name the story file `.md.tmpl`, not `.md`, or `{{.Dir}}`/`{{if}}`
+  render literally — a Slice-1 bug fixed here.)
+- **ONE test target, always.** `swift test --event-stream-output-path` has each test
+  TARGET's process truncate-write the same file → **multiple test targets clobber each
+  other's events**, the engine joins only one, and the rest show `unjoinable`/`dangling`.
+  Fix: a feature's tests live in the single `CoreTests` target (which gains a conditional
+  dependency on the feature's source target via the seam), never a target of their own.
+- **Shared `TestSupport` target.** The `.spec`/`.scenario` traits moved from inside
+  `CoreTests` to a shared `Tests/Support` library target (`TestSupport`, public types),
+  imported by every test target — apple-platform-tools' pattern. Required once a feature
+  test needs the traits too.
+- **SwiftData specifics**: a `<Name>Persistence` target with `.strictMemorySafety()`
+  OFF (SwiftData macros are outside the proof); test headlessly with a temp-file
+  `ModelConfiguration(url:)` reopen (real persistence proof, no app/simulator). The
+  feature test uses plain `import <Name>Persistence` (public API), not `@testable`.
 
 - **Structure-only Go test**: `internal/scaffold/apple_test.go` asserts the rendered
   tree + the dynamic-module/static-dir wiring + story↔`.scenario` id agreement. The

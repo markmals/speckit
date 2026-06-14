@@ -5,20 +5,44 @@ import PackageDescription
 // static directory (Sources/Core) via explicit `path:` — the scaffold renderer
 // substitutes file contents, not directory names, so the dirs stay fixed while
 // the module is named after the app.
+//
+// This file is the composition seam: optional `--with` features add their targets
+// here behind `{{`{{`}}if .Features.<name>}}` so two features never collide on it; each
+// feature ships only its additive source files.
 let package = Package(
     name: "{{pascal .Name}}",
     platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
         // The library product the Tuist app target consumes (`.package(product:)`).
         // `swift test` doesn't need it, but the app does.
-        .library(name: "{{pascal .Name}}Core", targets: ["{{pascal .Name}}Core"])
+        .library(name: "{{pascal .Name}}Core", targets: ["{{pascal .Name}}Core"]),
+        {{- if .Features.swiftdata}}
+        .library(name: "{{pascal .Name}}Persistence", targets: ["{{pascal .Name}}Persistence"]),
+        {{- end}}
     ],
     targets: [
         .target(name: "{{pascal .Name}}Core", path: "Sources/Core"),
+        // Shared test support: the .spec/.scenario binding traits, defined once and
+        // imported by every test target (CoreTests + any feature's test target).
+        .target(name: "TestSupport", path: "Tests/Support"),
         .testTarget(
             name: "{{pascal .Name}}CoreTests",
-            dependencies: ["{{pascal .Name}}Core"],
+            // ONE test target holds the whole suite, so a single `swift test
+            // --event-stream-output-path` report captures every test — multiple test
+            // targets each truncate that file and clobber one another's events. A
+            // feature's tests land here and pull in the feature's source target.
+            dependencies: ["{{pascal .Name}}Core", "TestSupport"{{if .Features.swiftdata}}, "{{pascal .Name}}Persistence"{{end}}],
             path: "Tests/CoreTests"
         ),
+        {{- if .Features.swiftdata}}
+        // The SwiftData cache shell. No strictMemorySafety: SwiftData's macros and
+        // runtime sit outside this package's memory-safety proof. Tested headlessly
+        // against a temp-file (reopened) and in-memory ModelContainer.
+        .target(
+            name: "{{pascal .Name}}Persistence",
+            dependencies: ["{{pascal .Name}}Core"],
+            path: "Sources/Persistence"
+        ),
+        {{- end}}
     ]
 )
