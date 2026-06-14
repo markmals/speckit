@@ -250,6 +250,11 @@ func targetAddCmd() *cobra.Command {
 				return fmt.Errorf("--data %q requires --runtime %q (got %q)", resolvedData, dataVariant.RequiresRuntime, resolvedRuntime)
 			}
 			data := scaffold.Data{Name: name, Dir: dir, Product: product, Features: features, Vars: map[string]string{}}
+			// Shared-module stacks resolve the repo's Go module path so members can
+			// import their own generated/internal packages by full path.
+			if m.SharedModule {
+				data.Module = resolveModulePath(".")
+			}
 
 			written, err := scaffold.Render(sub, dir, data)
 			if err != nil {
@@ -301,6 +306,20 @@ func targetAddCmd() *cobra.Command {
 				return err
 			}
 			written = append(written, gh...)
+
+			// Shared-module stacks (go-service) compose into ONE repo-root go.mod —
+			// each member a cmd/<name> sharing internal/ packages (trove's shape) —
+			// instead of a self-contained module per member. Create it if the repo
+			// isn't a Go module yet; a second member just joins it.
+			if m.SharedModule {
+				created, err := ensureRootGoMod(".", data.Module)
+				if err != nil {
+					return err
+				}
+				if created {
+					written = append(written, "go.mod")
+				}
+			}
 
 			rt, err := scaffold.RenderTarget(m, data)
 			if err != nil {
@@ -405,6 +424,88 @@ func featuresEmpty(root string) bool {
 		return true // absent
 	}
 	return len(es) == 0
+}
+
+// goModVersion is the Go directive seeded into a freshly created shared root
+// go.mod; the scaffold's phase-0 `go mod tidy` normalizes it afterward. Kept in
+// lockstep with the go-service mise.toml pin.
+const goModVersion = "1.26"
+
+// ensureRootGoMod makes the project a single Go module so shared-module members
+// (go-service) compose into ONE root go.mod — each a cmd/<name> sharing internal/
+// packages — instead of a self-contained module per member. No-op (returns false)
+// when a go.mod already exists: a prior member, or a hand-authored module like a
+// converted trove. modulePath is the resolved path to write (so it matches the
+// member templates' imports). Reports whether it created the file.
+func ensureRootGoMod(projectRoot, modulePath string) (bool, error) {
+	gomod := filepath.Join(projectRoot, "go.mod")
+	if _, err := os.Stat(gomod); err == nil {
+		return false, nil
+	} else if !os.IsNotExist(err) {
+		return false, err
+	}
+	content := fmt.Sprintf("module %s\n\ngo %s\n", modulePath, goModVersion)
+	if err := os.WriteFile(gomod, []byte(content), 0o644); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// resolveModulePath is the module path a shared-module member should import its
+// own packages under: the existing repo-root go.mod's module line if the repo is
+// already a module (a prior member, or a converted trove), else the path
+// deriveModulePath would create. Both paths agree, so member imports match the
+// go.mod ensureRootGoMod writes.
+func resolveModulePath(projectRoot string) string {
+	if b, err := os.ReadFile(filepath.Join(projectRoot, "go.mod")); err == nil {
+		for _, line := range strings.Split(string(b), "\n") {
+			if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
+				return strings.TrimSpace(rest)
+			}
+		}
+	}
+	return deriveModulePath(projectRoot)
+}
+
+// deriveModulePath picks a Go module path for a new root go.mod: the repo's
+// origin remote mapped to host/owner/repo (e.g. github.com/markmals/trove), else
+// the project directory's base name. Offline — reads only local git config.
+func deriveModulePath(projectRoot string) string {
+	out, err := exec.Command("git", "-C", projectRoot, "remote", "get-url", "origin").Output()
+	if err == nil {
+		if mp := moduleFromRemote(strings.TrimSpace(string(out))); mp != "" {
+			return mp
+		}
+	}
+	if abs, err := filepath.Abs(projectRoot); err == nil {
+		return filepath.Base(abs)
+	}
+	return filepath.Base(projectRoot)
+}
+
+// moduleFromRemote maps a git remote URL to a Go module path (host/owner/repo),
+// or "" if it can't. Handles https://, ssh://, and scp-style git@host:owner/repo.
+func moduleFromRemote(url string) string {
+	url = strings.TrimSuffix(url, ".git")
+	if url == "" {
+		return ""
+	}
+	// scp-style: git@github.com:owner/repo
+	if !strings.Contains(url, "://") && strings.Contains(url, "@") && strings.Contains(url, ":") {
+		url = url[strings.Index(url, "@")+1:]
+		return strings.Replace(url, ":", "/", 1)
+	}
+	// scheme://[user@]host/owner/repo
+	if i := strings.Index(url, "://"); i != -1 {
+		url = url[i+3:]
+		if at := strings.Index(url, "@"); at != -1 {
+			if slash := strings.Index(url, "/"); slash == -1 || at < slash {
+				url = url[at+1:]
+			}
+		}
+		return url
+	}
+	return ""
 }
 
 // runIn runs one scaffold script command (a developer/SpecKit-controlled shell

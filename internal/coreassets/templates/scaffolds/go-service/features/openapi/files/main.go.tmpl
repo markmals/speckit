@@ -1,5 +1,7 @@
-// A minimal HTTP service scaffolded by SpecKit. It serves the greeting endpoint
-// and shuts down gracefully on SIGINT / SIGTERM.
+// Command {{kebab .Name}} is a contract-first HTTP service scaffolded by SpecKit.
+// The OpenAPI contract (openapi.yaml) is the source of truth; oapi-codegen
+// generates the server interface (internal/api), and the service shuts down
+// gracefully on SIGINT / SIGTERM.
 package main
 
 import (
@@ -11,12 +13,17 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"{{.Module}}/{{.Dir}}/internal/api"
 )
 
 func main() {
+	mux := http.NewServeMux()
+	api.HandlerFromMux(api.NewStrictHandler(&server{}, nil), mux)
+
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           newMux(),
+		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

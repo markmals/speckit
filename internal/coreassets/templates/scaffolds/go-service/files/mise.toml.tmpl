@@ -27,3 +27,11 @@ run = "gofmt -w ."
 [tasks."fmt:check"]
 description = "fail if any file needs formatting"
 run = 'test -z "$(gofmt -l .)"'
+{{if .Features.openapi}}
+# The OpenAPI contract (openapi.yaml) is the source of truth; oapi-codegen emits
+# the server interface into internal/api/api.gen.go (committed). Re-run after
+# editing the contract.
+[tasks.generate]
+description = "regenerate the Go server from the OpenAPI contract (oapi-codegen)"
+run = "mkdir -p internal/api && go tool oapi-codegen -config oapi-codegen.yaml openapi.yaml"
+{{end}}

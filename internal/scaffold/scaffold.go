@@ -23,7 +23,12 @@ type Manifest struct {
 	// MemberDir is where `target add` places this stack's member by default
 	// (overridable with --dir): "apps" for an app, "cmd" for a go-service, "packages"
 	// for a library. Empty defaults to "apps".
-	MemberDir      string             `json:"memberDir,omitempty"`
+	MemberDir string `json:"memberDir,omitempty"`
+	// SharedModule makes members of this stack compose into ONE repo-root go.mod
+	// (each member a cmd/<name> sharing internal/ packages — trove's shape) rather
+	// than a self-contained module per member. `target add` creates the root go.mod
+	// if the repo isn't a module yet; members render no go.mod of their own.
+	SharedModule   bool               `json:"sharedModule,omitempty"`
 	Scripts        []Script           `json:"scripts,omitempty"`
 	Target         ManifestTarget     `json:"target"`
 	Variables      []Variable         `json:"variables,omitempty"`
@@ -113,9 +118,13 @@ type Feature struct {
 
 // Data is the text/template context every scaffold sees.
 type Data struct {
-	Name     string
-	Dir      string
-	Product  string
+	Name    string
+	Dir     string
+	Product string
+	// Module is the repo-root Go module path (e.g. github.com/markmals/trove) for
+	// SharedModule stacks, so a member can import its own generated/internal
+	// packages by full path (`{{.Module}}/{{.Dir}}/internal/api`). Empty otherwise.
+	Module   string
 	Vars     map[string]string
 	Features map[string]bool
 }

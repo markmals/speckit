@@ -1,0 +1,49 @@
+package main
+
+import (
+	"flag"
+	"os"
+	"strconv"
+)
+
+// Config is the service's startup configuration, resolved from flags that each
+// fall back to an environment variable, then a built-in default (so `-port` wins
+// over SERVICE_PORT wins over 8080). This is a ready-to-wire helper — call it
+// from main and pass the values to your server + store:
+//
+//	cfg := loadConfig()
+//	db, _ := store.Open(cfg.DBPath)
+//	srv := &http.Server{Addr: net.JoinHostPort(cfg.Addr, strconv.Itoa(cfg.Port)), Handler: mux}
+type Config struct {
+	Addr   string
+	Port   int
+	DBPath string
+}
+
+// loadConfig parses the process flags into a Config. Call it once at startup.
+func loadConfig() Config {
+	addr := flag.String("addr", envStr("SERVICE_ADDR", "127.0.0.1"), "bind address")
+	port := flag.Int("port", envInt("SERVICE_PORT", 8080), "listen port")
+	db := flag.String("db", envStr("DATABASE_URL", "./.data/app.db"), "SQLite database path")
+	flag.Parse()
+	return Config{Addr: *addr, Port: *port, DBPath: *db}
+}
+
+// envStr returns the environment variable key, or def when it's unset/empty.
+func envStr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+// envInt returns the environment variable key parsed as an int, or def when it's
+// unset/empty/unparseable.
+func envInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return def
+}
