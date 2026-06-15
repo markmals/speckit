@@ -122,6 +122,10 @@ func TestScanBindings(t *testing.T) {
 		"@Test(.scenario(\"scenario.todo.toggle.complete\"))\nfunc `toggling an active todo completes it`() {}\n")
 	writeSpecFile(t, dir, "web/test/t.test.ts",
 		"it(\"[scenario.todo.toggle.reactivate] reactivates a completed todo\", () => {})\n")
+	// a single Swift test pinning two scenarios via multiple .scenario traits —
+	// both bind to the one function name (the join identity).
+	writeSpecFile(t, dir, "apple/Tests/Multi.swift",
+		"@Test(\n    .scenario(\"scenario.todo.toggle.guard\"),\n    .scenario(\"scenario.todo.toggle.empty\")\n)\nfunc `an empty-label toggle is rejected`() throws {}\n")
 
 	bindings, err := ScanBindings(dir)
 	if err != nil {
@@ -136,6 +140,10 @@ func TestScanBindings(t *testing.T) {
 	}
 	if got["scenario.todo.toggle.reactivate"] != "[scenario.todo.toggle.reactivate] reactivates a completed todo" {
 		t.Errorf("vitest binding: %v", got)
+	}
+	if got["scenario.todo.toggle.guard"] != "an empty-label toggle is rejected" ||
+		got["scenario.todo.toggle.empty"] != "an empty-label toggle is rejected" {
+		t.Errorf("multi-trait swift: both scenarios must bind the one func name: %v", got)
 	}
 }
 

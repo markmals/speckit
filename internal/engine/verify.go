@@ -102,8 +102,13 @@ func sortIDs(ids []specmodel.SpecID) {
 }
 
 var (
-	swiftBindRe  = regexp.MustCompile("@Test\\(\\.scenario\\(\"(scenario\\.[a-z0-9.\\-]+)\"\\)\\)\\s*func `([^`]+)`")
-	vitestBindRe = regexp.MustCompile(`it\("(\[(scenario\.[a-z0-9.\-]+)\][^"]*)"`)
+	// swiftTestRe matches a Swift Testing `@Test(<traits>) func `name`` block. The
+	// trait list may hold several `.scenario(...)` (a test can pin more than one);
+	// `([^()]|\([^()]*\))*` tolerates the one level of nesting those traits add, so a
+	// multi-trait `@Test(.scenario("a"), .scenario("b"))` is captured whole.
+	swiftTestRe     = regexp.MustCompile("@Test\\(((?:[^()]|\\([^()]*\\))*)\\)\\s*func `([^`]+)`")
+	swiftScenarioRe = regexp.MustCompile(`\.scenario\("(scenario\.[a-z0-9.\-]+)"\)`)
+	vitestBindRe    = regexp.MustCompile(`it\("(\[(scenario\.[a-z0-9.\-]+)\][^"]*)"`)
 
 	// the language-agnostic leading-comment form: `// [scenario.id]` on a line of
 	// its own above a test declaration (Go `func Test…`, or a JS/TS `it/test(…)`).
@@ -127,9 +132,30 @@ func bindingsInContent(path, src string) []Binding {
 			})
 		}
 	}
-	add(swiftBindRe, 1, 2)  // @Test(.scenario("…")) func `…`
-	add(vitestBindRe, 2, 1) // it("[scenario.…] …"
+	bs = append(bs, swiftBindings(path, src)...) // @Test(.scenario("…")[, .scenario("…")]) func `…`
+	add(vitestBindRe, 2, 1)                      // it("[scenario.…] …"
 	bs = append(bs, leadingCommentBindings(path, src)...)
+	return bs
+}
+
+// swiftBindings reads the Swift Testing trait form: every `.scenario("id")` in a
+// test's `@Test(...)` traits binds that scenario to the test's raw-identifier name
+// — a single test may pin several scenarios. The join identity is the function's
+// backtick name, which Swift Testing reports as the test's display name.
+func swiftBindings(path, src string) []Binding {
+	var bs []Binding
+	for _, m := range swiftTestRe.FindAllStringSubmatchIndex(src, -1) {
+		traits, name := src[m[2]:m[3]], src[m[4]:m[5]]
+		line := 1 + strings.Count(src[:m[0]], "\n")
+		for _, sm := range swiftScenarioRe.FindAllStringSubmatch(traits, -1) {
+			bs = append(bs, Binding{
+				Scenario: specmodel.SpecID(sm[1]),
+				Identity: name,
+				File:     filepath.ToSlash(path),
+				Line:     line,
+			})
+		}
+	}
 	return bs
 }
 
