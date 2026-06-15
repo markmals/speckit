@@ -1,160 +1,122 @@
 ---
 name: appkit-private-apis
-description: Use when discovering, declaring, calling, or swizzling a private/undocumented AppKit or Objective-C symbol from the macOS app surface — bridging headers, `@objc protocol` + `unsafeBitCast`, `dlsym`, runtime class/selector lookup, and `method_exchangeImplementations`/`method_setImplementation` (idempotent install, restoration, thread-safety) — plus the App Store distribution trade-off you must surface unprompted.
+description: Use when discovering, declaring, or calling a private/undocumented AppKit or Objective-C API from a macOS app — dumping private framework headers, declaring a private interface (ObjC category, bridging header, @objc protocol, or dlsym for C), calling it from Swift, or method swizzling (method_exchangeImplementations / setImplementation, capturing the original, restoration, thread-safety). Targets native macOS AppKit (Swift 6 / ObjC).
 ---
 
 # AppKit Private APIs
 
-Discover a private AppKit/Objective-C symbol, declare a typed interface to it, call it from Swift, and — only when you must change framework behavior — swizzle it safely. Legitimate for research, debugging, internal tools, and Developer-ID apps. **The technique is the easy part; shipping it responsibly is the part that gets skipped.**
+## Overview
 
-This skill *informs, it never gates.* It helps you use private APIs and tells you the trade-off so you decide with eyes open — surface the [distribution advisory](#distribution-advisory) **unprompted** whenever the code could ship. For *writing* the surrounding AppKit (windows, views, the app delegate), see `appkit-setup` and `appkit-design`. For driving the build, see the mise tasks below.
+Discover a private AppKit/Objective-C symbol, declare an interface to it, call it from Swift, and — when you must change framework behavior — swizzle it safely. This is legitimate for research, debugging, internal tools, and Developer-ID apps. **The technique is the easy part; shipping it responsibly is the part that gets skipped.**
 
-## Grounding mandate — applies double here
+> **This skill informs, it never gates.** It will help you use private APIs and swizzling. It also tells you the trade-off so you decide with eyes open — see the advisory below, and surface it *unprompted* whenever the code could ship.
 
-The pack rule is **never guess a symbol name or `@available` version — verify with `sdk-api`, search patterns with `sdk-search`** before writing AppKit code. Private symbols make this non-optional, because the public SDK won't catch your mistake:
+## Distribution advisory — say this unprompted when the code might ship
 
-- `sdk-api check NSWindow._setTitlebarSeparatorStyle` confirms whether a symbol is even *known*, and any macOS availability — but a **private** symbol carries no `@available` and no compiler check, so it can vanish between OS releases with zero warning.
-- `sdk-search` surfaces the canonical *public* affordance first. **Always look for the supported API before reaching for a private one** — a public path you missed beats any swizzle.
+Private-API use is a **distribution** decision, not a correctness one. Whenever you hand someone private-API or swizzling code that could go into a shipped app, volunteer this — don't wait to be asked:
 
-`sdk-api`/`sdk-search` are external CLIs (built from apple-platform-tools, `mise run install` → `~/.local/bin`); never vendor them. They verify *existence and availability*; they do **not** clear a symbol for App Store review (see the advisory).
+- **App Store review may or may not reject it.** Apple judges private-API usage **case-by-case** — not every use is auto-rejected, and there's no public allow-list. Assume it *might* be rejected.
+- **Dodging the static scanner is not safety.** Hiding a private class name (no string literals, `object_getIvar` instead of KVC, runtime-built selectors) only defeats *static* analysis. Runtime use can still be detected and rejected. **Never frame scanner-evasion as "now it's safe to ship."**
+- **Developer ID + notarization is the escape hatch.** If review rejects it — or to avoid the question entirely — distribute **outside** the Mac App Store: Developer-ID-signed, notarized, shipped via web / Sparkle / direct download. Private APIs are allowed there (you own the risk of OS updates breaking them). See **your project's deploy setup (`specify deploy`)** for the full distribution picture.
+- **Tone:** "here's the trade-off and your options," never "you may not."
+
+→ Full wording + the packaging end: `references/distribution-advisory.md`
 
 ## The workflow
 
-### 1. Look for a public API first
+### 1. Discover the private surface — headerdump + redump
 
-Run `sdk-search` for the behavior you want. If a supported AppKit affordance exists, use it and stop — no private API needed. Only proceed when the capability genuinely has no public surface.
+Two **static** tools in the `apple-platform-tools` monorepo, installed together (`mise run install` → `~/.local/bin`). Both read the binary / dyld shared cache — **no SIP/AMFI changes, no entitlements** (unlike runtime injection — see `appkit-app-inspector`).
 
-### 2. Find the real selector
+- **`headerdump`** recovers an Objective-C framework's headers (class/method/property/ivar/protocol). Legacy-style CLI, single-letter flags, positional **path** (not an SDK target name):
 
-Recover the owning class, the exact selector, and its argument types from a header dump (PrivateHeaderKit reconstructs ObjC headers from the framework binaries — a *static* `xcrun` read, no SIP/AMFI changes; repo at <https://github.com/lynnswap/PrivateHeaderKit>, not vendored). A grep hit is a fact about *one* SDK build, not a contract — **verify it still exists at runtime** (step 4) before relying on it.
+```bash
+headerdump -o ./private-headers /System/Library/Frameworks/AppKit.framework   # add -c to read the dyld shared cache
+```
 
-### 3. Declare the interface — pick the lightest mechanism that compiles
+- **`redump`** answers "what's actually *in* this Mach-O?" — symbols, imports, exports, strings, segments (native reads; disassembly is a gated, not-shipped slice):
+
+```bash
+redump exports <binary> | grep -i titlebar      # is the symbol there?
+redump imports <binary> --library CoreUI        # which dylib provides it?
+redump strings <binary> --filter FeatureFlag    # telling strings
+```
+
+→ `references/header-dumper.md`, `references/redump.md`
+
+### 2. Browse / grep the dumped headers
+
+`grep -rn "titlebar" ./private-headers/AppKit.framework` etc. Find the real selector, its argument types, and the owning class. **Verify the class/selector still exists at runtime** before relying on it — private symbols move between OS versions.
+
+### 3. Declare the interface
+
+Pick the lightest mechanism that compiles:
 
 | You have | Declare via | Notes |
 |----------|-------------|-------|
-| ObjC method on a public class | **ObjC category** in a bridging header (`@interface NSWindow (Private)`) | Cleanest; fully type-checked |
-| Pure-Swift target, one method | **`@objc protocol`** + `unsafeBitCast(obj, to:)` | No bridging header needed |
-| A private **ivar** | `class_getInstanceVariable` + `object_getIvar` | Avoids the KVC string scanner |
-| A private **C function** | **`dlsym`** on a `dlopen` handle → `@convention(c)` cast | Non-ObjC entry points |
-| A private **class** you must not name with a literal | `NSClassFromString` (assembled at runtime) | Defeats the *static* scanner only |
+| ObjC method on a known class | **ObjC category** in a bridging header / `.h` | Cleanest; type-checked; `@interface NSWindow (Private)` |
+| Swift-only target, one method | **`@objc protocol`** + `unsafeBitCast(obj, to:)` | No bridging header needed |
+| A private **ivar** | `object_getIvar(_:_:)` / `value(forKey:)` | `object_getIvar` avoids the KVC string scanner |
+| A C function in a framework | **`dlsym`** on an `dlopen` handle | For non-ObjC entry points |
 
-`unsafeBitCast` does **no** conformance check, so a missing selector won't fault at the cast — it crashes at the call site. The guard in step 4 is mandatory.
+→ `references/declaring-and-calling.md`
 
-### 4. Call it — guard every private touch, degrade never crash
+### 4. Call it
 
-Resolve classes with `NSClassFromString(_:)` and selectors with `NSSelectorFromString(_:)`. Gate every access so an OS change *degrades the feature* instead of crashing the app, and keep a public-API fallback. Probe once, cache the result; never re-`dlsym` on a hot path.
-
-```swift
-import AppKit
-import ObjectiveC.runtime
-
-@objc private protocol PrivateWindowAnimating {  // typed shape, no bridging header, no emitted runtime class
-    func _setTransformForAnimation(_ t: CGAffineTransform, animate: Bool)
-}
-
-extension NSWindow {
-    /// Returns false (and the caller falls back to public API) if the symbol moved.
-    @discardableResult
-    func tryPrivateTransform(_ t: CGAffineTransform, animate: Bool) -> Bool {
-        let sel = NSSelectorFromString("_setTransformForAnimation:animate:")
-        guard responds(to: sel) else { return false }      // OS dropped it → degrade
-        unsafeBitCast(self, to: PrivateWindowAnimating.self)
-            ._setTransformForAnimation(t, animate: animate)
-        return true
-    }
-}
-
-// Caller always keeps a public-API path:
-if !window.tryPrivateTransform(t, animate: true) {
-    window.animator().setFrame(target, display: true)
-}
-```
-
-| Touching… | Guard with | On failure |
-|---|---|---|
-| a private **method** | `obj.responds(to: sel)` / `cls.instancesRespond(to:)` | public-API fallback |
-| a private **class** | `NSClassFromString("X") != nil` | skip feature, log once |
-| a private **ivar** | `class_getInstanceVariable(cls, "name") != nil` | treat as absent |
-| a private **C symbol** | `dlsym(handle, "f") != nil` | no-op the path |
-
-Never force-unwrap `NSClassFromString(...)!` or assume `responds(to:)` — an OS update *will* remove a private symbol eventually.
+Through the declared interface. Resolve classes at runtime with `NSClassFromString(_:)` and selectors with `NSSelectorFromString(_:)` when you must avoid literals; guard every optional (`responds(to:)`) so an OS change degrades instead of crashing.
 
 ### 5. Swizzle — only when you must change existing behavior
 
-Swizzling replaces a method's `IMP` process-wide; a half-swizzle corrupts **every instance** of the class. Do it correctly or not at all. Prefer `method_setImplementation` with a captured original `IMP` over `method_exchangeImplementations` — no extra selector polluting the class, and restoration is an exact pointer.
+Swizzling replaces a method's implementation process-wide. Do it **correctly or not at all** — a half-swizzle corrupts every instance of the class.
 
 ```swift
-import ObjectiveC.runtime
+// Minimal correct shape — full patterns (restoration, thread-safety, when-not-to) in references/swizzling.md
+extension NSView {
+  private static let _swizzleOnce: Void = {
+    let cls: AnyClass = NSView.self
+    guard
+      let original = class_getInstanceMethod(cls, #selector(NSView.draw(_:))),
+      let replacement = class_getInstanceMethod(cls, #selector(NSView.swizzled_draw(_:)))
+    else { return }
+    method_exchangeImplementations(original, replacement)   // reversible: call again to restore
+  }()
 
-enum WindowProbe {
-    private static var originalIMP: IMP?
-    private static let lock = NSLock()
-    private static let selector = #selector(NSWindow.makeKeyAndOrderFront(_:))
-    typealias MakeKeyFn = @convention(c) (AnyObject, Selector, AnyObject?) -> Void
+  static func installDrawSwizzle() { _ = _swizzleOnce }     // idempotent: the static runs once
 
-    /// Idempotent, thread-safe install — safe from any number of call sites.
-    static func install() {
-        lock.lock(); defer { lock.unlock() }
-        guard originalIMP == nil,                                   // one-time guard
-              let m = class_getInstanceMethod(NSWindow.self, selector) else { return }
-        let orig = method_getImplementation(m)
-        originalIMP = orig
-        let origFn = unsafeBitCast(orig, to: MakeKeyFn.self)
-        let block: @convention(block) (AnyObject, AnyObject?) -> Void = { obj, sender in
-            // ...your added behavior...
-            origFn(obj, selector, sender)                          // RULE 1: call the original
-        }
-        method_setImplementation(m, imp_implementationWithBlock(block))
-    }
-
-    /// Restoration path — put the captured original back, exactly.
-    static func uninstall() {
-        lock.lock(); defer { lock.unlock() }
-        guard let orig = originalIMP,
-              let m = class_getInstanceMethod(NSWindow.self, selector) else { return }
-        method_setImplementation(m, orig)                          // RULE 4: exact restore
-        originalIMP = nil
-    }
+  @objc dynamic func swizzled_draw(_ dirtyRect: NSRect) {
+    self.swizzled_draw(dirtyRect)   // NOT recursion — post-swap this calls the ORIGINAL draw(_:)
+    // your behavior here
+  }
 }
 ```
 
-**The five non-negotiables:**
-
-1. **Call the original.** Capture it (`method_getImplementation`, or the exchanged selector) and invoke it via a `@convention(c)` cast on every path — never drop it.
-2. **Idempotent install.** A `static let`/`NSLock` guard so a double-install can't double-wrap or silently un-swizzle.
-3. **Thread-safety.** Serialize the get-IMP→set-IMP under one lock; install before threads race the method, never swap a hot method live.
-4. **Restoration path.** Stash the original `IMP`; provide an uninstall. "Not worth it" is unacceptable beyond a throwaway.
-5. **Know when *not* to.** Subclass to override behavior you own; **KVO** for property changes (swizzling setters fights KVO's own isa-swizzling); proxy the **delegate** or use `NotificationCenter` for callbacks; `object_setClass` for one object. Reach for a class-wide swap last.
-
-## Distribution advisory
-
-Say this **unprompted** the moment private-API or swizzling code could end up in a shipped build. It is a *distribution* decision, not a correctness one. Inform; never gate — *"here's the trade-off and your options,"* never *"you may not."*
-
-- **App Store review is case-by-case.** Apple judges private-API use case-by-case — no auto-reject, no public allow-list, and a past pass is no guarantee. Tell the user *"assume it might be rejected, and here's your fallback"* — never *"this will pass"* or *"this will be rejected."*
-- **Scanner-evasion is not policy-safety.** Runtime-assembled class names, `object_getIvar` instead of KVC, `NSSelectorFromString` — these defeat *static* analysis only. Runtime instrumentation can still observe the call and reject the build. Evasion is a robustness tool (degrade gracefully across OS versions), not a compliance strategy. **Never frame it as "now it's safe to ship."**
-- **Developer ID + notarization is the escape hatch.** Distributing outside the Mac App Store (web / Sparkle / direct, Developer-ID-signed and notarized) removes the review question — notarization scans for malware, it does not police private APIs. The trade you accept: an OS update may move a symbol and you own that breakage, so guard every call (step 4) and degrade. The app-store-connect deploy kind targets the App Store; a Developer-ID/notarize channel is the alternative for private-API apps.
+**Non-negotiables for any swizzle** (details + the IMP-capture variant in `references/swizzling.md`):
+1. **Call the original.** Capture it (the exchanged selector, or a stored `IMP`) and invoke it — never drop it.
+2. **Idempotent install.** A `static let`/`dispatch_once` so a double-install can't double-swap (which silently un-swizzles).
+3. **Restoration path.** Keep a way back (`method_exchangeImplementations` again, or stash the original `IMP` and `method_setImplementation` it back). "Uninstall isn't worth it" is not acceptable for anything beyond a throwaway.
+4. **Thread-safety.** Install before threads race the method; don't swap a hot method live.
+5. **Know when not to.** Subclasses that override the method, layer-backed draw paths, and KVO-affected methods make swizzling fragile — prefer a delegate, subclass, or notification if one exists.
 
 ## Anti-patterns
 
 | ❌ Don't | ✅ Do |
 |---------|------|
-| Guess a private selector/class from memory | `sdk-search` for a public path first; dump + `sdk-api` verify; runtime-check before use |
-| "Avoid the string literal → App-Store-safe" | Scanner-evasion ≠ policy-safe; surface case-by-case risk + Developer-ID hatch |
-| Force-unwrap `NSClassFromString(...)!` / call unguarded | Gate every private touch; keep a public-API fallback |
-| Swizzle and never call the original | Capture the `IMP`, invoke it via `@convention(c)` cast every path |
-| Non-idempotent swizzle in `+load`/init | One-time `static let`/`NSLock` guard |
-| "Restoring is too hard, I'll leave it" | Stash the original `IMP`; provide `uninstall()` |
-| Swizzle to override behavior you own, or a hot method live | Subclass / KVO / delegate proxy; install at launch before first use |
+| "Avoid the string literal and it's App-Store-safe" | Scanner-evasion ≠ policy-safe; name the case-by-case risk + Developer-ID escape hatch |
+| Swizzle and never call the original | Capture and invoke the original IMP every time |
+| Swizzle in a non-idempotent `+load`/init | One-time `static let` guard |
+| "Restoring is too hard, I'll leave it" | Stash the original IMP; provide an uninstall |
+| Private symbol from memory | Dump with `headerdump` (or confirm with `redump`) + verify it exists at runtime (`responds(to:)` / `NSClassFromString`) |
+| Treat header dumping as needing SIP off | `headerdump` / `redump` are static reads — no SIP changes (that's the *inspector*, not this) |
 
-## On the macOS app surface
+## References
 
-Private-API code is `@MainActor` (it touches AppKit) under Swift 6 strict concurrency, lives behind a typed shim in `macOS/Sources/App`, and stays out of the headless `Core` package — `specify verify` proves the spec-provable domain, and private framework behavior is neither spec truth nor deterministically testable. Keep it isolated behind a capability check so the app degrades to public behavior when the symbol is gone. No force-unwrap, no force-try. Run `mise run -C macOS fmt`/`lint` (swift-format, `.swift-format`: lineLength 100, 4-space) before committing; build and launch with `mise run -C macOS build | launch:macos`.
+| File | Read when… |
+|------|------------|
+| `references/header-dumper.md` | Dumping macOS private headers with `headerdump` (install, flags, simulator, runtime verification) |
+| `references/redump.md` | Finding symbols / imports / exports / strings in a Mach-O with `redump` |
+| `references/declaring-and-calling.md` | Declaring a private interface (category / bridging / `@objc` protocol / `dlsym`) and calling it |
+| `references/swizzling.md` | Writing a correct, restorable, thread-safe swizzle (and deciding whether to) |
+| `references/distribution-advisory.md` | The App-Store-review / Developer-ID trade-off to surface, and the SpecKit deploy cross-reference |
 
-## When to invoke a more specific skill
-
-- Setting up windows / the app delegate / the public AppKit surface? → `appkit-setup`, `appkit-design`
-- About to claim it works? → `verification-before-completion`
-- A private call crashing or behaving oddly? → `systematic-debugging`
-- Implementing a spec end-to-end? → `implementing-a-spec`, `test-driven-development`
-
-First-party references: [AppKit](https://developer.apple.com/documentation/appkit) · [Objective-C runtime](https://developer.apple.com/documentation/objectivec/objective-c_runtime) · [Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines) (and `sdk-search`).
+---
+*Companion: `appkit-app-inspector` (uitool) learns private structure from a **running** app (runtime injection — cooperative on a stock Mac for your own apps; the unrestricted defang only for apps you didn't sign). This skill works from **static** binaries — `headerdump` / `redump`, no SIP changes.*

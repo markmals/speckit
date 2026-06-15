@@ -15,9 +15,10 @@ type Adapter interface {
 	// process-discipline skills are projected, or "" if the agent has no skills
 	// concept.
 	SkillsDir() string
-	// AgentsDir is the directory (relative to root, slash-separated) where review
-	// subagents are projected, or "" if the agent has no subagent concept. Today
-	// subagents are a Claude Code feature (the claude-pack).
+	// AgentsDir is the directory (relative to root, slash-separated) where
+	// projectable agents are written (review subagents from init, stack agents
+	// from packs), or "" if the agent has no subagent/agent-file concept. Today
+	// dispatched subagents are a Claude Code feature (the claude-pack).
 	AgentsDir() string
 	// RulesDir is the directory (relative to root, slash-separated) where the
 	// always-loaded guidance rules are projected, or "" if the agent has none.

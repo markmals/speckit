@@ -300,6 +300,18 @@ Ready) and baked in as `specify work`'s defaults.
     `.speckit/specs.json` (via `config.SetAgent`, called from `project.Init`), so `target add`/`packs` project
     the pack without hand-editing; `AddTarget` preserves it. Golden trees gained `.speckit/specs.json`;
     `TestInitRecordsAgent` covers it.
+  - ✅ **Pack DEPTH + agent + offline HIG (2026-06-15)** — rescued the stranded enhanced-pack work
+    (whole-directory pack projection + deep references). `loadPack`/`ProjectPacks` now project a skill's
+    **whole directory** (SKILL.md + `references/`), keyed by relpath; three appkit skills gained hand-written
+    deep references (app-inspector·design·private-apis, 19 files). **Reverses two earlier Slice-4 calls**
+    (Mark's call): packs may now carry a per-stack **agent** (`agents/appkit-dev.md` → the adapter's
+    `AgentsDir()`, Claude-only; codex/generic/copilot skip it), and `apple-hig` (was `appkit-hig`) bundles the
+    **complete offline Apple HIG** (~172 md, 2.4MB, snapshot 2026-06-10) — embeds into the binary (pack ≈2.9MB).
+    `loadPack` keeps the packless-stack handling; `TestProjectPacks` covers references + agent + packless;
+    binary e2e green (`specify packs` → 208 files, agent + HIG corpus land). **Deferred follow-ups:** the
+    `scripts/generate-apple-pack.sh` generation pipeline + its CI drift-check vs an external `mac-dev-skills`
+    checkout (incompatible with the hand-integrated hybrid + couples CI to an external repo); deepening the
+    other ~11 appkit skills with `references/`.
   - ✅ **`swift-package` / `swift-cli` (apple-platform-tools' shape)** — two sibling library stacks
     (`memberDir: packages`, swift event-stream format, scoped bindings) that reuse Slice 1's headless
     harness (the `SpecTraits` `.spec`/`.scenario` traits + the event-stream test task) with **zero engine
