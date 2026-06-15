@@ -197,12 +197,37 @@ actionlint. Developer ID (notarized .dmg) and Homebrew are natural future deploy
 and actual push needs signing the scaffold disables. gourmand (a local app) has no
 server, so it was deferred rather than built as an unused feature.
 
-### Slice 4 — the apple stack pack ⬜
+### Slice 4 — the apple stack pack ✅
 
-Project `mac-dev-skills`' `appkit` plugin into `templates/{skills,rules,agents,
-commands}`: the `appkit-dev` agent, the design/grounding rules (sdk-api/sdk-search
-verification, accessibility identifiers, semantic colors/typography), and the
-**Xcode MCP** wiring (a new harness dimension no prior stack has).
+The `apple` **pack** (`templates/packs/apple/`) gains the AppKit skill suite adapted
+from [`mac-dev-skills`](https://github.com/markmals/mac-dev-skills) (Mark's own, MIT) —
+14 concise SpecKit-style `SKILL.md` files alongside the existing `ios-development` +
+`ios-simulator-control` (16 total): **appkit-design** (the flagship — the
+`sdk-api`/`sdk-search` grounding mandate + the design non-negotiables: accessibility
+identifiers, semantic colors/typography, content-derived window sizing, Liquid Glass),
+**appkit-setup**, **appkit-dev-workflow**, **appkit-hig**, **appkit-code-review**,
+**appkit-ui-testing**, **appkit-packaging**, **appkit-migration**, **appkit-private-apis**,
+**appkit-app-inspector**, **appkit-modern-input**, **appkit-launch-continuity**,
+**appkit-liquid-glass**, **appkit-session-report**. Projected to `.claude/skills/`
+(or `.agents/`/`.github/`) by `specify target add --stack apple` / `specify packs`.
+
+What this slice settled:
+- **Zero Go changes, zero golden drift.** Pack projection is directory-driven
+  (`internal/project/pack.go` scans `templates/packs/<stack>/*/SKILL.md`); pack skills
+  aren't part of `init`, so `TestInitGoldenTrees` is untouched. `TestProjectPacks`
+  asserts the AppKit suite projects.
+- **Adapted, not vendored.** Concise single `SKILL.md` per skill pointing at first-party
+  docs + the `sdk-api`/`sdk-search` CLIs (from apple-platform-tools, `mise run install`)
+  — the plugin's 230 HIG files + bundled tool binaries are referenced, never copied.
+  Grounded in the real scaffold (the mise tasks, `macOS/Sources/App`, `Core`/`TestSupport`).
+- **No agent, no MCP projection.** SpecKit packs project *skills* only — the source's
+  `appkit-dev` agent's grounding mandate folds into `appkit-design` instead. The Xcode
+  MCP stays per-machine (user/local config), documented in-skill, **not** projected — by
+  SpecKit's deliberate design (per-machine tools aren't committed).
+
+**Known gap (pre-existing, all stacks):** a pack only projects when `.speckit/specs.json`
+has `agent` set; `init`/`target add` don't record it today, so it must be set by hand (the
+offline docs already show it). Worth wiring `init --integration` to record it.
 
 ## Product kind & sibling stacks
 

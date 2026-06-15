@@ -26,10 +26,21 @@ func TestProjectPacks(t *testing.T) {
 		t.Error("expected error for unknown pack")
 	}
 
-	// codex projects to .agents/skills
+	// codex projects to .agents/skills; the apple pack carries the cross-platform
+	// ios-* skills plus the AppKit (macOS) skill suite adapted from mac-dev-skills.
 	cdx := t.TempDir()
-	if _, err := ProjectPacks(cdx, coreassets.FS, "codex", []string{"apple"}); err != nil {
+	appleWritten, err := ProjectPacks(cdx, coreassets.FS, "codex", []string{"apple"})
+	if err != nil {
 		t.Fatal(err)
 	}
-	mustExist(t, filepath.Join(cdx, ".agents", "skills", "ios-development", "SKILL.md"))
+	for _, name := range []string{
+		"ios-development", "ios-simulator-control",
+		"appkit-design", "appkit-setup", "appkit-ui-testing",
+		"appkit-packaging", "appkit-migration", "appkit-code-review",
+	} {
+		mustExist(t, filepath.Join(cdx, ".agents", "skills", name, "SKILL.md"))
+	}
+	if len(appleWritten) < 16 {
+		t.Errorf("apple pack projected %d skills, want the full AppKit suite (>=16)", len(appleWritten))
+	}
 }

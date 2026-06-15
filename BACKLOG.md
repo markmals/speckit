@@ -288,8 +288,16 @@ Ready) and baked in as `specify work`'s defaults.
     Store on a `v*` tag) + ASC-API-key/cert secrets as op:// refs; release belongs at root `.github/`, which
     `--with` can't reach. **`push` (APNs) deferred** — mostly config, thin testable kernel, gourmand (local
     app) has no server. Slice 3's verifiable + gourmand-relevant features (swiftdata, openapi) + dist done.
-  - ⬜ **Slice 4 — the apple stack pack** — project mac-dev-skills' appkit plugin (skills/agent/rules + Xcode MCP)
-    into `templates/{skills,rules,agents,commands}`.
+  - ✅ **Slice 4 — the apple stack pack** — the `apple` pack (`templates/packs/apple/`) gains the AppKit skill
+    suite adapted from mac-dev-skills (Mark's own, MIT): 14 concise `SKILL.md` (appkit-design flagship +
+    setup/dev-workflow/hig/code-review/ui-testing/packaging/migration/private-apis/app-inspector/modern-input/
+    launch-continuity/liquid-glass/session-report) beside the existing ios-development + ios-simulator-control
+    (16 total). Projects via `target add --stack apple` / `specify packs`. **Zero Go changes** (directory-driven),
+    **zero golden drift** (packs aren't in `init`); `TestProjectPacks` asserts the suite. Adapted not vendored
+    (point at first-party docs + sdk-api/sdk-search; no HIG dump / tool binaries). No agent + no MCP projection
+    (the agent's grounding mandate folds into appkit-design; Xcode MCP stays per-machine, documented in-skill).
+    ⚠ Pre-existing gap (all stacks): a pack only projects when `.speckit/specs.json` has `agent` set, which
+    `init`/`target add` don't record yet — worth wiring `init --integration` to set it.
   - ⬜ `swift-package` / `swift-cli` (apple-platform-tools' shape) fall out of Slice 1 nearly free — factor after.
   - Then the rest one at a time, each gated on a tooling preview. node-cli already spec'd
     ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
