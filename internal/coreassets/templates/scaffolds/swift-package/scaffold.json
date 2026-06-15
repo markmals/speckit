@@ -1,6 +1,7 @@
 {
   "stack": "swift-package",
   "memberDir": "packages",
+  "nameRule": "identifier",
   "scripts": [
     {
       "phase": 0,

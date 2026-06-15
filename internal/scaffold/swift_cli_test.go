@@ -32,6 +32,11 @@ func TestSwiftCLIScaffold(t *testing.T) {
 	if m.Target.Format != "swift" || m.Target.Bindings != "scoped" {
 		t.Errorf("target format=%q bindings=%q, want swift / scoped", m.Target.Format, m.Target.Bindings)
 	}
+	// {{pascal .Name}}Core is a module name, so the name must pascal-case to a valid
+	// Swift identifier — the manifest declares the "identifier" rule for the guard.
+	if m.NameRule != "identifier" {
+		t.Errorf("nameRule=%q, want identifier (the module name is {{pascal .Name}}Core)", m.NameRule)
+	}
 	if m.SharedModule {
 		t.Error("swift-cli must not be sharedModule")
 	}

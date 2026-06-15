@@ -32,6 +32,11 @@ func TestSwiftPackageScaffold(t *testing.T) {
 	if m.Target.Format != "swift" || m.Target.Bindings != "scoped" {
 		t.Errorf("target format=%q bindings=%q, want swift / scoped", m.Target.Format, m.Target.Bindings)
 	}
+	// The module is named {{pascal .Name}}, so the name must pascal-case to a valid
+	// Swift identifier — the manifest declares the "identifier" rule for the guard.
+	if m.NameRule != "identifier" {
+		t.Errorf("nameRule=%q, want identifier (the module name is {{pascal .Name}})", m.NameRule)
+	}
 	// Each package is self-contained (its own Package.swift), not a shared-module member.
 	if m.SharedModule {
 		t.Error("swift-package must not be sharedModule")
