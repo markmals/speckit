@@ -4,8 +4,23 @@ The `apple` stack scaffold (`internal/coreassets/templates/scaffolds/apple/`).
 Design: [`docs/design/scaffolds/apple.md`](../../docs/design/scaffolds/apple.md).
 Baseline + reference repos: gourmand (Tuist app, the convert target),
 apple-platform-tools (raw SwiftPM, the binding reference), mac-dev-skills (the
-AppKit agent pack). Built in slices; **Slice 1 (headless Core) + Slice 2 (Tuist app surface) + Slice 3
-`swiftdata` + `openapi` shipped 2026-06-14**.
+AppKit agent pack). Built in slices; **Slices 1–2 (headless Core + Tuist app) + Slice 3
+(`swiftdata`, `openapi`, `dist`→app-store-connect deploy kind) + Slice 4 (the AppKit pack)
+shipped 2026-06-14**.
+
+**Slice 4 — the pack** (`templates/packs/apple/`): 14 AppKit `SKILL.md` adapted from
+mac-dev-skills (Mark's own, MIT) into SpecKit's concise pack style, beside the existing
+`ios-development`/`ios-simulator-control` (16 total). **Pack projection is directory-driven**
+(`internal/project/pack.go` scans `templates/packs/<stack>/*/SKILL.md`) — add a dir, zero Go
+changes; pack skills aren't in `init`, so `TestInitGoldenTrees` never drifts (only
+`templates/skills/` global skills do). Packs project **skills only** (no agents) — the source
+`appkit-dev` agent's grounding mandate folded into `appkit-design`. **SpecKit deliberately does
+NOT project MCP config** — per-machine tools (Xcode MCP) live in user `~/.claude`/`.mcp.local.json`,
+documented in-skill. Adapt, don't vendor (point at first-party docs + sdk-api/sdk-search from
+apple-platform-tools; never the 230 HIG files or tool binaries). **⚠ Pre-existing gap (all
+stacks):** a pack only projects when `.speckit/specs.json` has `agent` set, but `init`/`target add`
+never record it — `specify packs` errors `set "agent" to project packs` until set by hand. Worth
+wiring `init --integration` to record the agent.
 
 ## The things that cost real time
 
