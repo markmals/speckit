@@ -14,3 +14,4 @@ skill.
 - [racket-ui via shadcn](rac-ui-shadcn.md) — the proven recipe to replace the foundation with racket-ui (`markmals/racket-ui`) via the shadcn CLI; **gated on committing `registry.json` to that repo's root**
 - [Apple scaffold](apple-scaffold.md) — the `apple` stack + the `swift-package`/`swift-cli` sibling library stacks: verify=headless Core/package, the swift event-stream command, the dynamic-module/static-dir `path:` trick, `.tmpl`-for-substitution-only, the `.scenario()` binding, packless-stack handling
 - [Mise monorepo](mise-monorepo.md) — generated root config invariant; the unstable-parser comment-preserving merge; the family↔member drift coupling
+- [Fork & upstream](fork-and-upstream.md) — markmals/spec-kit is a FORK of github/spec-kit; gh/PR ops default to the upstream, so target the fork with `-R markmals/spec-kit`
