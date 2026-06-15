@@ -51,3 +51,23 @@ func TestParseScenariosNestedHeading(t *testing.T) {
 		t.Errorf("nested ### Scenario sub-ids not parsed: %+v", sc)
 	}
 }
+
+// The `- [scenario.id] description` acceptance-bullet form (used on domain specs,
+// apple-platform-tools' foundational contracts) is recognized, with or without
+// backticks around the bracketed id; the sub-id is always captured.
+func TestParseScenariosAcceptanceBullets(t *testing.T) {
+	md := "## Acceptance\n\n" +
+		"- `[scenario.agent-cli.sorted-keys]` Object keys encode in sorted order.\n" +
+		"- [scenario.agent-cli.no-escape] Forward slashes are not escaped.\n" +
+		"- Given a plain bullet that is not a scenario\n"
+	sc := parseScenarios(md)
+	if len(sc) != 2 {
+		t.Fatalf("expected 2 bullet scenarios, got %d: %+v", len(sc), sc)
+	}
+	if sc[0].SubID != "scenario.agent-cli.sorted-keys" || sc[1].SubID != "scenario.agent-cli.no-escape" {
+		t.Errorf("bullet sub-ids not parsed: %+v", sc)
+	}
+	if sc[0].Heading != "Object keys encode in sorted order." {
+		t.Errorf("bullet description not captured: %q", sc[0].Heading)
+	}
+}

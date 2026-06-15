@@ -19,6 +19,7 @@ const (
 	KindFlow         Kind = "flow"
 	KindDomain       Kind = "domain"
 	KindViewModel    Kind = "view-model"
+	KindCommand      Kind = "command"
 	KindError        Kind = "error"
 	KindProtocol     Kind = "protocol"
 	KindArchitecture Kind = "architecture"
@@ -31,7 +32,7 @@ const (
 // truth the scanner validates `kind:` frontmatter against.
 var Kinds = []Kind{
 	KindNarrative, KindStory, KindUseCase, KindFlow, KindDomain,
-	KindViewModel, KindError, KindProtocol, KindArchitecture, KindDesignSystem, KindConventions,
+	KindViewModel, KindCommand, KindError, KindProtocol, KindArchitecture, KindDesignSystem, KindConventions,
 }
 
 // Prefix is the dotted ID prefix a kind's IDs must start with (CONVENTIONS.md
@@ -49,6 +50,8 @@ func (k Kind) Prefix() string {
 		return "domain."
 	case KindViewModel:
 		return "vm."
+	case KindCommand:
+		return "command."
 	case KindError:
 		return "error."
 	case KindProtocol:
@@ -58,6 +61,13 @@ func (k Kind) Prefix() string {
 	default:
 		return "" // architecture | design-system | conventions
 	}
+}
+
+// CarriesScenarios reports whether a spec of this kind declares scenarios the
+// engine parses: stories (Gherkin `## Scenario` headings) and domains (the
+// `- [scenario.id]` acceptance-criterion bullet form on a foundational contract).
+func (k Kind) CarriesScenarios() bool {
+	return k == KindStory || k == KindDomain
 }
 
 // Valid reports whether k is a member of the closed taxonomy.

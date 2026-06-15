@@ -69,8 +69,9 @@ The closed set of allowed `kind:` values. Adding a kind is a deliberate change t
 | `story`         | `stories/`      | `story.<feature>.<capability>` | Gherkin lives inline.                          |
 | `use-case`      | `use-cases/`    | `usecase.<feature>.<scenario>` | Concrete walkthrough.                          |
 | `flow`          | `user-flow/`    | `flow.<feature>.<action>`      | Step-by-step interaction sequence.             |
-| `domain`        | `models/`       | `domain.<entity>`              | Data shapes, invariants, validation rules.     |
+| `domain`        | `models/`       | `domain.<entity>`              | Data shapes, invariants, validation rules. May carry scenarios as `- [scenario.id] …` acceptance bullets (a contract's acceptance criteria), joined like a story's. |
 | `view-model`    | `view-models/`  | `vm.<feature>.<view>`          | State, actions, transitions, derived values.   |
+| `command`       | `commands/`     | `command.<tool>.<verb>`        | One CLI command's behavior: flags, the work it does, output projection, exit code. |
 | `error`         | `errors/`       | `error.<domain>.<kind>`        | User-observable failure + recovery.            |
 | `protocol`      | `protocol/`     | `protocol.<producer>.<op>`     | Cross-workspace wire contract (one producer + ≥2 consumers). A contract kind: no scenarios; verified by drift, not a test join. |
 | `architecture`  | (singular file) | `architecture`                 | Cross-cutting; one per product.                |
@@ -92,7 +93,7 @@ IDs are dotted, lowercase, hierarchical, and stable. The first segment is the ki
 
 The filename matches the trailing segment of the ID, dots preserved within the stem: `domain.specmodel` → `models/specmodel.md`; `story.engine.scan` → `stories/engine.scan.md`; `vm.items.list` → `view-models/items.list.md`.
 
-The scanner also accepts the **full dotted ID** as the stem (`stories/story.engine.scan.md`), so a library may name files by either convention — or, like an adopted external project, a mix. Gherkin scenario headings are recognized at any level (`## Scenario …` or a nested `### Scenario N: …` under `## Acceptance Criteria`).
+The scanner also accepts the **full dotted ID** as the stem (`stories/story.engine.scan.md`), so a library may name files by either convention — or, like an adopted external project, a mix. Gherkin scenario headings are recognized at any level (`## Scenario …` or a nested `### Scenario N: …` under `## Acceptance Criteria`) on a `story`, and a `domain` spec may declare its acceptance criteria as inline `- [scenario.id] …` bullets — both forms produce scenarios the engine joins.
 
 ## Reverse pointers
 

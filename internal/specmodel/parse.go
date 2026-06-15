@@ -10,7 +10,7 @@ import (
 type Spec struct {
 	Frontmatter
 	Path      string     // slash path within the library FS
-	Scenarios []Scenario // populated for stories
+	Scenarios []Scenario // populated for stories (Gherkin) and domains (acceptance bullets)
 }
 
 // Scenario is a Gherkin scenario heading and its declared sub-ID (empty if the
@@ -29,6 +29,13 @@ var scenarioSubID = regexp.MustCompile(`<!--\s*id:\s*(scenario\.[a-z0-9.\-]+)\s*
 // both the top-level `## Scenario …` form and the nested `### Scenario N: …` form
 // (under an `## Acceptance Criteria` heading) are recognized.
 var scenarioHeading = regexp.MustCompile(`^(#{2,6})\s+Scenario\b`)
+
+// scenarioBullet matches the acceptance-criterion bullet form used on domain
+// specs (apple-platform-tools' foundational contracts): a list item naming its
+// scenario inline, `- [scenario.id] description`, with optional backticks around
+// the bracketed id. The id and its description share the line, so the sub-id is
+// always present (no I6 concern).
+var scenarioBullet = regexp.MustCompile("^\\s*[-*]\\s+`?\\[(scenario\\.[a-z0-9.\\-]+)\\]`?\\s*(.*)")
 
 // ParseFrontmatter extracts a spec's frontmatter. ok is false when the content
 // has no frontmatter or no id (e.g. a README) — such files are not specs.
@@ -83,6 +90,14 @@ func parseScenarios(content string) []Scenario {
 	lines := strings.Split(content, "\n")
 	var out []Scenario
 	for i, line := range lines {
+		// Bullet form (domain acceptance): the id and description are on the one
+		// line, so the sub-id is captured directly.
+		if bm := scenarioBullet.FindStringSubmatch(line); bm != nil {
+			out = append(out, Scenario{Heading: strings.TrimSpace(bm[2]), SubID: bm[1], Line: i + 1})
+			continue
+		}
+		// Heading form (story Gherkin): the sub-id is in a `<!-- id: … -->` comment
+		// that follows the heading before the next same-or-shallower heading.
 		m := scenarioHeading.FindStringSubmatch(line)
 		if m == nil {
 			continue
@@ -143,7 +158,7 @@ func LoadLibrary(fsys fs.FS) ([]Spec, error) {
 				return nil
 			}
 			s := Spec{Frontmatter: fm, Path: p}
-			if fm.Kind == KindStory {
+			if fm.Kind.CarriesScenarios() {
 				s.Scenarios = parseScenarios(string(b))
 			}
 			specs = append(specs, s)
