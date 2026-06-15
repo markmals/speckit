@@ -18,6 +18,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+      # The generated slice of the apple pack (deep skills + apple-hig + the appkit-dev
+      # agent) is produced from markmals/mac-dev-skills. Check it out PINNED to a known
+      # commit so the drift gate is deterministic — an unrelated mac-dev-skills change
+      # can't break this repo's CI. To pick up new mac-dev-skills content: bump this `ref`,
+      # run `mise run apple-pack:generate`, and commit both.
+      - name: check out mac-dev-skills (pinned) for the apple-pack drift gate
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/checkout@v6
+        with:
+          repository: markmals/mac-dev-skills
+          ref: 9bfc1cf6cedf63ff301d8d73a268a1aae03b2ed5
+          path: .cache/mac-dev-skills
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -27,6 +39,11 @@ jobs:
         run: |
           unformatted=$(gofmt -l cmd internal)
           if [ -n "$unformatted" ]; then echo "gofmt needed:"; echo "$unformatted"; exit 1; fi
+      - name: apple-pack drift (generated slice matches the pinned mac-dev-skills source)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          MAC_DEV_SKILLS_ROOT: .cache/mac-dev-skills
+        run: scripts/generate-apple-pack.sh --check
       - name: build
         run: go build ./...
       - name: vet

@@ -27,10 +27,21 @@ files). **Earlier "packs project skills only (no agents)" is REVERSED:** a reser
 from developer.apple.com) under `references/hig/` — embeds into every `specify` binary (pack ≈2.9MB).
 `loadPack` keeps the [[#40]] packless-stack handling (a real scaffold with no pack dir → no skills,
 not an error). `TestProjectPacks` covers references + agent projection + the packless case.
-**Deferred (follow-ups):** the `scripts/generate-apple-pack.sh` generation pipeline + its CI
-drift-check against an external `mac-dev-skills` checkout (incompatible with the hand-integrated
-hybrid pack + couples CI to an external repo); and deepening the other ~11 appkit skills with
-`references/` (only 3 were deepened so far — the stranded source had a partial generation).
+**Generation pipeline LANDED (after `markmals/mac-dev-skills` was published PUBLIC, 2026-06-15).**
+`scripts/generate-apple-pack.sh` regenerates ONLY the generated slice — the 4 deep skills
+(design/private-apis/app-inspector/apple-hig) + the agent — from `<source>/plugins/appkit/`,
+retargeted for SpecKit (perl rewrites: appkit-hig→apple-hig, appkit-ui-testing→XCUITest,
+appkit-packaging refs→`specify deploy`, etc.); the other ~10 appkit skills + the iOS skills are
+left in place. So the committed pack is a deliberate hybrid and `--check` PASSES against it (my
+earlier "incompatible with the hybrid" worry was wrong — the generator only touches the 4). `mise run
+apple-pack:generate` / `apple-pack:check` are the local interface (default source
+`../skills/mac-dev-skills`, only resolves from the PRIMARY checkout — pass `MAC_DEV_SKILLS_ROOT` from a
+worktree). **CI drift gate** (`.github/workflows/ci-go.yml`, ubuntu only): checks out
+`markmals/mac-dev-skills` **PINNED to a commit** into `.cache/mac-dev-skills` (gitignored) and runs
+`--check` — pinned so an unrelated mac-dev-skills change can't break this repo's CI; to pick up new
+source content, bump the `ref`, `mise run apple-pack:generate`, commit both. **Still deferred:**
+deepening the other ~10 appkit skills (the generator copies only 4 — extending it would replace #36's
+deliberately-concise hand-adapted skills, a separate product call).
 
 ## The things that cost real time
 

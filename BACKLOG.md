@@ -308,10 +308,17 @@ Ready) and baked in as `specify work`'s defaults.
     `AgentsDir()`, Claude-only; codex/generic/copilot skip it), and `apple-hig` (was `appkit-hig`) bundles the
     **complete offline Apple HIG** (~172 md, 2.4MB, snapshot 2026-06-10) — embeds into the binary (pack ≈2.9MB).
     `loadPack` keeps the packless-stack handling; `TestProjectPacks` covers references + agent + packless;
-    binary e2e green (`specify packs` → 208 files, agent + HIG corpus land). **Deferred follow-ups:** the
-    `scripts/generate-apple-pack.sh` generation pipeline + its CI drift-check vs an external `mac-dev-skills`
-    checkout (incompatible with the hand-integrated hybrid + couples CI to an external repo); deepening the
-    other ~11 appkit skills with `references/`.
+    binary e2e green (`specify packs` → 208 files, agent + HIG corpus land).
+  - ✅ **Generation pipeline LANDED** (after `markmals/mac-dev-skills` was published PUBLIC) —
+    `scripts/generate-apple-pack.sh` regenerates the generated slice (the 4 deep skills + the agent)
+    from `mac-dev-skills/plugins/appkit/`, retargeted for SpecKit; `mise run apple-pack:generate`/
+    `apple-pack:check` are the local interface. **CI drift gate** (`ci-go.yml`, ubuntu only) checks out
+    `markmals/mac-dev-skills` **PINNED to a commit** into `.cache/` and runs `--check` — pinned so an
+    unrelated source change can't break this repo's CI; bump the `ref` + regenerate to sync. `--check`
+    passes against the committed pack (the generator only touches the 4 skills, so the hybrid is fine —
+    the earlier "incompatible" worry was wrong); actionlint clean; the exact CI step simulated green.
+    Still deferred: deepening the other ~10 hand-adapted appkit skills (would replace #36's deliberately
+    concise versions — a separate product call).
   - ✅ **`swift-package` / `swift-cli` (apple-platform-tools' shape)** — two sibling library stacks
     (`memberDir: packages`, swift event-stream format, scoped bindings) that reuse Slice 1's headless
     harness (the `SpecTraits` `.spec`/`.scenario` traits + the event-stream test task) with **zero engine

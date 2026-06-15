@@ -29,6 +29,19 @@ run = "go vet ./..."
 description = "run the test suite"
 run = "go test ./..."
 
+# The apple pack's deep skills (appkit-design/private-apis/app-inspector), the offline
+# apple-hig HIG corpus, and the appkit-dev agent are GENERATED from the mac-dev-skills
+# source (its other ~10 skills stay hand-maintained). These tasks need the source
+# ($MAC_DEV_SKILLS_ROOT or ../skills/mac-dev-skills) and degrade with a clear error without
+# it. CI enforces no-drift against markmals/mac-dev-skills (pinned) — see .github/workflows/ci-go.yml.
+[tasks."apple-pack:generate"]
+description = "regenerate the generated apple-pack skills + agent from the mac-dev-skills source"
+run = "scripts/generate-apple-pack.sh"
+
+[tasks."apple-pack:check"]
+description = "fail if the generated apple-pack skills drift from the mac-dev-skills source (local)"
+run = "scripts/generate-apple-pack.sh --check"
+
 [tasks.fmt]
 description = "format the tree in place"
 run = "gofmt -w cmd internal"
