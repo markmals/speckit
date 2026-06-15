@@ -24,6 +24,11 @@ type Manifest struct {
 	// (overridable with --dir): "apps" for an app, "cmd" for a go-service, "packages"
 	// for a library. Empty defaults to "apps".
 	MemberDir string `json:"memberDir,omitempty"`
+	// NameRule constrains the member name beyond the CLI's base slug check (D-naming).
+	// "identifier" requires that pascal(name) be a valid source identifier — for stacks
+	// that render {{pascal .Name}} as a module/type name (the swift stacks, apple), where
+	// not every safe slug works (e.g. a leading digit). Empty = the base rule only.
+	NameRule string `json:"nameRule,omitempty"`
 	// SharedModule makes members of this stack compose into ONE repo-root go.mod
 	// (each member a cmd/<name> sharing internal/ packages — trove's shape) rather
 	// than a self-contained module per member. `target add` creates the root go.mod
@@ -151,6 +156,33 @@ func LoadManifest(src fs.FS) (Manifest, error) {
 		return Manifest{}, fmt.Errorf("scaffold.json: %w", err)
 	}
 	return m, nil
+}
+
+// ValidateName checks a member name against the manifest's NameRule, a constraint
+// beyond the CLI's base slug check (`target add` calls it after LoadManifest, before
+// any render). The rule exists because a stack may render {{pascal .Name}} directly as
+// a source identifier (a Swift module / type), and not every safe slug pascal-cases
+// into a valid one. Returns a descriptive, actionable error when the name can't satisfy
+// the rule. `target register` does NOT apply it — it writes no files, so it records
+// whatever member already exists.
+func (m Manifest) ValidateName(name string) error {
+	switch m.NameRule {
+	case "", "default":
+		return nil
+	case "identifier":
+		// pascal() strips separators and keeps only alphanumerics, so its output is
+		// always [A-Za-z0-9]* — the only way it fails to be a valid identifier is a
+		// leading digit (e.g. "3d-tool" -> "3dTool") or an empty result ("--" -> "").
+		p := pascal(name)
+		if p == "" || !unicode.IsLetter([]rune(p)[0]) {
+			return fmt.Errorf(
+				"stack %q needs a name that pascal-cases into a valid identifier, but %q -> %q can't be a module/type name (an identifier must start with a letter) — try a letter-led name",
+				m.Stack, name, p)
+		}
+		return nil
+	default:
+		return fmt.Errorf("scaffold.json: unknown nameRule %q", m.NameRule)
+	}
 }
 
 // PhasedScripts returns the manifest's scripts in ascending phase order (stable

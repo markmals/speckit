@@ -221,6 +221,11 @@ func targetAddCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("unknown or invalid stack %q: %w", stack, err)
 			}
+			// Some stacks render {{pascal .Name}} as a source identifier (Swift modules
+			// / types) and require more than a safe slug — reject before any render.
+			if err := m.ValidateName(name); err != nil {
+				return fmt.Errorf("target add: %w", err)
+			}
 			// Default placement is stack-specific (the manifest's memberDir): a web
 			// app lands in apps/, a go-service in cmd/, a library in packages/.
 			if dir == "" {
