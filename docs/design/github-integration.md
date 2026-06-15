@@ -179,7 +179,10 @@ the same hierarchy Beads gets from parent-child. *Caveat:* Issue Types are an
 | `ISSUE_TEMPLATE/defect.yml` | a defect form — stamps `type: Bug`, a label, the project; prompts for repro + the target |
 | `ISSUE_TEMPLATE/config.yml` | points docs at *this* repo |
 | `CODEOWNERS` | maps `/features/**` and `/specs/**` to the spec owner, so **spec changes require human review** |
-| `dependabot.yml` | for the stack's ecosystem (web → npm, go → gomod) |
+
+_No `dependabot.yml` is projected — dependency updates are surfaced locally by
+each stack's **`deps`** mise task (Renovate dry-run, never opens PRs), part of
+`mise run check`._
 
 ## Pillar 3 — Projects as the work surface (Beads-informed, simplified)
 

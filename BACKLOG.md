@@ -68,8 +68,9 @@ so the offline guarantee holds structurally.**
 - ✅ **Pillar 2 — Issues as ephemeral defect intake.** `specify issues list|create|close`
   (confirmation-gated, `--json`); the `github/` scaffold subtree now drops the full
   per-target `.github/` (`PULL_REQUEST_TEMPLATE.md`, `ISSUE_TEMPLATE/defect.yml` stamping
-  `type: Bug` + label fallback, `config.yml`, `CODEOWNERS` for `/features` `/specs`,
-  `dependabot.yml`). No durable issue↔scenario link (GitHub cross-refs). Close-on-green is
+  `type: Bug` + label fallback, `config.yml`, `CODEOWNERS` for `/features` `/specs`).
+  Dependency updates moved off Dependabot to a local Renovate `deps` gate (per-stack
+  `mise.toml`). No durable issue↔scenario link (GitHub cross-refs). Close-on-green is
   the discipline.
 - ✅ **Pillar 3 — Projects board (Beads-informed).** `specify work ready|claim|move|discover`
   on the inlined Projects v2 GraphQL client (resolve project/fields/options, add item, set
