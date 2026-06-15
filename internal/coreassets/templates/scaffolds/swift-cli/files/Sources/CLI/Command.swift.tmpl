@@ -1,0 +1,24 @@
+import ArgumentParser
+import {{pascal .Name}}Core
+
+// The thin CLI shell: swift-argument-parser turns the command line into typed values,
+// then delegates to the {{pascal .Name}}Core library (the provable logic). Keeping the
+// behaviour in the library is what lets `swift test` verify it without running the
+// binary.
+@main
+struct {{pascal .Name}}Command: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "{{kebab .Name}}",
+        abstract: "Print a greeting."
+    )
+
+    @Argument(help: "The name to greet.")
+    var name: String
+
+    @Flag(name: .shortAndLong, help: "Shout the greeting.")
+    var shout = false
+
+    func run() {
+        print(Greeter.greeting(for: name, shout: shout))
+    }
+}

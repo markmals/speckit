@@ -17,10 +17,9 @@ changes; pack skills aren't in `init`, so `TestInitGoldenTrees` never drifts (on
 `appkit-dev` agent's grounding mandate folded into `appkit-design`. **SpecKit deliberately does
 NOT project MCP config** — per-machine tools (Xcode MCP) live in user `~/.claude`/`.mcp.local.json`,
 documented in-skill. Adapt, don't vendor (point at first-party docs + sdk-api/sdk-search from
-apple-platform-tools; never the 230 HIG files or tool binaries). **⚠ Pre-existing gap (all
-stacks):** a pack only projects when `.speckit/specs.json` has `agent` set, but `init`/`target add`
-never record it — `specify packs` errors `set "agent" to project packs` until set by hand. Worth
-wiring `init --integration` to record the agent.
+apple-platform-tools; never the 230 HIG files or tool binaries). **Pack-agent gating FIXED (#37):**
+`specify init --integration <agent>` now seeds `agent` in `.speckit/specs.json` (`config.SetAgent`,
+called from `project.Init`), so `target add`/`packs` auto-project; `AddTarget` preserves it.
 
 ## The things that cost real time
 
@@ -151,6 +150,45 @@ Developer-ID-notarize, Homebrew.
   tree + the dynamic-module/static-dir wiring + story↔`.scenario` id agreement. The
   Swift build/verify is proven by a Mac e2e (`target add` → `verify`), never by
   speckit's CI.
+
+## Sibling library stacks — `swift-package` / `swift-cli` (shipped)
+
+Two sibling library stacks that reuse the apple harness with **zero engine
+changes** (`internal/coreassets/templates/scaffolds/swift-{package,cli}/`). Their
+example specs use `kind: story` (the formal product `kind: library` taxonomy is still
+pending — [[library-products]]), so nothing here sets `kind: library` yet. Both:
+`memberDir: packages`, `format: swift`, `bindings: scoped`, the shared `TestSupport`
+target with the `.spec`/`.scenario` traits, and the event-stream `mise run test` task.
+Verify target = the package itself (`swift test`), green-on-arrival with only the
+Swift toolchain (no Tuist/Xcode). Render-tested: `internal/scaffold/swift_{package,cli}_test.go`.
+
+- **`swift-package`** — a FLAT library (no `Core/` subdir): module `{{pascal .Name}}`
+  over static `Sources/Library` via `path:`; test target over `Tests/LibraryTests`.
+  Example is a pure `SemanticVersion` bound to `story.version.compare` — chosen
+  DISTINCT from apple's `todo` so two stacks added to one repo never collide on
+  `features/` or duplicate a story id.
+- **`swift-cli`** — library Core + thin executable shell. `{{pascal .Name}}Core`
+  (static `Sources/Core`) holds the provable logic; a `{{kebab .Name}}`
+  `executableTarget` (static `Sources/CLI`, `@main`/`ParsableCommand`) parses args and
+  delegates. **swift-argument-parser** is an unconditional package dep — so its
+  `dependencies:` block sits after `products:` (the SPM arg-order rule). The behaviour
+  is proven through the Core lib, so `swift test` verifies headlessly; the binary is
+  never run during verify (but `mise run run` exists; e2e: `greet-tool Ada --shout` →
+  `HELLO, ADA!`). Example bound to `story.greet.run`.
+
+**Packless stacks are first-class** (`internal/project/pack.go`): neither ships a pack
+(library stacks have no platform skill suite). `loadPack` now returns `(nil, nil)` for
+a stack whose `templates/scaffolds/<stack>/scaffold.json` exists but has no
+`templates/packs/<stack>/` — so `specify packs` doesn't fail on a packless target —
+while still erroring on a genuinely unknown stack. (The `target add` call site already
+swallowed pack errors to stderr; `specify packs` returned them.) The `stack` reaching
+`ProjectPacks` is pre-validated by `LoadManifest`, so this loses no typo safety.
+
+**Gotcha proven during the e2e:** `target add` seeds the `root/` example into
+`features/` **only on the first target** in a repo (subsequent adds skip it). Adding
+swift-package THEN swift-cli to one repo leaves the 2nd stack's scenarios *dangling*
+(bindings present, scenario undeclared) — not a scaffold bug; each stack verifies green
+in its own fresh repo. So test each library stack in a SEPARATE throwaway repo.
 
 See also [[dev-workflow]], [[web-scaffold]] (the composition model + the dotfile
 `go:embed all:` / repo-`.gitignore` drop trap, which applies to `.swift-format`/

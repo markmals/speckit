@@ -8,10 +8,22 @@ import (
 )
 
 // loadPack reads the platform skills for a stack from templates/packs/<stack>/.
+// A stack need not ship a pack: library stacks (swift-package, swift-cli) have no
+// platform skill suite. So a missing pack dir is only an error when the stack isn't
+// a real scaffold either — a known scaffold with no pack returns no skills, which
+// keeps `specify packs` from failing on a packless target while still catching a
+// genuinely unknown stack name.
 func loadPack(assets fs.FS, stack string) ([]Skill, error) {
 	dir := "templates/packs/" + stack
 	entries, err := fs.ReadDir(assets, dir)
 	if errors.Is(err, fs.ErrNotExist) {
+		// The scaffold-layout path mirrors cmd/specify (fs.Sub on
+		// "templates/scaffolds/<stack>") + scaffold.LoadManifest (reads "scaffold.json");
+		// project/ deliberately doesn't import scaffold/, so it's duplicated here. If that
+		// layout ever moves, update both or packless stacks start erroring again.
+		if _, serr := fs.Stat(assets, "templates/scaffolds/"+stack+"/scaffold.json"); serr == nil {
+			return nil, nil // a real scaffold that ships no pack
+		}
 		return nil, fmt.Errorf("unknown pack %q", stack)
 	}
 	if err != nil {

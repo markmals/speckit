@@ -1,0 +1,26 @@
+{
+  "stack": "swift-cli",
+  "memberDir": "packages",
+  "scripts": [
+    {
+      "phase": 0,
+      "commands": [
+        "mise trust"
+      ]
+    },
+    {
+      "phase": 1,
+      "silent": true,
+      "commands": [
+        "for d in Sources Tests; do if [ -d \"$d\" ]; then swift format --in-place --recursive \"$d\"; fi; done"
+      ]
+    }
+  ],
+  "target": {
+    "command": "cd {{.Dir}} && mise run test",
+    "format": "swift",
+    "report": "{{.Dir}}/test.swift-events.ndjson",
+    "source": "{{.Dir}}",
+    "bindings": "scoped"
+  }
+}

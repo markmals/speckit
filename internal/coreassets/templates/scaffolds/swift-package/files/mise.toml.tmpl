@@ -1,0 +1,37 @@
+# {{.Name}} — a Swift package. The spec-provable library builds and tests with
+# `swift test` alone, so `specify verify` needs no Xcode project, simulator, or
+# signing. Swift + swift-format come from the active toolchain (not pinned here).
+# `mise run test` writes the Swift Testing event stream the engine's `swift` format
+# joins.
+
+[tasks.test]
+description = "run the test suite, writing the event-stream report the engine joins"
+run = "swift test --event-stream-output-path test.swift-events.ndjson --event-stream-version 0"
+
+[tasks.build]
+alias = "b"
+description = "build the package"
+run = "swift build"
+
+[tasks.fmt]
+description = "format Swift sources in place (swift-format). Pass paths to format just those."
+run = '''
+if [ "$#" -gt 0 ]; then
+  for f in "$@"; do case "$f" in *.swift) swift format --in-place "$f" ;; esac; done
+else
+  for d in Sources Tests; do
+    if [ -d "$d" ]; then swift format --in-place --recursive "$d"; fi
+  done
+fi
+'''
+
+[tasks.lint]
+alias = "l"
+description = "lint Swift sources (swift-format, strict)"
+run = '''
+dirs=""
+for d in Sources Tests; do
+  if [ -d "$d" ]; then dirs="$dirs $d"; fi
+done
+if [ -n "$dirs" ]; then swift format lint --strict --recursive $dirs; fi
+'''

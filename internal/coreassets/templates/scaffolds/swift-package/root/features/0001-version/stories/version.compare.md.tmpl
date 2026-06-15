@@ -1,0 +1,29 @@
+---
+id: story.version.compare
+kind: story
+---
+
+**As a** package consumer
+**I want** to parse and compare semantic versions
+**So that** the scaffold's spec → test → verify loop is proven end to end
+
+**Independent test:** `mise run -C {{.Dir}} test` proves the scenarios below
+against the headless library.
+
+# Acceptance Criteria
+
+## Scenario 1: a dotted string parses into its three components
+
+<!-- id: scenario.version.compare.parse -->
+
+- Given the string "1.2.3"
+- When it is parsed
+- Then the version is major 1, minor 2, patch 3
+
+## Scenario 2: ordering is numeric, not lexical
+
+<!-- id: scenario.version.compare.order -->
+
+- Given the versions 1.2.0 and 1.10.0
+- When they are compared
+- Then 1.2.0 sorts before 1.10.0

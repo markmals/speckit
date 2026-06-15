@@ -1,0 +1,22 @@
+import TestSupport
+import Testing
+
+@testable import {{pascal .Name}}Core
+
+// SPEC: story.greet.run
+//
+// The CLI's behaviour is proven through its library (the executable is a thin shell),
+// so `swift test` verifies it headlessly — no binary run, no I/O capture. The scenario
+// ID lives in the `.scenario` trait (source), never the test's display name.
+@Suite(.spec("story.greet.run"))
+struct GreetRunTests {
+    @Test(.scenario("scenario.greet.run.basic"))
+    func `greeting a name returns a friendly line`() {
+        #expect(Greeter.greeting(for: "Ada") == "Hello, Ada!")
+    }
+
+    @Test(.scenario("scenario.greet.run.shout"))
+    func `the shout flag upper-cases the greeting`() {
+        #expect(Greeter.greeting(for: "Ada", shout: true) == "HELLO, ADA!")
+    }
+}

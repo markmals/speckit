@@ -232,9 +232,35 @@ for **every** stack.
 
 ## Product kind & sibling stacks
 
-`apple` → `kind: app`. `swift-package` / `swift-cli` (apple-platform-tools' shape:
-a flat package/CLI, `kind: library`) reuse Slice 1's Core templates at the repo
-root and fall out nearly free — factored after the app slices.
+`apple` → `kind: app`. **`swift-package` / `swift-cli` (shipped)** are sibling
+library stacks (apple-platform-tools' shape) that reuse Slice 1's headless harness
+— the shared `TestSupport` target with the `.spec`/`.scenario` traits, the `swift`
+event-stream test task, and scoped bindings — with **zero engine changes**. Both
+place members in `packages/` (`memberDir`); the verify target is the package itself
+(`swift test`), so they're green-on-arrival with only the Swift toolchain (no Tuist,
+Xcode, simulator, or signing).
+
+- **`swift-package`** — a flat reusable library. The module is named after the
+  member (`{{pascal .Name}}`) over a static `Sources/Library` directory via an
+  explicit `path:` (the renderer substitutes file contents, not directory names).
+  The seeded example is a pure `SemanticVersion` (parse + numeric ordering) bound to
+  `story.version.compare` — deliberately distinct from `apple`'s `todo` so the two
+  never collide on a shared repo's `features/`.
+- **`swift-cli`** — a library Core plus a thin **swift-argument-parser** executable
+  shell: `{{pascal .Name}}Core` (over `Sources/Core`) holds the provable logic, and a
+  `{{kebab .Name}}` `executableTarget` (over `Sources/CLI`, `@main`/`ParsableCommand`)
+  parses arguments and delegates. Keeping the behaviour in the library is what lets
+  `swift test` verify it headlessly — the binary is never run during verify. The
+  package-level `dependencies` sit after `products` (SwiftPM's required arg order).
+  Seeded example: a `greet` command bound to `story.greet.run`.
+
+Neither ships a pack, an MCP wiring, or `--with` features (the example is the proof,
+not a feature surface). A packless stack is now first-class: `loadPack` returns no
+skills for a real scaffold that ships no pack (so `specify packs` doesn't fail on a
+packless target) while still erroring on a genuinely unknown stack name. Proven on a
+Mac end to end (`swift build` · `swift test` · `swift format lint --strict` ·
+`specify verify` 2 passed · 1 locked; the swift-cli binary runs); render-tested in Go
+CI via `internal/scaffold/swift_{package,cli}_test.go`.
 
 ## Method note
 
