@@ -180,8 +180,22 @@ passed** + app build, base unaffected. Specifics:
 - Changing the contract may need a clean build to bust the plugin's codegen cache
   (a fresh scaffold always codegens clean).
 
-**Remaining ⬜:** `push` (APNs registration) · `dist` (TestFlight / App Store /
-Homebrew release + signing/notarization advisory, from `appkit-packaging`).
+**`dist` ✅ (as a deploy kind, not a `--with` feature)** — release/distribution is a
+poor fit for `--with` (scaffold features render only into the member dir, but release
+workflows belong at the repo-root `.github/`), and SpecKit already has the right home:
+the **deploy-kind** subsystem. So `dist` shipped as the **`app-store-connect`** deploy
+kind: `specify deploy add app-store-connect <target>` drops a macOS GitHub Actions
+workflow that archives with `xcodebuild` and uploads to TestFlight / App Store with the
+[`asc`](https://github.com/rorkai/App-Store-Connect-CLI) CLI (`brew install asc`;
+`asc auth login --bypass-keychain` + `asc builds upload --archive-path …`) on a `v*` tag,
+and records the App Store Connect API key + signing-cert secrets as op:// refs (plus the
+non-secret `ASC_APP_ID` repo variable). Covered by `TestRenderDeployAllKinds` +
+actionlint. Developer ID (notarized .dmg) and Homebrew are natural future deploy kinds.
+
+**Deferred — `push` (APNs):** mostly config (registration + `.entitlements` +
+`Project.swift` capability seam), only a thin token-format kernel is offline-testable,
+and actual push needs signing the scaffold disables. gourmand (a local app) has no
+server, so it was deferred rather than built as an unused feature.
 
 ### Slice 4 — the apple stack pack ⬜
 

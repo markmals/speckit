@@ -74,6 +74,7 @@ var DeployKinds = []string{
 	"cloudflare-workers-spa",
 	"railway",
 	"github-pages-spa",
+	"app-store-connect",
 }
 
 // Load reads and parses .speckit/specs.json under root. found is false (with a

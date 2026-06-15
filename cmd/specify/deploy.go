@@ -110,6 +110,9 @@ func deployAddCmd() *cobra.Command {
 			if kind == "github-pages-spa" {
 				fmt.Println("  note: enable Pages (Settings → Pages → Source: GitHub Actions); no secrets needed.")
 			}
+			if kind == "app-store-connect" {
+				fmt.Println("  note: set your signing team/identity in Project.swift and create the Apple Distribution cert + App Store Connect API key; the workflow uploads on a v* tag.")
+			}
 			return nil
 		},
 	}
