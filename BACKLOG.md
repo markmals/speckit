@@ -296,8 +296,10 @@ Ready) and baked in as `specify work`'s defaults.
     **zero golden drift** (packs aren't in `init`); `TestProjectPacks` asserts the suite. Adapted not vendored
     (point at first-party docs + sdk-api/sdk-search; no HIG dump / tool binaries). No agent + no MCP projection
     (the agent's grounding mandate folds into appkit-design; Xcode MCP stays per-machine, documented in-skill).
-    ⚠ Pre-existing gap (all stacks): a pack only projects when `.speckit/specs.json` has `agent` set, which
-    `init`/`target add` don't record yet — worth wiring `init --integration` to set it.
+    ✅ Pack auto-projection fixed (all stacks): `specify init --integration <agent>` now seeds `agent` in
+    `.speckit/specs.json` (via `config.SetAgent`, called from `project.Init`), so `target add`/`packs` project
+    the pack without hand-editing; `AddTarget` preserves it. Golden trees gained `.speckit/specs.json`;
+    `TestInitRecordsAgent` covers it.
   - ⬜ `swift-package` / `swift-cli` (apple-platform-tools' shape) fall out of Slice 1 nearly free — factor after.
   - Then the rest one at a time, each gated on a tooling preview. node-cli already spec'd
     ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).

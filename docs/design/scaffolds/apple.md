@@ -225,9 +225,10 @@ What this slice settled:
   MCP stays per-machine (user/local config), documented in-skill, **not** projected — by
   SpecKit's deliberate design (per-machine tools aren't committed).
 
-**Known gap (pre-existing, all stacks):** a pack only projects when `.speckit/specs.json`
-has `agent` set; `init`/`target add` don't record it today, so it must be set by hand (the
-offline docs already show it). Worth wiring `init --integration` to record it.
+A pack projects only when `.speckit/specs.json` records an `agent` — `specify init
+--integration <agent>` now seeds it (so `target add`/`packs` auto-project the pack;
+`AddTarget` preserves it). This fixed a gap that had silently disabled pack projection
+for **every** stack.
 
 ## Product kind & sibling stacks
 

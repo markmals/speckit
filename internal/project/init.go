@@ -7,6 +7,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/markmals/speckit/internal/config"
 )
 
 // Options controls Init.
@@ -121,6 +123,15 @@ func Init(root string, assets fs.FS, opts Options) ([]string, error) {
 			written = append(written, w)
 		}
 	}
+
+	// Record the chosen agent in .speckit/specs.json so `specify target add` /
+	// `specify packs` can project the stack packs — both are gated on a recorded
+	// agent. Preserves an existing config's targets (re-init / `init --here`).
+	if err := config.SetAgent(root, opts.Integration); err != nil {
+		return nil, err
+	}
+	written = append(written, filepath.Join(root, config.File))
+
 	return written, nil
 }
 

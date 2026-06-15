@@ -6,8 +6,45 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/markmals/speckit/internal/config"
 	"github.com/markmals/speckit/internal/coreassets"
 )
+
+// TestInitRecordsAgent — init seeds .speckit/specs.json with the chosen agent, so
+// `target add` / `packs` (gated on a recorded agent) can project the stack packs
+// without the user hand-editing specs.json. AddTarget must then preserve it.
+func TestInitRecordsAgent(t *testing.T) {
+	for _, agent := range []string{"claude", "codex", "copilot", "generic"} {
+		t.Run(agent, func(t *testing.T) {
+			root := t.TempDir()
+			if _, err := Init(root, coreassets.FS, Options{Integration: agent}); err != nil {
+				t.Fatal(err)
+			}
+			cfg, found, err := config.Load(root)
+			if err != nil || !found {
+				t.Fatalf("specs.json not written by init: found=%v err=%v", found, err)
+			}
+			if cfg.Agent != agent {
+				t.Errorf("recorded agent = %q, want %q", cfg.Agent, agent)
+			}
+			if cfg.Paths.Specs != "specs" || cfg.Paths.Features != "features" {
+				t.Errorf("default paths not seeded: %+v", cfg.Paths)
+			}
+
+			// target add must preserve the agent (it load-modify-saves the config).
+			if err := config.AddTarget(root, "app", config.Target{Stack: "apple", Format: "swift"}); err != nil {
+				t.Fatal(err)
+			}
+			after, _, _ := config.Load(root)
+			if after.Agent != agent {
+				t.Errorf("agent lost after target add: %q, want %q", after.Agent, agent)
+			}
+			if _, ok := after.Targets["app"]; !ok {
+				t.Error("target not added")
+			}
+		})
+	}
+}
 
 // SPEC: story.init.basic
 // SPEC: story.init.projection

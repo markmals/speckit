@@ -41,7 +41,9 @@ trailing commas).
 ```
 
 Field by field: `version` is this file's schema version; `agent` is who `init`
-projected for; `paths` (optional, defaults shown) locates the spec library; each
+projected for — `init --integration <agent>` records it here so `target add` /
+`packs` know where to project each stack's pack; `paths` (optional, defaults
+shown) locates the spec library; each
 **target** carries a `stack` (selects its platform pack — see below), the verify
 wiring (`command` to run, `report` `format` ∈ `junit`/`swift`/`gotest`, `report`
 path, `source` dir scanned for bindings), an optional `product` label, and an
