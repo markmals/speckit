@@ -27,10 +27,10 @@ files). **Earlier "packs project skills only (no agents)" is REVERSED:** a reser
 from developer.apple.com) under `references/hig/` — embeds into every `specify` binary (pack ≈2.9MB).
 `loadPack` keeps the [[#40]] packless-stack handling (a real scaffold with no pack dir → no skills,
 not an error). `TestProjectPacks` covers references + agent projection + the packless case.
-**Deferred (follow-ups):** the `scripts/generate-apple-pack.sh` generation pipeline + its CI
-drift-check against an external `mac-dev-skills` checkout (incompatible with the hand-integrated
-hybrid pack + couples CI to an external repo); and deepening the other ~11 appkit skills with
-`references/` (only 3 were deepened so far — the stranded source had a partial generation).
+The generated AppKit slice is checked against an external `mac-dev-skills` checkout by
+`scripts/generate-apple-pack.sh --check` in CI; do not hand-edit the generated AppKit pack copy.
+**Deferred (follow-ups):** deepening the other ~11 appkit skills with `references/` (only 3 were
+deepened so far — the stranded source had a partial generation).
 
 ## The things that cost real time
 

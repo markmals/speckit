@@ -308,10 +308,10 @@ Ready) and baked in as `specify work`'s defaults.
     `AgentsDir()`, Claude-only; codex/generic/copilot skip it), and `apple-hig` (was `appkit-hig`) bundles the
     **complete offline Apple HIG** (~172 md, 2.4MB, snapshot 2026-06-10) — embeds into the binary (pack ≈2.9MB).
     `loadPack` keeps the packless-stack handling; `TestProjectPacks` covers references + agent + packless;
-    binary e2e green (`specify packs` → 208 files, agent + HIG corpus land). **Deferred follow-ups:** the
-    `scripts/generate-apple-pack.sh` generation pipeline + its CI drift-check vs an external `mac-dev-skills`
-    checkout (incompatible with the hand-integrated hybrid + couples CI to an external repo); deepening the
-    other ~11 appkit skills with `references/`.
+    binary e2e green (`specify packs` → 208 files, agent + HIG corpus land). The generated AppKit slice is
+    checked against an external `mac-dev-skills` checkout by `scripts/generate-apple-pack.sh --check` in CI;
+    do not hand-edit the generated AppKit pack copy. **Deferred follow-ups:** deepening the other ~11 appkit
+    skills with `references/`.
   - ✅ **`swift-package` / `swift-cli` (apple-platform-tools' shape)** — two sibling library stacks
     (`memberDir: packages`, swift event-stream format, scoped bindings) that reuse Slice 1's headless
     harness (the `SpecTraits` `.spec`/`.scenario` traits + the event-stream test task) with **zero engine

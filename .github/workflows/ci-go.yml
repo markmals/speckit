@@ -18,6 +18,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+      - name: checkout mac-dev-skills source
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/checkout@v6
+        with:
+          repository: malstrom/mac-dev-skills
+          path: .cache/mac-dev-skills
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -27,6 +33,11 @@ jobs:
         run: |
           unformatted=$(gofmt -l cmd internal)
           if [ -n "$unformatted" ]; then echo "gofmt needed:"; echo "$unformatted"; exit 1; fi
+      - name: apple pack drift
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          MAC_DEV_SKILLS_ROOT: .cache/mac-dev-skills
+        run: scripts/generate-apple-pack.sh --check
       - name: build
         run: go build ./...
       - name: vet

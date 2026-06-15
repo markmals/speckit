@@ -49,6 +49,14 @@ description = "everything CI runs, plus a gofmt gate — run before pushing"
 depends = ["fmt:check"]
 run = ["go build ./...", "go vet ./...", "go test ./..."]
 
+[tasks."apple-pack:generate"]
+description = "Regenerate the embedded apple pack from mac-dev-skills"
+run = "scripts/generate-apple-pack.sh"
+
+[tasks."apple-pack:check"]
+description = "Fail if the embedded apple pack has drifted from mac-dev-skills"
+run = "scripts/generate-apple-pack.sh --check"
+
 [tasks.act]
 description = "run the gate self-test workflow locally via act (boots colima if needed)"
 # Note: the socket path is hard-coded rather than read from `docker context

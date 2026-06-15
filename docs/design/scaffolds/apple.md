@@ -199,34 +199,33 @@ server, so it was deferred rather than built as an unused feature.
 
 ### Slice 4 — the apple stack pack ✅
 
-The `apple` **pack** (`templates/packs/apple/`) gains the AppKit skill suite adapted
-from [`mac-dev-skills`](https://github.com/markmals/mac-dev-skills) (Mark's own, MIT) —
-14 concise SpecKit-style `SKILL.md` files alongside the existing `ios-development` +
-`ios-simulator-control` (16 total): **appkit-design** (the flagship — the
-`sdk-api`/`sdk-search` grounding mandate + the design non-negotiables: accessibility
-identifiers, semantic colors/typography, content-derived window sizing, Liquid Glass),
-**appkit-setup**, **appkit-dev-workflow**, **appkit-hig**, **appkit-code-review**,
-**appkit-ui-testing**, **appkit-packaging**, **appkit-migration**, **appkit-private-apis**,
-**appkit-app-inspector**, **appkit-modern-input**, **appkit-launch-continuity**,
-**appkit-liquid-glass**, **appkit-session-report**. Projected to `.claude/skills/`
-(or `.agents/`/`.github/`) by `specify target add --stack apple` / `specify packs`.
+The `apple` **pack** (`templates/packs/apple/`) carries the AppKit slice generated
+from [`mac-dev-skills`](https://github.com/markmals/mac-dev-skills), alongside the
+existing `ios-development` + `ios-simulator-control` skills. The generated slice
+includes **appkit-design** (the flagship — `sdk-api`/`sdk-search` grounding,
+accessibility identifiers, semantic colors/typography, content-derived window sizing,
+Liquid Glass), **apple-hig** (the complete offline HIG corpus), **appkit-private-apis**,
+and **appkit-app-inspector**. Skills project to `.claude/skills/` (or `.agents/` /
+`.github/`) by `specify target add --stack apple` / `specify packs`; the per-stack
+`appkit-dev` agent projects to `.claude/agents/` for adapters with an `AgentsDir()`.
 
 What this slice settled:
-- **Zero Go changes, zero golden drift.** Pack projection is directory-driven
-  (`internal/project/pack.go` scans `templates/packs/<stack>/*/SKILL.md`); pack skills
-  aren't part of `init`, so `TestInitGoldenTrees` is untouched. `TestProjectPacks`
-  asserts the AppKit suite projects.
-- **Adapted, not vendored.** Concise single `SKILL.md` per skill pointing at first-party
-  docs + the `sdk-api`/`sdk-search` CLIs (from apple-platform-tools, `mise run install`)
-  — the plugin's 230 HIG files + bundled tool binaries are referenced, never copied.
-  Grounded in the real scaffold (the mise tasks, `macOS/Sources/App`, `Core`/`TestSupport`).
-- **No agent, no MCP projection.** SpecKit packs project *skills* only — the source's
-  `appkit-dev` agent's grounding mandate folds into `appkit-design` instead. The Xcode
-  MCP stays per-machine (user/local config), documented in-skill, **not** projected — by
-  SpecKit's deliberate design (per-machine tools aren't committed).
+- **Whole-directory projection.** Pack skills are copied with their `references/` trees,
+  not just `SKILL.md`; `TestProjectPacks` asserts deep references, the offline HIG corpus,
+  and the per-stack agent.
+- **Generated, not hand-edited.** `scripts/generate-apple-pack.sh` regenerates the AppKit
+  slice from `mac-dev-skills`; `scripts/generate-apple-pack.sh --check` runs in CI against
+  an external checkout to detect drift. The upstream chain is
+  `apple-platform-tools` CLI contracts → `mac-dev-skills` skill references → SpecKit's
+  embedded apple pack copy.
+- **Per-stack agents, no MCP projection.** A reserved `agents/` pack subdir projects
+  stack agents into the adapter's `AgentsDir()` (`.claude/agents/` today); Codex/generic/
+  Copilot skip stack agents because they have no agent directory. Xcode MCP stays
+  per-machine (user/local config), documented in-skill, **not** projected — by SpecKit's
+  deliberate design (per-machine tools aren't committed).
 
 A pack projects only when `.speckit/specs.json` records an `agent` — `specify init
---integration <agent>` now seeds it (so `target add`/`packs` auto-project the pack;
+--integration <agent>` seeds it (so `target add`/`packs` auto-project the pack;
 `AddTarget` preserves it). This fixed a gap that had silently disabled pack projection
 for **every** stack.
 

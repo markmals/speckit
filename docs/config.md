@@ -89,13 +89,14 @@ specify packs        # project the packs for every stack in specs.json
 `packs` reads `specs.json`, takes the distinct `stack` values across your
 targets, and projects each pack's skills into the agent's skills dir — using the
 `agent` field to know where (`.claude/skills`, `.agents/skills`, `.github/skills`).
-Re-run it after adding a target on a new stack.
+Packs may also include per-stack agents; adapters without an agent directory skip
+those files. Re-run it after adding a target on a new stack.
 
 | `stack` | pack skills projected |
 | --- | --- |
 | `web` | `web-development`, `web-verification` |
 | `website` | `website-development` |
-| `apple` | `ios-development`, `ios-simulator-control` |
+| `apple` | `ios-development`, `ios-simulator-control`, `appkit-design`, `apple-hig`, `appkit-private-apis`, `appkit-app-inspector`, plus the Claude `appkit-dev` stack agent |
 | `android` | `android-development`, `android-emulator-control` |
 | `go-cli` · `node-cli` | the matching `*-development` skill |
 
