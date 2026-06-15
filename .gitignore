@@ -32,3 +32,6 @@ mise.local.toml
 # Transient Codex run artifacts (per the dynamic-workflow policy)
 .claude/codex-results/
 .claude/schemas/
+
+# CI checks out the mac-dev-skills source here for the apple-pack drift gate
+.cache/
