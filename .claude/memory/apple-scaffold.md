@@ -8,18 +8,29 @@ AppKit agent pack). Built in slices; **Slices 1–2 (headless Core + Tuist app) 
 (`swiftdata`, `openapi`, `dist`→app-store-connect deploy kind) + Slice 4 (the AppKit pack)
 shipped 2026-06-14**.
 
-**Slice 4 — the pack** (`templates/packs/apple/`): 14 AppKit `SKILL.md` adapted from
-mac-dev-skills (Mark's own, MIT) into SpecKit's concise pack style, beside the existing
-`ios-development`/`ios-simulator-control` (16 total). **Pack projection is directory-driven**
-(`internal/project/pack.go` scans `templates/packs/<stack>/*/SKILL.md`) — add a dir, zero Go
-changes; pack skills aren't in `init`, so `TestInitGoldenTrees` never drifts (only
-`templates/skills/` global skills do). Packs project **skills only** (no agents) — the source
-`appkit-dev` agent's grounding mandate folded into `appkit-design`. **SpecKit deliberately does
-NOT project MCP config** — per-machine tools (Xcode MCP) live in user `~/.claude`/`.mcp.local.json`,
-documented in-skill. Adapt, don't vendor (point at first-party docs + sdk-api/sdk-search from
-apple-platform-tools; never the 230 HIG files or tool binaries). **Pack-agent gating FIXED (#37):**
-`specify init --integration <agent>` now seeds `agent` in `.speckit/specs.json` (`config.SetAgent`,
-called from `project.Init`), so `target add`/`packs` auto-project; `AddTarget` preserves it.
+**Slice 4 — the pack** (`templates/packs/apple/`): 16 skills (14 AppKit + `ios-development`/
+`ios-simulator-control`) adapted from mac-dev-skills (Mark's own, MIT). **SpecKit deliberately
+does NOT project MCP config** — per-machine tools (Xcode MCP) live in user `~/.claude`/
+`.mcp.local.json`, documented in-skill. **Pack-agent gating FIXED (#37):** `specify init
+--integration <agent>` seeds `agent` in `.speckit/specs.json` (`config.SetAgent` from
+`project.Init`), so `target add`/`packs` auto-project; `AddTarget` preserves it.
+
+**Pack DEPTH + agent + HIG vendor (2026-06-15) — reverses two earlier Slice-4 calls.** Pack
+projection is now **whole-directory** (`internal/project/pack.go`: `loadPack` returns `packSkill`
+{Name, Files map}; `ProjectPacks` writes every file under a skill dir, so `references/` survive).
+Three appkit skills gained hand-written deep `references/` (app-inspector·design·private-apis, 19
+files). **Earlier "packs project skills only (no agents)" is REVERSED:** a reserved `agents/` subdir
+(`packAgentsDir`) projects per-stack agents into the adapter's `AgentsDir()` — Claude only
+(`.claude/agents/`); codex/generic/copilot have `AgentsDir()==""` and skip them. `apple` ships
+`agents/appkit-dev.md`. **Earlier "never the 230 HIG files" is REVERSED:** the `apple-hig` skill (was
+`appkit-hig`) now bundles the **complete offline Apple HIG** (~172 md, 2.4MB, snapshot 2026-06-10
+from developer.apple.com) under `references/hig/` — embeds into every `specify` binary (pack ≈2.9MB).
+`loadPack` keeps the [[#40]] packless-stack handling (a real scaffold with no pack dir → no skills,
+not an error). `TestProjectPacks` covers references + agent projection + the packless case.
+**Deferred (follow-ups):** the `scripts/generate-apple-pack.sh` generation pipeline + its CI
+drift-check against an external `mac-dev-skills` checkout (incompatible with the hand-integrated
+hybrid pack + couples CI to an external repo); and deepening the other ~11 appkit skills with
+`references/` (only 3 were deepened so far — the stranded source had a partial generation).
 
 ## The things that cost real time
 

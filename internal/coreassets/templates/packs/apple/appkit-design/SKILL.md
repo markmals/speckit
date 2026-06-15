@@ -1,43 +1,50 @@
 ---
 name: appkit-design
-description: Use when designing or building any macOS AppKit UI in this repo's app surface — picking the canonical control/layout for a window, adopting Liquid Glass, sizing a window to its content, applying semantic colors and typography, setting accessibility identifiers, or reviewing AppKit UI for design correctness. Targets modern AppKit (macOS 26/27). Complementary to `appkit-setup` (scaffold), `appkit-ui-testing` (queries the identifiers), and `ios-development` (shared view-model/domain idioms).
+description: Use when designing or building any macOS AppKit user interface — choosing the control or layout for a new window/app, picking the canonical control for a requirement, adopting the macOS 26/27 Liquid Glass look, sizing a window to its content, applying semantic colors and typography, or reviewing AppKit UI for design correctness. Targets modern AppKit (macOS 26/27).
 ---
 
 # AppKit Design
 
-This skill covers **how to design and write the macOS AppKit surface** — the view controllers and windows under `macOS/Sources/App`. The spec-provable domain and `@Observable` view models live in the headless `Core` SwiftPM package (run by `specify verify`); this skill is about the view edge that consumes them. For the shared Swift idioms (`@Observable`, `Observations`, Swift Testing traits), see `ios-development`. For the workflow of implementing a spec, see `implementing-a-spec`.
+## Overview
 
-> **You already know most of the controls. That is the trap.** A capable agent reaches for the right control from memory (`NSSplitViewController`, a view-based `NSTableView`, `NSGridView`) and then *skips everything that actually breaks*: invents a symbol that doesn't exist, asserts a false equivalence ("`.inset` gives you Liquid Glass"), hardcodes a window frame, and ships zero accessibility identifiers. **Memory is exactly where the errors are. Verify everything.**
+Pick the canonical AppKit control and layout for a UI requirement, ground every choice in the Apple Human Interface Guidelines, and write modern, symbol-verified macOS 26/27 code.
+
+**This skill is built around two native tools** — `sdk-search` (BM25 search over a curated, HIG-grounded corpus of 69 canonical AppKit patterns) and `sdk-api` (SDK symbol + availability validator) — from the `apple-platform-tools` monorepo, on `PATH` after `mise run install`. **The corpus is the control catalog; this skill is the discipline that makes you use it.**
+
+> **You already know most of the controls. That is the trap.** A capable agent reaches for the right control from memory (`NSSplitViewController`, a view-based `NSTableView`, `NSGridView`) and then *skips everything that actually breaks*: it invents a symbol that doesn't exist, asserts a false equivalence (“`.inset` gives you Liquid Glass”), hardcodes a window frame, and ships zero accessibility identifiers. **Every recommendation below is verified against the SDK or the HIG, never from memory — because memory is exactly where the errors are.**
 
 ## The grounding mandate (do this first, every time)
 
-**Before writing any AppKit UI, ground it. Two CLIs, no exceptions.** Both are built from the apple-platform-tools monorepo (`mise run install` → `~/.local/bin`); never vendor them into the repo.
+**Before writing any AppKit UI, ground it. Two authorities, no exceptions:**
 
-1. **`sdk-search`** for the canonical, HIG-grounded pattern — one focused query per feature you need:
+1. **`sdk-search`** for the canonical pattern. One focused query per feature you need:
    ```bash
-   sdk-search "settings sidebar" "file table" "unified toolbar"   # batch: one query per feature
+   sdk-search search "settings sidebar" "file table" "toolbar"   # batch: one query per feature
+   sdk-search get splitviewcontroller-sidebar-inspector          # full Swift + HIG ref + pitfalls
+   sdk-search list                                                # browse categories (heavy)
    ```
 2. **`sdk-api`** to verify *every* symbol and its macOS availability before you write it:
    ```bash
-   sdk-api check NSGlassEffectView.effectIsInteractive   # exists? + min macOS / deprecation
+   sdk-api check 'NSGlassEffectView.effectIsInteractive'   # exists? → {exists, availability}
+   sdk-api availability NSViewCornerConfiguration          # min macOS / deprecation
+   sdk-api members NSSplitViewItem                         # discover the real members
    ```
 
-**Workflow:** front-load all `sdk-search` calls for the screen → read the best patterns → verify the symbols you'll use with `sdk-api` → *then* write code, adapting the snippets. Do not interleave searching with coding.
+**Workflow:** front-load all `search` calls for the page → `get` the best pattern IDs → verify the symbols you'll use with `sdk-api` → *then* write code, adapting the corpus snippets. Do not interleave searching with coding.
 
-> **"This is just a code sketch, I'll answer from memory."** No. That sentence is the #1 failure mode — it is how invented symbols and false claims ship. A sketch that names a wrong API is worse than no sketch. Sketch or production, the grounding is the same two commands. Knowing a symbol exists isn't verifying it — `sdk-api check` costs a second and returns the min-macOS you need for the `@available` gate.
+> **"This is just a code sketch, I'll answer directly."** No. That sentence is the #1 failure mode — it is how invented symbols and false claims ship. A sketch that names a wrong API is worse than no sketch. **Sketch or production, the grounding is the same two commands.** If the tools aren't installed, run `mise run install` from apple-platform-tools (or tell the user to) — don't fall back to memory.
 
 ## Non-negotiable design hygiene
 
 Apply to **every** design, no matter how small. These are the things a strong model skips:
 
-| Rule | Why it's here |
-|------|---------------|
-| **Accessibility identifier on every interactive control** — `control.setAccessibilityIdentifier("saveButton")`. This is **not** the VoiceOver label (`setAccessibilityLabel("Save")`); both are needed, they are different things. | The identifier is the stable, non-localized handle `appkit-ui-testing` queries; the label is localized text VoiceOver speaks. |
-| **Semantic colors only** — `.labelColor`, `.secondaryLabelColor`, `.controlAccentColor`, `.textBackgroundColor`, `.separatorColor`. Never literal RGB/hex. | Hardcoded colors break Dark Mode, Increase Contrast, and the user's accent tint. |
-| **Semantic typography** — `NSFont.preferredFont(forTextStyle: .body)`, not `NSFont.systemFont(ofSize: 13)`. AppKit's signature adds an optional `options:` (default `[:]`), so the no-`options` call also compiles. | Respects the user's text size; the literal `ofSize:` is the most common typography miss. |
-| **Content-derived window sizing** — size from the `contentViewController`'s `fittingSize` / Auto Layout, never a magic `900×640` frame. | Hardcoded frames clip or waste space across displays and text scales. |
-| **Explicit Liquid Glass adoption** — `NSGlassEffectView` / `NSVisualEffectView` materials and a real, populated unified toolbar, gated with `if #available`. A table `style` or a sidebar gives vibrancy in places, but `.inset` is **not** Liquid Glass and an empty `NSToolbar` renders nothing. | Baselines assert implicit glass they never actually adopt. |
-| **Swift 6 strict concurrency** — AppKit UI types are `@MainActor`; no force-unwrap, no force-try. | The repo builds in Swift 6 language mode; isolation and optional-safety are enforced, not optional. |
+| # | Rule | Why it's here |
+|---|------|---------------|
+| 1 | **Accessibility identifier on every interactive control** — `control.setAccessibilityIdentifier("saveButton")`. This is **not** the VoiceOver label (`setAccessibilityLabel`/`accessibilityDescription`); both are needed and they are different things. | Identifiers are what `XCUITest` queries; baselines set a label and call it done. |
+| 2 | **Semantic colors only** — `NSColor.labelColor`, `.secondaryLabelColor`, `.controlAccentColor`, `.textBackgroundColor`, `.controlBackgroundColor`, `.separatorColor`. Never literal RGB/hex; never assume a default for secondary text. | Hardcoded colors break Dark Mode, Increase Contrast, and accent tint. → `references/semantic-color.md` |
+| 3 | **Semantic typography** — `NSFont.preferredFont(forTextStyle: .body)`, not `NSFont.systemFont(ofSize: 14)` for content text. (AppKit's signature adds an optional `options:`, default `[:]`.) | Respects the user's text size; the literal-size `ofSize:` form is the most common typography miss. → `references/typography.md` |
+| 4 | **Content-derived window sizing** — size from the content view controller's `fittingSize` / Auto Layout, not a magic `900×640` frame. | Hardcoded frames clip or waste space across displays. → `references/window-sizing.md` |
+| 5 | **Explicit Liquid Glass adoption** for the macOS 26/27 look — `NSGlassEffectView` / `NSVisualEffectView` materials and a real, populated unified toolbar. A table `style` or split-view sidebar gives you vibrancy in places, but **`.inset` is not Liquid Glass** and an empty `NSToolbar` renders nothing. | Baselines assert implicit glass they never actually adopt. → `references/liquid-glass.md` |
 
 ## Design workflow
 
@@ -45,117 +52,90 @@ Apply to **every** design, no matter how small. These are the things a strong mo
 
 Identify the app type; it fixes the window's spine. Then `sdk-search` the anchor pattern.
 
-| App type | Anchor structure |
-|----------|------------------|
-| Settings / config / inspector | `NSSplitViewController` (sidebar + content [+ inspector]) |
-| Document / editor | `NSWindowController` + content VC + unified `NSToolbar` (populated, via its delegate) |
-| Browser / data-heavy | `NSSplitViewController` + view-based `NSTableView` / `NSOutlineView` |
-| Peer workflows / paged panes | `NSTabViewController` (toolbar tabs) |
-| Menu-bar utility | `NSStatusItem` menu bar extra |
-| Single-purpose utility / form | `NSPanel` / window + `NSGridView` form |
+| App type | Anchor structure | Start from corpus |
+|----------|------------------|-------------------|
+| Settings / config / inspector tool | `NSSplitViewController` (sidebar + content [+ inspector]) | `splitviewcontroller-sidebar-inspector` |
+| Document / editor | `NSWindowController` + content VC + unified `NSToolbar` | `windowcontroller-content-viewcontroller`, `unified-toolbar-window-style` |
+| Browser / data-heavy | `NSSplitViewController` + view-based `NSTableView`/`NSOutlineView` | `tableview-view-based-reuse`, `outlineview-datasource-delegate` |
+| Peer workflows / paged panes | `NSTabViewController` (toolbar tabs) | `tabviewcontroller-paged-panes` |
+| Menu-bar utility | `NSStatusItem` menu bar extra | `statusitem-menubar-extra` |
+| Single-purpose utility / form | `NSPanel` / window + `NSGridView` form | `gridview-label-field-form` |
 
-The window controllers live under `macOS/Sources/App`; the `AppDelegate` owns them.
+→ Full mapping and window-structure code: `references/app-type-anchors.md`
 
 ### Step 2 — Requirement → canonical control
 
-Map each requirement to a control, then `sdk-search` the pattern — don't write the plumbing from memory.
+Map each requirement to a control, then `sdk-search get` the pattern. Don't write the plumbing from memory.
 
-| Requirement | Canonical control |
-|-------------|-------------------|
-| Sidebar / source list | `NSSplitViewItem(sidebarWithViewController:)` — never a bare `NSSplitView` |
-| Tabular data, selectable/sortable | **view-based** `NSTableView` + `NSTableViewDiffableDataSource` — never cell-based (`NSCell`, `dataCell`) |
-| Hierarchy / tree | `NSOutlineView` |
-| Tiles / grid | `NSCollectionView` + compositional layout |
-| Toolbar | `NSToolbar` + `NSToolbarDelegate` (don't skip the delegate, don't ship it empty) |
-| Form (label↔field rows) | `NSGridView` |
-| Stacked controls / tool rows | `NSStackView` |
-| Modal decision | `NSAlert` as an async sheet (`beginSheetModal(for:)`) — never `runModal()` on the main thread |
-| Transient detail | `NSPopover` (`.transient`) |
-| Pick one of few / modes | `NSSegmentedControl` |
-| On/off | `NSSwitch` |
-| File open/save | `NSOpenPanel` / `NSSavePanel` + `UTType` |
+| Requirement | Control | Corpus pattern |
+|-------------|---------|----------------|
+| Sidebar / source list | `NSSplitViewItem(sidebarWithViewController:)` | `splitviewcontroller-sidebar-inspector` |
+| Tabular data, selectable/sortable | **view-based** `NSTableView` + `NSTableViewDiffableDataSource` | `tableview-view-based-reuse`, `tableview-diffable-datasource` |
+| Hierarchy / tree | `NSOutlineView` | `outlineview-datasource-delegate` |
+| Tiles / grid | `NSCollectionView` + compositional layout | `collectionview-compositional-layout` |
+| Toolbar | `NSToolbarDelegate` (don't skip the delegate) | `toolbar-delegate-itemforidentifier` |
+| Form (label↔field rows) | `NSGridView` | `gridview-label-field-form` |
+| Stacked controls / tool rows | `NSStackView` | `stackview-arranged-subviews` |
+| Modal decision | `NSAlert` as async sheet | `nsalert-sheet-modal-async` |
+| Transient detail | `NSPopover` | `nspopover-transient` |
+| Pick one of few / modes | `NSSegmentedControl` | `segmented-control` |
+| On/off | `NSSwitch` | `switch-slider-stepper-values` |
+| File open/save | open/save panel + `UTType` | `open-save-panel-utype` |
 
-Prefer the standard control with configuration over a custom `NSView` reimplementing it — you keep semantic color, focus ring, and accessibility for free. For clicks, use target-action / gesture recognizers, not an `mouseDown:` override.
+→ Full control selection rationale + the deprecated forms to avoid (cell-based `NSTableView`, bare `NSSplitView`): `references/control-selection.md`
 
-### Step 3 — Layout, color, typography
+### Step 3 — Layout & spacing
 
-Auto Layout via anchors; `NSStackView` / `NSGridView` for structure; HIG spacing metrics (don't invent paddings). Semantic `NSColor` named for the *role* (label, separator, window), not the one whose light-mode value looks right. Semantic `NSFont.TextStyle` (`.body`, `.headline`, `.title2`, …) via `preferredFont(forTextStyle:options:)`; for monospaced/rounded, derive a descriptor with `fontDescriptor.withDesign(.monospaced)` and `NSFont(descriptor:size: 0)` — handle the `nil`, never force-unwrap.
-
-For layer-backed views, `CGColor` is a static snapshot: re-resolve in `viewDidChangeEffectiveAppearance()` inside `effectiveAppearance.performAsCurrentDrawingAppearance { … }`, and also observe `NSWorkspace.accessibilityDisplayOptionsDidChangeNotification` (Increase Contrast / Reduce Transparency are not appearance changes).
+Auto Layout via anchors; `NSStackView`/`NSGridView` for structure; HIG spacing metrics (don't invent paddings). → `references/layout-and-spacing.md`
 
 ### Step 4 — Size the window to its content
 
-Derive the size; never hardcode a `contentRect`. The `contentViewController`'s Auto Layout is the source of truth:
-
-```swift
-window.contentViewController = content
-content.view.layoutSubtreeIfNeeded()                  // fittingSize is .zero before a layout pass
-let derived = content.view.fittingSize                // smallest size satisfying constraints
-let size = NSSize(width: ceil(derived.width), height: ceil(derived.height))  // round UP
-window.setContentSize(size)
-window.contentMinSize = size                          // content area, not the framed minSize
-window.setFrameAutosaveName("EditorWindow")           // user's resize survives relaunch
-```
-
-There is **no** `systemLayoutSizeFitting(_:)` in AppKit — that's UIKit; use `fittingSize`. Pin content on both axes or `fittingSize` stays `.zero`. For multi-pane windows, the floor is the sum of each `NSSplitViewItem.minimumThickness`.
+Derive the size from the layout's `fittingSize`, not a literal frame. Rubric + the `NSWindowController` setup that makes it work. → `references/window-sizing.md`
 
 ### Step 5 — Adopt Liquid Glass (macOS 26/27)
 
-Adoption means gating on `if #available(macOS 26, *)` and reaching for the real symbols — not asserting that a sidebar already gives you the look. Verify each min-macOS with `sdk-api availability` and gate everything below your deployment target.
-
-| Need | Use | Min macOS |
-|------|-----|-----------|
-| Floating, content-forward glass chrome | `NSGlassEffectView` (assign your view to `contentView`, set `cornerRadius` — never `addSubview`) | 26.0 |
-| Window / sidebar / header vibrancy by role | `NSVisualEffectView` + `.material` (`.sidebar`, `.headerView`, `.hudWindow`) | 10.10 |
-| Merge adjacent glass shapes | `NSGlassEffectContainerView` | 26.0 |
-| Glass-bezeled control | `NSButton.bezelStyle = .glass` | 26.0 |
-| Scroll-edge fade | `preferredScrollEdgeEffectStyle` on a titlebar / split-view accessory controller | 26.1 |
-| Concentric nested corners | `cornerConfiguration` + `.uniformCorners(radius: .containerConcentric)` (read-only — override the getter, never assign) | 27.0 |
-
-`.inset` is a *table style*; an `NSVisualEffectView` is *vibrancy* (10.10) — neither is adopting `NSGlassEffectView` (26.0). Glass changes the material, not the structure: sidebars still use `NSSplitViewController`.
+`NSGlassEffectView` (26.0) / `NSGlassEffectContainerView` (26.0) for floating glass chrome; `.effectIsInteractive` (27.0) for click-responsive glass; `NSVisualEffectView` materials for window/sidebar vibrancy; `NSViewCornerConfiguration` + `.containerConcentric` (27.0) for concentric corners; `NSScrollEdgeEffectStyle` (26.1) for scroll edges. **Gate everything below your deployment target with `if #available` — confirm each version with `sdk-api availability`.** → `references/liquid-glass.md`
 
 ### Step 6 — Accessibility baseline
 
-Identifier on **every** interactive control (`setAccessibilityIdentifier(_:)`, a code-stable token, never localized) *and* a label on every icon-only control (`setAccessibilityLabel(_:)` / `NSImage(systemSymbolName:accessibilityDescription:)`, localized). Custom `NSView`s need `setAccessibilityElement(true)` + `setAccessibilityRole(_:)` to be visible to assistive tech at all, plus `accessibilityPerformPress()` to make the action triggerable. Respect Increase Contrast, Reduce Motion, and Reduce Transparency via `NSWorkspace.shared.accessibilityDisplayShould*`. Verify a role constant with `sdk-api members NSAccessibility.Role` before guessing it.
+Identifier on every interactive control (≠ label); semantic roles; respect Increase Contrast / Reduce Motion. → `references/accessibility.md`
+
+## Anti-patterns
+
+| ❌ Don't | ✅ Do | Why |
+|----------|-------|-----|
+| Cell-based `NSTableView` (`NSCell`, `dataCell`) | View-based: `makeView(withIdentifier:owner:)` + `NSTableCellView` | Cell-based is legacy; view-based is the modern reuse path |
+| Bare `NSSplitView` for a sidebar | `NSSplitViewController` + sidebar `NSSplitViewItem` | Get collapsing, full-height layout, toolbar integration for free |
+| `NSColor(red:green:blue:)` / hex literals | Semantic `NSColor` (`.labelColor`, …) | Survives Dark Mode + Increase Contrast |
+| `NSFont.systemFont(ofSize: 14)` for body text | `NSFont.preferredFont(forTextStyle: .body, options: [:])` | Respects preferred text size |
+| "`.inset` / a sidebar gives me Liquid Glass" | Explicit `NSGlassEffectView` / `NSVisualEffectView` + populated toolbar | Implicit vibrancy ≠ adopting glass; an empty toolbar renders nothing |
+| Hardcoded `contentRect:` window frame | Content-derived sizing (`fittingSize`) | Adapts across displays |
+| Overriding `mouseDown:` for clicks | Target-action / gesture recognizers / control events | Use the standard event plumbing, not raw `mouseDown:` overrides |
+| Interactive control with no a11y identifier | `setAccessibilityIdentifier(_:)` on every one | Required for UI testing |
+| Custom `NSView` subclass reimplementing a standard control | The standard control with configuration | Less code, free a11y + theming |
 
 ## Rationalizations — STOP if you think any of these
 
 | Excuse | Reality |
 |--------|---------|
-| "It's just a sketch, I'll answer from memory." | The sketch is where wrong symbols enter. Run `sdk-search` + `sdk-api` anyway. |
-| "I know `NSGlassEffectView` / this color / this font exists." | Then `sdk-api check` costs a second to prove it *and* its min-macOS. Knowing isn't verifying. |
-| "The sidebar / `.inset` style already gives the glass look." | Implicit vibrancy in one place ≠ adopting Liquid Glass. Gate `if #available(macOS 26, *)` and adopt it explicitly. |
-| "I added an accessibility label, that covers a11y." | Label (VoiceOver text) ≠ identifier (UI-test handle). Set both. |
+| "It's just a code sketch, not a build task — I'll answer from memory." | The sketch is where wrong symbols enter. Run `sdk-search` + `sdk-api` anyway. |
+| "I know `NSGlassEffectView`/this color/this font exists." | Then `sdk-api check` costs you 1 second to prove it and its min-macOS. Knowing isn't verifying. |
+| "The sidebar/`.inset` style already gives the glass look." | Implicit material in one place ≠ adopting Liquid Glass. Adopt it explicitly where the design calls for it. |
+| "I added an accessibility label, that covers a11y." | Label (VoiceOver text) ≠ identifier (UI-test handle). Set the identifier too. |
 | "I'll size the window with a frame that looks about right." | Derive it from `fittingSize`. A guessed frame clips on the next display. |
+| "HIG is for designers." | The corpus encodes HIG per pattern; `get` it. Control *behavior* (when a sheet vs a popover) is a HIG call. |
 
-## Verifying the build
+## References
 
-After writing UI, run the app surface through mise — Tuist generates the project (the `.xcodeproj` / `.xcworkspace` / `Derived` are gitignored):
-
-```bash
-mise run -C macOS generate          # regenerate the Tuist project after manifest/source changes
-mise run -C macOS build             # build the AppKit app
-mise run -C macOS launch:macos      # build + launch to eyeball the design
-mise run -C macOS test:app          # app-target tests (UI); Core specs run via `specify verify`
-mise run -C macOS fmt               # swift-format, the committed .swift-format (lineLength 100, 4-space)
-```
-
-View-model and domain specs live in `Core` and run with `mise run -C Core test` / `specify verify` (Swift Testing, `swift` report format, the `.spec(…)`/`.scenario(…)` traits from `TestSupport`'s `SpecTraits.swift` — the scenario id lives in the trait, never the test name). UI here is the view edge: mark controllers `// SPEC: manual` when no cross-target behavioral contract applies.
-
-## When to invoke a more specific skill
-
-- Scaffolding the app or adding a module to `Project.swift`? → `appkit-setup`
-- Writing UI tests that query these identifiers? → `appkit-ui-testing`
-- Shared `@Observable` / `Observations` / Swift Testing idioms? → `ios-development`
-- About to write tests, or claim work is done? → `test-driven-development`, `verification-before-completion`
-- Debugging something unexpected? → `systematic-debugging`
-- Implementing a spec end-to-end? → `implementing-a-spec`
-
-## HIG and first-party docs
-
-When a design choice is unclear, read the relevant HIG section and `sdk-search` the pattern — don't vendor HIG files.
-
-- [Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines) · [Materials](https://developer.apple.com/design/human-interface-guidelines/materials) · [Color](https://developer.apple.com/design/human-interface-guidelines/color) · [Typography](https://developer.apple.com/design/human-interface-guidelines/typography) · [Windows](https://developer.apple.com/design/human-interface-guidelines/windows) · [Accessibility](https://developer.apple.com/design/human-interface-guidelines/accessibility)
-- [AppKit reference](https://developer.apple.com/documentation/appkit) · [Tuist](https://docs.tuist.dev) · [Swift Testing](https://developer.apple.com/documentation/testing)
-
-The Xcode MCP bridge (build/run/inspect from the agent) is per-machine — it lives in your user/local config, not the committed `.mcp.json` and is not projected by SpecKit. See `ios-development` for the setup if you use it.
+| File | Read when… |
+|------|------------|
+| `references/app-type-anchors.md` | Choosing the window's anchor structure for an app type |
+| `references/control-selection.md` | Mapping a requirement to the canonical control; avoiding deprecated forms |
+| `references/layout-and-spacing.md` | Auto Layout, `NSStackView`/`NSGridView`, HIG spacing metrics |
+| `references/semantic-color.md` | Semantic `NSColor`, Dark Mode, Increase Contrast, layer colors |
+| `references/typography.md` | Semantic `NSFont` text styles, the `forTextStyle:options:` signature, system designs |
+| `references/liquid-glass.md` | Adopting Liquid Glass / materials / concentricity with correct version gates |
+| `references/window-sizing.md` | Content-derived window sizing rubric and setup |
+| `references/accessibility.md` | Accessibility identifiers vs labels, semantic roles, the a11y baseline |
+| `references/design-anti-patterns.md` | The full anti-pattern catalog with corrected code |
+| `references/apple-platform-tools-contracts.md` | Generated `sdk-api` / `sdk-search` contract excerpts from apple-platform-tools |

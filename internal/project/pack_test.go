@@ -1,6 +1,7 @@
 package project
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -52,5 +53,25 @@ func TestProjectPacks(t *testing.T) {
 	}
 	if len(appleWritten) < 16 {
 		t.Errorf("apple pack projected %d skills, want the full AppKit suite (>=16)", len(appleWritten))
+	}
+
+	// claude gets the apple pack with full directory DEPTH (references/ survive the
+	// projection) plus the stack agent — claude has an AgentsDir; codex/generic/copilot
+	// skip stack agents (their AgentsDir is "").
+	cl := t.TempDir()
+	if _, err := ProjectPacks(cl, coreassets.FS, "claude", []string{"apple"}); err != nil {
+		t.Fatal(err)
+	}
+	// whole-directory projection: a deepened skill's references/ land beside its SKILL.md.
+	mustExist(t, filepath.Join(cl, ".claude", "skills", "appkit-design", "SKILL.md"))
+	mustExist(t, filepath.Join(cl, ".claude", "skills", "appkit-design", "references", "semantic-color.md"))
+	// the offline HIG corpus (apple-hig) projects its whole tree, including the index.
+	mustExist(t, filepath.Join(cl, ".claude", "skills", "apple-hig", "references", "hig", "INDEX.md"))
+	// the per-stack agent lands in claude's agents dir.
+	mustExist(t, filepath.Join(cl, ".claude", "agents", "appkit-dev.md"))
+
+	// codex has no agents dir, so the stack agent is skipped there (skills still land).
+	if _, err := os.Stat(filepath.Join(cdx, ".agents", "agents", "appkit-dev.md")); !os.IsNotExist(err) {
+		t.Error("codex (no AgentsDir) must not receive the stack agent")
 	}
 }
