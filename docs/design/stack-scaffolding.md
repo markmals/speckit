@@ -1,9 +1,15 @@
 # Design — stack scaffolding
 
-**Status:** built. Two stacks are green end-to-end — **web** (TanStack Start;
+**Status:** built. Several stacks are green end-to-end — **web** (TanStack Start;
 `--data`/`--runtime` variants + `--with` feature add-ons; UI from the racket-ui
-shadcn registry) and **go-service** (a Go HTTP daemon; members compose into one
-repo-root `go.mod` via `sharedModule`; `--with openapi`/`sqlite`/`client`). Beyond
+shadcn registry), **go-service** (a Go HTTP daemon; members compose into one
+repo-root `go.mod` via `sharedModule`; `--with openapi`/`sqlite`/`client`), **apple**
+(a headless SwiftPM Core + a Tuist AppKit app + `--with swiftdata`/`openapi` + the
+AppKit pack), and the two Swift **library** stacks **swift-package** (a flat reusable
+library) and **swift-cli** (a library Core + a thin swift-argument-parser executable).
+The library stacks reuse apple's headless harness with zero engine changes; the formal
+product `kind: library` taxonomy ([library-products.md](library-products.md)) is still
+pending (today their example specs use `kind: story`, which verifies fine). Beyond
 the original decisions (plain `specs.json`, keep `{{ }}` with escaping, phased
 post-render scripts that resolve versions by *running* `pnpm add`/`go get`), the
 implementation added: **variants** (`--data`/`--runtime`, rendered over the base),
@@ -39,7 +45,7 @@ specify target add <name> --stack <stack> [--dir <path>] [--product <p>] [--data
 ```
 
 - `<name>` — the target's key in `.speckit/specs.json` (e.g. `web`, `consumer-web`).
-- `--stack` — which scaffold. The roster is **evidence-based** — only stacks Mark has actually worked on (per `~/Developer` + the `markmals` / `markmals-archive` GitHub accounts). **App stacks:** `web` · `website` · `apple` · `android` · `go-cli` · `go-service` · `node-cli`. **Library stacks:** `swift-package` · `swift-cli` · `ts-lib` · `vscode-extension` — these set the product `kind: library` ([library-products.md](library-products.md)).
+- `--stack` — which scaffold. The roster is **evidence-based** — only stacks Mark has actually worked on (per `~/Developer` + the `markmals` / `markmals-archive` GitHub accounts). **App stacks:** `web` · `website` · `apple` · `android` · `go-cli` · `go-service` · `node-cli`. **Library stacks:** `swift-package` · `swift-cli` · `ts-lib` · `vscode-extension` — these will set the product `kind: library` once that taxonomy lands ([library-products.md](library-products.md)); the shipped swift stacks' example specs use `kind: story` in the meantime.
 - `--dir` — where to scaffold (default `<memberDir>/<name>`, where `memberDir` is the manifest's placement — `apps` for web, `cmd` for go-service, `packages` for a library).
 - `--product` — optional product label written onto the target.
 - `--data` / `--runtime` — **variants**: selectable axes the manifest declares (e.g. web's `--data convex|drizzle|none` × `--runtime cloudflare|node`), each rendered *over* the base.
@@ -172,8 +178,10 @@ working loop rather than wiring one. Concretely, per stack:
 
 Each ships an example spec + the matching bound test, so `specify scan` and
 `specify verify <name>` both pass on the freshly-scaffolded target. The
-library/extension stacks set the product `kind: library` and lay a library layout
-(no app shell) — see [library-products.md](library-products.md).
+library/extension stacks lay a library layout (no app shell) and will set the
+product `kind: library` once that taxonomy lands — see
+[library-products.md](library-products.md). The shipped swift stacks already use
+the library layout; their example specs use `kind: story` until then.
 
 ## Per-stack tooling previews (Mark signs off before each build)
 

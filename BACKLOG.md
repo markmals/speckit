@@ -300,7 +300,19 @@ Ready) and baked in as `specify work`'s defaults.
     `.speckit/specs.json` (via `config.SetAgent`, called from `project.Init`), so `target add`/`packs` project
     the pack without hand-editing; `AddTarget` preserves it. Golden trees gained `.speckit/specs.json`;
     `TestInitRecordsAgent` covers it.
-  - ⬜ `swift-package` / `swift-cli` (apple-platform-tools' shape) fall out of Slice 1 nearly free — factor after.
+  - ✅ **`swift-package` / `swift-cli` (apple-platform-tools' shape)** — two sibling library stacks
+    (`memberDir: packages`, swift event-stream format, scoped bindings) that reuse Slice 1's headless
+    harness (the `SpecTraits` `.spec`/`.scenario` traits + the event-stream test task) with **zero engine
+    changes**. **`swift-package`** is a flat reusable library (module named after the member over a static
+    `Sources/Library` via `path:`; example: a pure `SemanticVersion`). **`swift-cli`** is a library Core +
+    a thin **swift-argument-parser** executable shell (`<Name>Core` over `Sources/Core` + a `<name>`
+    executableTarget over `Sources/CLI`; the behaviour is proven through the library so `swift test`
+    verifies it headlessly — no binary run). Both proven green-on-arrival on a Mac: `swift build` ·
+    `swift test` · `swift format lint --strict` · `specify verify` (2 passed · 1 locked), and the swift-cli
+    binary runs (`greet-tool Ada --shout` → `HELLO, ADA!`). Render-tested in Go CI
+    (`internal/scaffold/swift_{package,cli}_test.go`). Also fixed: a **packless valid stack** no longer
+    breaks `specify packs` — `loadPack` treats a missing pack dir as "no pack" for a real scaffold (still
+    errors on a genuinely unknown stack). No pack/MCP/features for these (factor later if needed).
   - Then the rest one at a time, each gated on a tooling preview. node-cli already spec'd
     ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
 - ⬜ **Feature-folder templates** (minor) — `NARRATIVE`/story/model/view-model/error templates

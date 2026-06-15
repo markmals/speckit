@@ -26,6 +26,16 @@ func TestProjectPacks(t *testing.T) {
 		t.Error("expected error for unknown pack")
 	}
 
+	// a real scaffold that ships no pack (library stacks) is NOT an error — it just
+	// projects no skills, so `specify packs` doesn't fail on a packless target.
+	noPack, err := ProjectPacks(t.TempDir(), coreassets.FS, "claude", []string{"swift-package"})
+	if err != nil {
+		t.Errorf("packless stack must not error: %v", err)
+	}
+	if len(noPack) != 0 {
+		t.Errorf("packless stack must project no skills, got %d", len(noPack))
+	}
+
 	// codex projects to .agents/skills; the apple pack carries the cross-platform
 	// ios-* skills plus the AppKit (macOS) skill suite adapted from mac-dev-skills.
 	cdx := t.TempDir()
