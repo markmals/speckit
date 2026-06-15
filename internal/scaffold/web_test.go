@@ -133,9 +133,16 @@ func TestWebScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, task := range []string{"[tasks.lint]", `[tasks."fmt:check"]`, "[tasks.typecheck]"} {
+	for _, task := range []string{"[tasks.lint]", `[tasks."fmt:check"]`, "[tasks.typecheck]", "[tasks.deps]", "[tasks.check]"} {
 		if !strings.Contains(string(mise), task) {
 			t.Errorf("mise.toml missing quality task %s", task)
+		}
+	}
+	// the local dependency gate ships with the stack: a Renovate config + the
+	// deps-check script, projected alongside the app.
+	for _, p := range []string{"renovate.json", "scripts/deps-check.sh"} {
+		if _, err := os.Stat(filepath.Join(app, p)); err != nil {
+			t.Errorf("web scaffold missing dependency-gate file %s: %v", p, err)
 		}
 	}
 
@@ -190,7 +197,6 @@ func TestWebScaffold(t *testing.T) {
 		".github/ISSUE_TEMPLATE/defect.yml",
 		".github/ISSUE_TEMPLATE/config.yml",
 		".github/CODEOWNERS",
-		".github/dependabot.yml",
 	} {
 		if _, err := os.Stat(filepath.Join(proj, filepath.FromSlash(p))); err != nil {
 			t.Errorf("RenderGitHub did not write %s: %v", p, err)
@@ -205,13 +211,10 @@ func TestWebScaffold(t *testing.T) {
 	if !strings.Contains(string(owners), "/features/") || !strings.Contains(string(owners), "/specs/") {
 		t.Errorf("CODEOWNERS must route /features and /specs:\n%s", owners)
 	}
-	// dependabot.yml is templated: the npm ecosystem points at the app dir.
-	dep, _ := os.ReadFile(filepath.Join(proj, ".github/dependabot.yml"))
-	if !strings.Contains(string(dep), "directory: /apps/web") {
-		t.Errorf("dependabot.yml npm directory not substituted to the app dir:\n%s", dep)
-	}
-	if strings.Contains(string(dep), "{{") {
-		t.Errorf("dependabot.yml has unrendered template syntax:\n%s", dep)
+	// Dependabot is gone — dependency updates surface via the local `mise run deps`
+	// gate (Renovate), not autonomously-opened PRs.
+	if _, err := os.Stat(filepath.Join(proj, ".github/dependabot.yml")); !os.IsNotExist(err) {
+		t.Errorf("dependabot.yml should no longer be projected (stat err = %v)", err)
 	}
 	// the convex data variant overwrites the base router and adds the convex files
 	if m.DataDefault != "convex" {

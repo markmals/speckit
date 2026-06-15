@@ -5,6 +5,13 @@
 # `mise run test` writes the Swift Testing event stream the engine's `swift` format
 # joins.
 
+# The local dependency gate (`mise run deps`) runs Renovate (a node tool) + jq;
+# pin them here since the stack otherwise leans on the ambient Swift toolchain.
+[tools]
+node = "24"
+"npm:renovate" = "latest"
+jq = "latest"
+
 [tasks.test]
 description = "run the test suite, writing the event-stream report the engine joins"
 run = "swift test --event-stream-output-path test.swift-events.ndjson --event-stream-version 0"
@@ -41,3 +48,14 @@ for d in Sources Tests; do
 done
 if [ -n "$dirs" ]; then swift format lint --strict --recursive $dirs; fi
 '''
+
+# Local dependency check — advisory (never opens PRs, always exits 0). Replaces
+# Dependabot: surfaces available updates as part of `mise run check`.
+[tasks.deps]
+description = "report available dependency updates (local Renovate dry-run; no PRs)"
+run = "bash scripts/deps-check.sh"
+
+[tasks.check]
+description = "all local quality gates: lint + the dependency heads-up"
+depends = ["lint", "deps"]
+run = ":"

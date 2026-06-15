@@ -5,6 +5,10 @@ pnpm = "11"
 # op resolves op:// secret references for `specify secrets sync`.
 gh = "2.94"
 op = "2"
+# Local dependency-update gate (`mise run deps`): Renovate scans every ecosystem,
+# jq formats its report. See scripts/deps-check.sh.
+"npm:renovate" = "latest"
+jq = "latest"
 
 # Call npm binaries (vite, vitest, tsgo, oxlint, oxfmt, tsr) by bare name — no npx.
 [env]
@@ -43,3 +47,14 @@ run = "oxlint app"
 
 [tasks.build]
 run = "vite build"
+
+# Local dependency check — advisory (never opens PRs, always exits 0). Replaces
+# Dependabot: surfaces available updates as part of `mise run check`.
+[tasks.deps]
+description = "report available dependency updates (local Renovate dry-run; no PRs)"
+run = "bash scripts/deps-check.sh"
+
+[tasks.check]
+description = "all local quality gates: fmt:check, lint, typecheck + the dependency heads-up"
+depends = ["fmt:check", "lint", "typecheck", "deps"]
+run = ":"

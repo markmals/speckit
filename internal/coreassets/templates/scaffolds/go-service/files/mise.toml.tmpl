@@ -3,6 +3,10 @@
 # engine's gotest format joins.
 [tools]
 go = "1.26"
+# node runs Renovate (the local dependency gate); jq formats its report.
+node = "24"
+"npm:renovate" = "latest"
+jq = "latest"
 
 [tasks.dev]
 description = "run the service"
@@ -35,3 +39,14 @@ run = 'test -z "$(gofmt -l .)"'
 description = "regenerate the Go server from the OpenAPI contract (oapi-codegen)"
 run = "mkdir -p internal/api && go tool oapi-codegen -config oapi-codegen.yaml openapi.yaml"
 {{end}}
+
+# Local dependency check — advisory (never opens PRs, always exits 0). Replaces
+# Dependabot: surfaces available updates as part of `mise run check`.
+[tasks.deps]
+description = "report available dependency updates (local Renovate dry-run; no PRs)"
+run = "bash scripts/deps-check.sh"
+
+[tasks.check]
+description = "all local quality gates: fmt:check, vet + the dependency heads-up"
+depends = ["fmt:check", "vet", "deps"]
+run = ":"

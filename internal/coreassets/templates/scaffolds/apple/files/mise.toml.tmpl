@@ -9,6 +9,10 @@
 # engine's `swift` format joins.
 [tools]
 tuist = "4.196.1"
+# node runs Renovate (the local dependency gate); jq formats its report.
+node = "24"
+"npm:renovate" = "latest"
+jq = "latest"
 
 [tasks.test]
 description = "run the Core suite, writing the event-stream report the engine joins"
@@ -62,3 +66,14 @@ for d in Core macOS iOS; do
 done
 if [ -n "$dirs" ]; then swift format lint --strict --recursive $dirs; fi
 '''
+
+# Local dependency check — advisory (never opens PRs, always exits 0). Replaces
+# Dependabot: surfaces available updates as part of `mise run check`.
+[tasks.deps]
+description = "report available dependency updates (local Renovate dry-run; no PRs)"
+run = "bash scripts/deps-check.sh"
+
+[tasks.check]
+description = "all local quality gates: lint + the dependency heads-up"
+depends = ["lint", "deps"]
+run = ":"
