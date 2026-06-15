@@ -137,6 +137,27 @@ func AddTarget(root, name string, t Target) error {
 	return cfg.Save(root)
 }
 
+// SetAgent records the agent integration in .speckit/specs.json so `specify target
+// add` and `specify packs` can project the stack packs (both are gated on a recorded
+// agent). It creates a fresh v1 config (with default paths) when none exists and
+// preserves any existing targets/paths otherwise (re-init / `init --here`). Used by
+// `specify init`.
+func SetAgent(root, agent string) error {
+	cfg, found, err := Load(root)
+	if err != nil {
+		return err
+	}
+	if !found {
+		cfg = Config{Version: 1}
+	}
+	cfg.applyDefaults()
+	if cfg.Targets == nil {
+		cfg.Targets = map[string]Target{}
+	}
+	cfg.Agent = agent
+	return cfg.Save(root)
+}
+
 // SetDeploy attaches (or replaces) a target's deploy manifest and writes the
 // config back. Errors if the target is unknown. Used by `specify deploy add`.
 func SetDeploy(root, target string, d *Deploy) error {

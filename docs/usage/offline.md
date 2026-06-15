@@ -118,10 +118,12 @@ find their report and source bindings.
 `command` is what runs the tests; `report` is where their results land; `format`
 is `junit` (Vitest, Gradle) or `swift` (Swift Testing's event stream); `source`
 is the directory scanned for the scenario↔test bindings. `stack` selects the
-target's platform pack, and an optional `product` label groups targets. `scan`
-validates this file whenever it's present; an absent one is fine — engine
-commands that need a target just tell you to configure one. Full schema in
-[../config.md](../config.md).
+target's platform pack, and an optional `product` label groups targets. `agent`
+records your integration (`specify init --integration <agent>` seeds it) so
+`target add`/`packs` can project that stack's platform pack into the agent's
+skills dir. `scan` validates this file whenever it's present; an absent one is
+fine — engine commands that need a target just tell you to configure one. Full
+schema in [../config.md](../config.md).
 
 ## Keep commits honest with git hooks
 

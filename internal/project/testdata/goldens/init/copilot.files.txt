@@ -32,6 +32,7 @@
 .github/skills/writing-user-stories/SKILL.md
 .speckit/extensions.yml
 .speckit/memory/constitution.md
+.speckit/specs.json
 .speckit/templates/checklist-template.md
 .speckit/templates/plan-template.md
 .speckit/templates/spec-template.md
