@@ -158,6 +158,7 @@ on push; they're independent. `specify deploy add <kind> [target]` drops a
 | `cloudflare-workers-spa` | `wrangler deploy` with static assets | assets-only, no server worker |
 | `railway` | Railway CLI in-workflow | server/container apps |
 | `github-pages-spa` | `upload-pages-artifact` + `deploy-pages` | needs Pages enabled |
+| `app-store-connect` | `xcodebuild archive` → `asc builds upload` (the [asc](https://github.com/rorkai/App-Store-Connect-CLI) CLI) | TestFlight / App Store for an `apple`-stack Tuist app; uploads on a `v*` tag; set the `ASC_APP_ID` repo variable |
 
 Workflows trigger on push to the default branch (`main`) plus a manual `workflow_dispatch`. `--ci NAME=op://…`,
 `--runtime NAME=op://…`, `--dir`, and `--force` shape the manifest.

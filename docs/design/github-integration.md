@@ -251,6 +251,7 @@ branch (or on release), and lists the secrets to set (via `gh secret set` or the
 | `cloudflare-workers-spa` | `wrangler deploy` with Workers static **assets** | `CLOUDFLARE_API_TOKEN` | assets-only; `account_id` in `wrangler.jsonc`; `assets.not_found_handling = "single-page-application"`, no server worker |
 | `railway` | Railway CLI in-workflow (`railway up --service <svc>`) | `RAILWAY_TOKEN` | for server/container apps; alternatively Railway's own GitHub auto-deploy (no workflow) |
 | `github-pages-spa` | `actions/upload-pages-artifact` + `actions/deploy-pages` | none (uses `GITHUB_TOKEN`) | needs Pages enabled, `pages: write` + `id-token: write`, `environment: github-pages`; handle the `/<repo>/` base + SPA 404 fallback |
+| `app-store-connect` | `xcodebuild archive` → `asc builds upload` (the [asc](https://github.com/rorkai/App-Store-Connect-CLI) CLI, `brew install asc`) on a `v*` tag | `APPLE_DISTRIBUTION_CERT_BASE64`, `APPLE_DISTRIBUTION_CERT_PASSWORD`, `KEYCHAIN_PASSWORD`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_API_KEY_BASE64` (+ the non-secret `ASC_APP_ID` repo **variable**) | TestFlight / App Store for an `apple`-stack Tuist app (macOS runner); set the signing team/identity in `Project.swift`. For Developer ID / Homebrew, notarize instead (future kind) |
 
 These are independent of the gate (deploy on push/release; gate on PR).
 

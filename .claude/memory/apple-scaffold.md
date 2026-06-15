@@ -115,6 +115,23 @@ AppKit agent pack). Built in slices; **Slice 1 (headless Core) + Slice 2 (Tuist 
   - The example is reshaped around `Todo` (fetch `[Todo]` from `/todos`) so it stays in
     the existing story (`scenario.todo.manage.fetch`), like swiftdata's persist scenario.
 
+## Distribution — a deploy kind, not a `--with` feature
+
+`dist` ships as the **`app-store-connect`** deploy kind (`config.DeployKinds` +
+`templates/deploy/app-store-connect/deploy.yml.tmpl`), NOT a scaffold feature —
+scaffold features render only into the member dir, but release workflows belong at the
+repo-root `.github/`, which the deploy subsystem (`specify deploy add`) owns. The
+workflow archives with `xcodebuild` and uploads via the **`asc`** CLI
+(github.com/rorkai/App-Store-Connect-CLI, `brew install asc`; `asc auth login
+--bypass-keychain` + `asc builds upload --archive-path … --workspace … --scheme …`) on a
+`v*` tag. Secrets are op:// refs (`ASC_KEY_ID`/`ASC_ISSUER_ID`/`ASC_API_KEY_BASE64` +
+the cert/keychain trio); the app's ASC id is a non-secret **repo variable** `ASC_APP_ID`
+(`${{ vars.ASC_APP_ID }}`), not a secret. Deploy templates use `[[ ]]` delims (so `${{ }}`
+survives) + the `pascal`/`kebab` funcs; `[[pascal .Name]]` = the Xcode scheme. Validated
+by `TestRenderDeployAllKinds` (auto-covers every kind) + actionlint. `push` (APNs) was
+deferred (config-heavy, no offline test, gourmand has no server). Future kinds:
+Developer-ID-notarize, Homebrew.
+
 - **Structure-only Go test**: `internal/scaffold/apple_test.go` asserts the rendered
   tree + the dynamic-module/static-dir wiring + story↔`.scenario` id agreement. The
   Swift build/verify is proven by a Mac e2e (`target add` → `verify`), never by

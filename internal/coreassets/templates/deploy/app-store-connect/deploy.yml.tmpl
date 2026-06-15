@@ -1,0 +1,86 @@
+# Build [[pascal .Name]] and upload it to App Store Connect (TestFlight / App Store)
+# on a version tag, using the App Store Connect CLI (asc) for the upload:
+# https://github.com/rorkai/App-Store-Connect-CLI
+#
+# Wire these with `specify secrets sync [[.Name]]` (op:// references recorded in the
+# deploy manifest — never raw values in the repo):
+#   APPLE_DISTRIBUTION_CERT_BASE64     base64 of your Apple Distribution .p12
+#   APPLE_DISTRIBUTION_CERT_PASSWORD   the .p12 password
+#   KEYCHAIN_PASSWORD                  any throwaway password for the temp keychain
+#   ASC_KEY_ID  ASC_ISSUER_ID          App Store Connect API key identifiers
+#   ASC_API_KEY_BASE64                 base64 of the .p8 App Store Connect API key
+# Also set the repo variable ASC_APP_ID to your app's App Store Connect id (a public
+# identifier, not a secret). Set the signing team/identity in Project.swift first.
+#
+# This needs real Apple credentials to run, so it's a starting point: tag v* to ship.
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: [[.Dir]]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
+
+      - name: Install the App Store Connect CLI (asc)
+        run: brew install asc
+
+      - name: Import the Apple Distribution signing certificate
+        env:
+          CERT_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERT_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/app.keychain-db"
+          echo "$CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+
+      - name: Authenticate asc to App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+        run: |
+          echo "$ASC_API_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          asc auth login --bypass-keychain \
+            --name ci \
+            --key-id "$ASC_KEY_ID" \
+            --issuer-id "$ASC_ISSUER_ID" \
+            --private-key "$RUNNER_TEMP/AuthKey.p8"
+
+      - name: Archive
+        run: |
+          tuist generate --no-open
+          xcodebuild archive \
+            -workspace "[[pascal .Name]].xcworkspace" \
+            -scheme "[[pascal .Name]]" \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -archivePath "$RUNNER_TEMP/[[pascal .Name]].xcarchive" \
+            -allowProvisioningUpdates
+
+      - name: Upload to App Store Connect (TestFlight)
+        env:
+          ASC_BYPASS_KEYCHAIN: '1'
+        run: |
+          asc builds upload \
+            --app "${{ vars.ASC_APP_ID }}" \
+            --archive-path "$RUNNER_TEMP/[[pascal .Name]].xcarchive" \
+            --workspace "[[pascal .Name]].xcworkspace" \
+            --scheme "[[pascal .Name]]" \
+            --wait --output json

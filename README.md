@@ -235,7 +235,7 @@ specify gate scope --message "$1"
 specify gate firewall && specify gate generated
 ```
 
-Deploys are optional and none are required. `specify deploy add <kind>` drops a `.github/workflows/deploy.yml` for a target (`cloudflare-workers-ssr`, `cloudflare-workers-spa`, `railway`, `github-pages-spa`) and records the manifest. Secrets are **1Password references** (`op://…`) in the manifest — never values — and `specify secrets sync` resolves them through your local `op` straight into GitHub Actions secrets (`gh secret set`) and the platform store (`wrangler secret put` / `railway variables`), never echoing or writing them to disk. (`CLOUDFLARE_ACCOUNT_ID` is a committed identifier in `wrangler.jsonc`, not a secret.)
+Deploys are optional and none are required. `specify deploy add <kind>` drops a `.github/workflows/deploy.yml` for a target (`cloudflare-workers-ssr`, `cloudflare-workers-spa`, `railway`, `github-pages-spa`, `app-store-connect`) and records the manifest. Secrets are **1Password references** (`op://…`) in the manifest — never values — and `specify secrets sync` resolves them through your local `op` straight into GitHub Actions secrets (`gh secret set`) and the platform store (`wrangler secret put` / `railway variables`), never echoing or writing them to disk. (`CLOUDFLARE_ACCOUNT_ID` is a committed identifier in `wrangler.jsonc`, not a secret.)
 
 ## The `specify` command reference
 

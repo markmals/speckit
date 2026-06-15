@@ -283,7 +283,11 @@ Ready) and baked in as `specify work`'s defaults.
     target via the **Swift OpenAPI Generator** build-tool plugin (codegen at build time) + a public
     `TodoAPIClient` facade + a fake-`ClientTransport` test (offline-verifiable). `--with openapi` → verify 3
     passed; `--with swiftdata --with openapi` → 4 passed + app build. (Seam gotcha: SPM needs `dependencies`
-    after `products`.) ⬜ Remaining: `push` (APNs), `dist` (TestFlight/App Store/Homebrew).
+    after `products`.) **`dist` ✅ as a deploy kind** — `app-store-connect` (`specify deploy add
+    app-store-connect`): a macOS release workflow (`xcodebuild archive`/`-exportArchive` → TestFlight/App
+    Store on a `v*` tag) + ASC-API-key/cert secrets as op:// refs; release belongs at root `.github/`, which
+    `--with` can't reach. **`push` (APNs) deferred** — mostly config, thin testable kernel, gourmand (local
+    app) has no server. Slice 3's verifiable + gourmand-relevant features (swiftdata, openapi) + dist done.
   - ⬜ **Slice 4 — the apple stack pack** — project mac-dev-skills' appkit plugin (skills/agent/rules + Xcode MCP)
     into `templates/{skills,rules,agents,commands}`.
   - ⬜ `swift-package` / `swift-cli` (apple-platform-tools' shape) fall out of Slice 1 nearly free — factor after.
