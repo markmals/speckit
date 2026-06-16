@@ -13,3 +13,4 @@ skill.
 - [Web scaffold](web-scaffold.md) — feature/variant composition, the provider `Wrap` seam, and the toolchain gotchas when adding a `--with`
 - [racket-ui via shadcn](rac-ui-shadcn.md) — the proven recipe to replace the foundation with racket-ui (`markmals/racket-ui`) via the shadcn CLI; **gated on committing `registry.json` to that repo's root**
 - [Apple scaffold](apple-scaffold.md) — the `apple` stack + the `swift-package`/`swift-cli` sibling library stacks: verify=headless Core/package, the swift event-stream command, the dynamic-module/static-dir `path:` trick, `.tmpl`-for-substitution-only, the `.scenario()` binding, packless-stack handling
+- [Mise monorepo](mise-monorepo.md) — generated root config invariant; the unstable-parser comment-preserving merge; the family↔member drift coupling

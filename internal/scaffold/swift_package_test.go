@@ -101,9 +101,19 @@ func TestSwiftPackageScaffold(t *testing.T) {
 	}
 
 	// The mise test task writes the event-stream report the engine joins.
+	// [vars] provides package_path = "." enabling the swift family canonical run.
 	mise := string(mustRead(t, filepath.Join(dir, "mise.toml")))
 	if !strings.Contains(mise, "--event-stream-output-path test.swift-events.ndjson") {
 		t.Errorf("mise.toml test task must write the event stream:\n%s", mise)
+	}
+	if !strings.Contains(mise, "[vars]") {
+		t.Errorf("swift-package member mise.toml missing [vars]:\n%s", mise)
+	}
+	if !strings.Contains(mise, `package_path = "."`) {
+		t.Errorf("swift-package member mise.toml missing package_path = \".\" in [vars]:\n%s", mise)
+	}
+	if !strings.Contains(mise, "--package-path .") {
+		t.Errorf("swift-package member mise.toml test run must contain --package-path .:\n%s", mise)
 	}
 
 	// The seeded story (root/) and the test's `.scenario(...)` traits must name the same
@@ -128,7 +138,7 @@ func TestSwiftPackageScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rt.Command != "cd packages/recipe-kit && mise run test" {
+	if rt.Command != "mise //packages/recipe-kit:test" {
 		t.Errorf("target command = %q", rt.Command)
 	}
 	if rt.Report != "packages/recipe-kit/test.swift-events.ndjson" || rt.Source != "packages/recipe-kit" {

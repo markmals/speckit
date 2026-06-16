@@ -121,12 +121,24 @@ func TestAppleScaffold(t *testing.T) {
 	}
 
 	// The mise config pins Tuist and exposes the app loop (generate/build/test:app),
-	// with the scheme named after the app.
+	// with the scheme named after the app. [vars] provides package_path + scheme for
+	// the swift family canonical run (promotion) and template substitution.
 	mise, _ := os.ReadFile(filepath.Join(dir, "mise.toml"))
 	for _, want := range []string{`tuist = "`, "[tasks.build]", "tuist xcodebuild build -scheme Gourmand", `[tasks."test:app"]`} {
 		if !strings.Contains(string(mise), want) {
 			t.Errorf("mise.toml missing %q:\n%s", want, mise)
 		}
+	}
+	// [tools] stays in the member (tuist is apple-specific, not in the swift family).
+	if !strings.Contains(string(mise), "[tools]") {
+		t.Errorf("apple member mise.toml must keep [tools] (tuist is not hoisted to root):\n%s", mise)
+	}
+	// [vars] enables the swift family canonical run (package_path drives the test task).
+	if !strings.Contains(string(mise), "[vars]") {
+		t.Errorf("apple member mise.toml missing [vars]:\n%s", mise)
+	}
+	if !strings.Contains(string(mise), `package_path = "Core"`) {
+		t.Errorf("apple member mise.toml missing package_path = \"Core\" in [vars]:\n%s", mise)
 	}
 
 	// The bound test imports the dynamic module and binds via the `.scenario()` trait
@@ -176,7 +188,7 @@ func TestAppleScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rt.Command != "cd apps/gourmand && mise run test" {
+	if rt.Command != "mise //apps/gourmand:test" {
 		t.Errorf("target command = %q", rt.Command)
 	}
 	if rt.Report != "apps/gourmand/Core/test.swift-events.ndjson" || rt.Source != "apps/gourmand/Core" {

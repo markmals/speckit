@@ -1,22 +1,18 @@
-# {{.Name}} — a Swift package. The spec-provable library builds and tests with
-# `swift test` alone, so `specify verify` needs no Xcode project, simulator, or
-# signing. Swift + swift-format come from the active toolchain (not pinned here).
-# `mise run test` writes the Swift Testing event stream the engine's `swift` format
-# joins.
+# swift family — apple, swift-package, swift-cli. No [tools]: swift + swift-format
+# come from the active toolchain, and tuist is apple-specific (stays a member-level
+# [tools] in the apple scaffold). Templates are written to the root mise.toml once
+# the family has a second member. Bodies must match the member scaffolds' inline
+# tasks (a drift test enforces it).
 
-[vars]
-package_path = "."
-
-[tasks.test]
+[task_templates."swift:test"]
 description = "run the test suite, writing the event-stream report the engine joins"
-run = "swift test --package-path . --event-stream-output-path test.swift-events.ndjson --event-stream-version 0"
+run = "swift test --package-path {{ vars.package_path }} --event-stream-output-path test.swift-events.ndjson --event-stream-version 0"
 
-[tasks.build]
-alias = "b"
+[task_templates."swift:build"]
 description = "build the package"
 run = "swift build"
 
-[tasks.fmt]
+[task_templates."swift:fmt"]
 description = "format Swift sources in place (swift-format). Pass paths to format just those."
 run = '''
 if [ "$#" -gt 0 ]; then
@@ -28,8 +24,7 @@ else
 fi
 '''
 
-[tasks.lint]
-alias = "l"
+[task_templates."swift:lint"]
 description = "lint Swift sources (swift-format, strict)"
 run = '''
 dirs=""

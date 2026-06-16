@@ -18,11 +18,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+      # Source for the generated slice of the apple pack. PINNED to a commit so the drift
+      # gate is deterministic — an unrelated mac-dev-skills change can't turn this repo's CI
+      # red. To pick up new source content: bump this `ref`, run `mise run apple-pack:generate`,
+      # and commit both.
       - name: checkout mac-dev-skills source
         if: matrix.os == 'ubuntu-latest'
         uses: actions/checkout@v6
         with:
-          repository: malstrom/mac-dev-skills
+          repository: markmals/mac-dev-skills
+          ref: 9bfc1cf6cedf63ff301d8d73a268a1aae03b2ed5
           path: .cache/mac-dev-skills
       - uses: actions/setup-go@v6
         with:

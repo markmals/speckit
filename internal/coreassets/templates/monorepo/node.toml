@@ -1,0 +1,39 @@
+# node family — web (and future node-cli). Toolchain hoisted to the repo-root
+# mise.toml from the first member; these task templates are written there only
+# once the family has a second member. Bodies must match the member scaffolds'
+# inline tasks (a drift test enforces it).
+[tools]
+node = "24"
+pnpm = "11"
+gh = "2.94"
+1password = "2"
+
+[task_templates."node:routes"]
+description = "generate the TanStack Router tree (app/routes.gen.ts)"
+run = "tsr generate"
+
+[task_templates."node:dev"]
+run = "vite dev"
+
+[task_templates."node:test"]
+description = "run Vitest with the junit reporter the engine joins"
+run = "vitest run --reporter=junit --outputFile=junit.xml"
+
+[task_templates."node:typecheck"]
+description = "type-check with tsgo (needs the generated route tree)"
+run = "tsgo --noEmit"
+
+[task_templates."node:fmt"]
+description = "format app/ in place (Oxfmt)"
+run = "oxfmt app"
+
+[task_templates."node:fmt:check"]
+description = "fail if app/ needs formatting (Oxfmt)"
+run = "oxfmt --check app"
+
+[task_templates."node:lint"]
+description = "lint app/ (Oxlint); needs the generated route tree"
+run = "oxlint app"
+
+[task_templates."node:build"]
+run = "vite build"

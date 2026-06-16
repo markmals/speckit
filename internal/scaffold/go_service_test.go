@@ -123,6 +123,18 @@ func TestGoServiceScaffold(t *testing.T) {
 	if mise, _ := os.ReadFile(filepath.Join(dir, "mise.toml")); strings.Contains(string(mise), "[tasks.generate]") {
 		t.Errorf("default mise.toml must not carry the generate task:\n%s", mise)
 	}
+	// the member drops [tools] — the go toolchain is hoisted to the repo-root mise.toml.
+	if mise, _ := os.ReadFile(filepath.Join(dir, "mise.toml")); strings.Contains(string(mise), "[tools]") {
+		t.Errorf("go-service member must not declare [tools] (hoisted to root):\n%s", mise)
+	}
+	// the target command is the native monorepo form.
+	rt, err := RenderTarget(m, data)
+	if err != nil {
+		t.Fatalf("RenderTarget: %v", err)
+	}
+	if rt.Command != "mise //cmd/daemon:test" {
+		t.Errorf("go-service target.command = %q, want mise //cmd/daemon:test", rt.Command)
+	}
 
 	// --with sqlite: an additive feature (like the web email/stripe ones). It ships
 	// a member-private internal/store package (glebarez SQLite + embedded migrations

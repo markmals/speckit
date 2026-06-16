@@ -337,6 +337,9 @@ func targetAddCmd() *cobra.Command {
 			}); err != nil {
 				return err
 			}
+			if err := wireMonorepo("."); err != nil {
+				return fmt.Errorf("wiring mise monorepo: %w", err)
+			}
 
 			if cfg, found, _ := config.Load("."); found && cfg.Agent != "" {
 				if _, err := project.ProjectPacks(".", coreassets.FS, cfg.Agent, []string{stack}); err != nil {
@@ -482,6 +485,9 @@ func registerTarget(root string, o regOpts) error {
 
 	if err := config.AddTarget(root, o.name, t); err != nil {
 		return err
+	}
+	if err := wireMonorepo(root); err != nil {
+		return fmt.Errorf("wiring mise monorepo: %w", err)
 	}
 	// Project the stack's pack (agent skills) when an agent is configured — same as
 	// `target add`. Skipped on a config that has no agent yet (e.g. a fresh

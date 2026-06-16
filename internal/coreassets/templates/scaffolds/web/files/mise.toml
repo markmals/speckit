@@ -1,11 +1,3 @@
-[tools]
-node = "24"
-pnpm = "11"
-# gh drives the GitHub-native surface and supplies the token the binary inherits;
-# op resolves op:// secret references for `specify secrets sync`.
-gh = "2.94"
-op = "2"
-
 # Call npm binaries (vite, vitest, tsgo, oxlint, oxfmt, tsr) by bare name — no npx.
 [env]
 _.path = ['{{config_root}}/node_modules/.bin']
