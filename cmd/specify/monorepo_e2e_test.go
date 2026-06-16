@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/markmals/speckit/internal/config"
 	"github.com/markmals/speckit/internal/coreassets"
+	"github.com/markmals/speckit/internal/scaffold"
 )
 
 // TestWireMonorepoInlineThenPromote exercises both paths: one node member stays
@@ -106,4 +108,74 @@ func read(t *testing.T, p string) string {
 // coreassetsReadMember returns a stack's embedded files/mise.toml verbatim.
 func coreassetsReadMember(stack string) ([]byte, error) {
 	return coreassets.FS.ReadFile("templates/scaffolds/" + stack + "/files/mise.toml")
+}
+
+// renderMember renders a stack's real embedded member tree into root/dir.
+func renderMember(t *testing.T, root, stack, name, dir string) {
+	t.Helper()
+	sub, err := fs.Sub(coreassets.FS, "templates/scaffolds/"+stack)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scaffold.Render(sub, filepath.Join(root, dir), scaffold.Data{Name: name, Dir: dir}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestWireMonorepoSwiftCrossStackPromotion registers an apple member then a
+// swift-package member and asserts the swift templates hoist and both members
+// convert their shared tasks. Apple's tuist build stays inline (not promoted).
+func TestWireMonorepoSwiftCrossStackPromotion(t *testing.T) {
+	root := t.TempDir()
+	mustChdir(t, root)
+
+	// --- member 1: apps/Photos (apple, inline) ---
+	renderMember(t, root, "apple", "Photos", "apps/Photos")
+	if err := config.AddTarget(root, "Photos", config.Target{
+		Stack: "apple", Command: "mise //apps/Photos:test", Format: "swift",
+		Report: "apps/Photos/test.swift-events.ndjson", Source: "apps/Photos/Core",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := wireMonorepo(root); err != nil {
+		t.Fatal(err)
+	}
+	// one swift member: inline; root has no swift templates and no [tools] tuist
+	// (tuist stays in the apple member, not in the swift family contribution).
+	rootMise := read(t, filepath.Join(root, "mise.toml"))
+	if strings.Contains(rootMise, "[task_templates") {
+		t.Errorf("one swift member must stay inline:\n%s", rootMise)
+	}
+
+	// --- member 2: packages/Widgets (swift-package, promotion) ---
+	renderMember(t, root, "swift-package", "Widgets", "packages/Widgets")
+	if err := config.AddTarget(root, "Widgets", config.Target{
+		Stack: "swift-package", Command: "mise //packages/Widgets:test", Format: "swift",
+		Report: "packages/Widgets/test.swift-events.ndjson", Source: "packages/Widgets/Sources",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := wireMonorepo(root); err != nil {
+		t.Fatal(err)
+	}
+	rootMise = read(t, filepath.Join(root, "mise.toml"))
+	if !strings.Contains(rootMise, `[task_templates."swift:test"]`) {
+		t.Errorf("two swift members must hoist swift templates:\n%s", rootMise)
+	}
+	// both globs present (apps/* and packages/*).
+	if !strings.Contains(rootMise, `"apps/*"`) || !strings.Contains(rootMise, `"packages/*"`) {
+		t.Errorf("config_roots missing a swift glob:\n%s", rootMise)
+	}
+	// both members now extend the shared test template.
+	for _, d := range []string{"apps/Photos", "packages/Widgets"} {
+		m := read(t, filepath.Join(root, d, "mise.toml"))
+		if !strings.Contains(m, `extends = "swift:test"`) {
+			t.Errorf("%s test not promoted:\n%s", d, m)
+		}
+	}
+	// apple keeps its tuist build inline (not converted to extends = "swift:build").
+	ap := read(t, filepath.Join(root, "apps/Photos/mise.toml"))
+	if strings.Contains(ap, `extends = "swift:build"`) {
+		t.Errorf("apple tuist build must stay inline:\n%s", ap)
+	}
 }
