@@ -1,5 +1,6 @@
 {
   "stack": "apple",
+  "family": "swift",
   "memberDir": "apps",
   "nameRule": "identifier",
   "scripts": [
@@ -26,7 +27,7 @@
     }
   },
   "target": {
-    "command": "cd {{.Dir}} && mise run test",
+    "command": "mise //{{.Dir}}:test",
     "format": "swift",
     "report": "{{.Dir}}/Core/test.swift-events.ndjson",
     "source": "{{.Dir}}/Core",

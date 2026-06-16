@@ -150,7 +150,7 @@ func TestSwiftCLIScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rt.Command != "cd packages/greet-tool && mise run test" {
+	if rt.Command != "mise //packages/greet-tool:test" {
 		t.Errorf("target command = %q", rt.Command)
 	}
 	if rt.Report != "packages/greet-tool/test.swift-events.ndjson" || rt.Source != "packages/greet-tool" {

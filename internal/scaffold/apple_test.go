@@ -176,7 +176,7 @@ func TestAppleScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rt.Command != "cd apps/gourmand && mise run test" {
+	if rt.Command != "mise //apps/gourmand:test" {
 		t.Errorf("target command = %q", rt.Command)
 	}
 	if rt.Report != "apps/gourmand/Core/test.swift-events.ndjson" || rt.Source != "apps/gourmand/Core" {

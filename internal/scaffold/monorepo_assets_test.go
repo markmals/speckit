@@ -10,6 +10,23 @@ import (
 	"github.com/markmals/speckit/internal/coreassets"
 )
 
+// inlineRun returns the decoded run value of [tasks.<task>] from parsed exprs.
+func inlineRun(ex []expr, task string) (string, bool) {
+	for i, e := range ex {
+		if e.kind.isTable() && e.name == "tasks."+task {
+			for j := i + 1; j < len(ex); j++ {
+				if ex[j].kind.isTable() {
+					break
+				}
+				if ex[j].kind.isKeyValue() && ex[j].name == "run" {
+					return ex[j].val, true
+				}
+			}
+		}
+	}
+	return "", false
+}
+
 // TestNodeFamilyMatchesWebInline asserts the node family templates' run strings
 // equal the web member scaffold's inline task bodies — the coupling promotion
 // relies on. If you change one, change the other.
@@ -35,26 +52,55 @@ func TestNodeFamilyMatchesWebInline(t *testing.T) {
 	vars := memberVars(data)
 	for task, tpl := range fam.Templates {
 		want := substituteVars(tpl.Run, vars)
-		var got string
-		found := false
-		for i, e := range ex {
-			if e.kind.isTable() && e.name == "tasks."+task {
-				for j := i + 1; j < len(ex); j++ {
-					if ex[j].kind.isTable() {
-						break
-					}
-					if ex[j].kind.isKeyValue() && ex[j].name == "run" {
-						got, found = ex[j].val, true
-					}
-				}
-			}
-		}
+		got, found := inlineRun(ex, task)
 		if !found {
 			t.Errorf("web member has no inline [tasks.%s] for family template node:%s", task, task)
 			continue
 		}
 		if got != want {
 			t.Errorf("drift: node:%s\n  family:  %q\n  member:  %q", task, want, got)
+		}
+	}
+}
+
+// TestSwiftFamilyMatchesMemberInline asserts the swift family templates' run
+// strings (after vars substitution) equal each swift member scaffold's inline
+// task bodies — the coupling promotion relies on. If you change one, change
+// the other.
+func TestSwiftFamilyMatchesMemberInline(t *testing.T) {
+	fam, err := LoadFamily(coreassets.FS, "swift")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		stack string
+		name  string
+		dir   string
+		tasks []string
+	}{
+		{"apple", "Photos", "apps/Photos", []string{"test", "fmt", "lint"}},
+		{"swift-package", "Widgets", "packages/Widgets", []string{"test", "build", "fmt", "lint"}},
+		{"swift-cli", "Tool", "packages/Tool", []string{"test", "build", "fmt", "lint"}},
+	}
+	for _, c := range cases {
+		sub, _ := fs.Sub(coreassets.FS, "templates/scaffolds/"+c.stack)
+		dir := t.TempDir()
+		if _, err := Render(sub, dir, Data{Name: c.name, Dir: c.dir}); err != nil {
+			t.Fatalf("%s render: %v", c.stack, err)
+		}
+		data, _ := os.ReadFile(filepath.Join(dir, "mise.toml"))
+		ex, _ := parseExprs(data)
+		vars := memberVars(data)
+		for _, task := range c.tasks {
+			want := substituteVars(fam.Templates[task].Run, vars)
+			got, found := inlineRun(ex, task)
+			if !found {
+				t.Errorf("%s: no inline [tasks.%s]", c.stack, task)
+				continue
+			}
+			if got != want {
+				t.Errorf("drift %s swift:%s\n  family: %q\n  member: %q", c.stack, task, want, got)
+			}
 		}
 	}
 }

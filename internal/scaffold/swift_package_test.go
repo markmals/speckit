@@ -128,7 +128,7 @@ func TestSwiftPackageScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rt.Command != "cd packages/recipe-kit && mise run test" {
+	if rt.Command != "mise //packages/recipe-kit:test" {
 		t.Errorf("target command = %q", rt.Command)
 	}
 	if rt.Report != "packages/recipe-kit/test.swift-events.ndjson" || rt.Source != "packages/recipe-kit" {
