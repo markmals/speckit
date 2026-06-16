@@ -62,7 +62,8 @@ func TestVerifyJoinsMultipleSourceRoots(t *testing.T) {
 // A dangling binding (to an undeclared scenario) from EITHER root still fails.
 func TestVerifyMultiSourceDanglingFromAnyRoot(t *testing.T) {
 	root := setupMultiSourceProject(t)
-	// a second test in internal/example binds a scenario the spec never declares
+	// TestGhost appears in source only — a dangling binding fires from the
+	// source scan, not the report, so no matching report entry is needed.
 	writeSpecFile(t, root, "internal/example/extra_test.go", "// [scenario.demo.multi.ghost]\nfunc TestGhost(t *testing.T) {}\n")
 
 	cfg := VerifyConfig{Format: "gotest", Report: "report.gotest.json", Source: []string{"cmd/example", "internal/example"}}

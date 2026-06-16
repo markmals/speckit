@@ -13,12 +13,12 @@ import (
 
 // VerifyConfig describes how to verify a target: the test command to run as a
 // shell string (optional — empty if the report already exists, à la a Mise
-// task's `run`), the report format and path, and the test source directory.
+// task's `run`), the report format and path, and one or more test source directories.
 // Normally supplied by the target pack's verify adapter.
 type VerifyConfig struct {
-	Command string `json:"command,omitempty"`
-	Format  string `json:"format"` // "junit" | "swift" | "gotest"
-	Report  string `json:"report"` // report path, relative to root
+	Command string   `json:"command,omitempty"`
+	Format  string   `json:"format"` // "junit" | "swift" | "gotest"
+	Report  string   `json:"report"` // report path, relative to root
 	Source  []string `json:"source"` // test source dirs, relative to root (one or more)
 	// Bindings selects how an untagged test (one that binds no scenario) is
 	// treated: "strict" (default) makes it an unbound D12 violation — every test
