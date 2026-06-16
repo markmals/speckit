@@ -199,7 +199,8 @@ func TestEnsureRootMiseIsIdempotent(t *testing.T) {
 
 func TestEnsureRootMiseMergesGlobToolsAndTemplatesPreservingComments(t *testing.T) {
 	root := t.TempDir()
-	// A user-authored root with their own comment + a hand-pinned tool version.
+	// A user-authored root with their own comment, a hand-pinned tool version, and
+	// a hand-added [tasks.*] table — all must round-trip untouched.
 	seed := `# my notes — keep me
 monorepo_root = true
 
@@ -208,6 +209,10 @@ config_roots = ["apps/*"]
 
 [tools]
 node = "22"   # I pinned this on purpose
+
+# my own root task — keep me too
+[tasks.deploy]
+run = "echo ship it"
 `
 	if err := os.WriteFile(filepath.Join(root, "mise.toml"), []byte(seed), 0o644); err != nil {
 		t.Fatal(err)
@@ -228,6 +233,9 @@ node = "22"   # I pinned this on purpose
 		`pnpm = "11"`,              // missing family tool added
 		`"apps/*"`, `"cmd/*"`,      // both globs
 		`[task_templates."node:test"]`, // templates hoisted (Hoist=true)
+		"[tasks.deploy]",               // user's hand-added task preserved
+		`run = "echo ship it"`,         // …with its body intact
+		"keep me too",                  // …and its comment
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("merge missing/regressed %q:\n%s", want, got)
