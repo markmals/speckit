@@ -33,7 +33,7 @@ trailing commas).
       "command": "go test -json ./cmd/... ./internal/... > .speckit/daemon.gotest.json",
       "format": "gotest",
       "report": ".speckit/daemon.gotest.json",
-      "source": "cmd",
+      "source": ["cmd/troved", "internal", "cmd/trove-transcode"],
       "bindings": "scoped"
     }
   }
@@ -52,6 +52,10 @@ optional `bindings` mode.
 - **`format`** — how the test report is parsed: `junit` (Vitest, Gradle), `swift`
   (Swift Testing's event stream), or `gotest` (the NDJSON `go test -json` writes;
   the join identity is the `func Test…` name).
+- **`source`** — the directory (or directories) scanned for scenario bindings.
+  A single string scans one dir; a JSON array scans every listed dir and joins
+  the bindings into one target (e.g. a Go service whose tests span `cmd/` and
+  `internal/`). One or more non-empty paths are required.
 - **`bindings`** — how an untagged test (one that binds no scenario) is treated:
   `strict` (the default — every test must prove a scenario, an untagged one is an
   unbound D12 violation) or `scoped` (untagged tests are out of scope, so a suite
