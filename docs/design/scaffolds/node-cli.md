@@ -30,6 +30,12 @@ fetch · **Evlog** · Varlock _(deferred — the web stack ships Vite-native
 `.env.local` instead, since the reference apps don't wire Varlock)_ · **GitHub
 Actions**. (Same Mise monorepo + the `_.path = node_modules/.bin` trick as `web`.)
 
+Both `web` and `node-cli` belong to the **`node` family**: toolchain pins (`node`,
+`pnpm`, `gh`, `1password`) hoist to the root `[tools]` from the first member; shared
+task bodies hoist to root `[task_templates]` once the family has a second member.
+Members are tested via the native monorepo form `mise //apps/<name>:test` (not
+`cd … && mise run test`). See [`docs/design/mise-monorepo.md`](../mise-monorepo.md).
+
 ## What the scaffold wires
 
 **Default — green-on-arrival starter:**
@@ -66,7 +72,7 @@ Vitest with a **`junit` reporter** → the `report` path; an example story under
 ```json
 "cli": {
   "stack": "node-cli",
-  "command": "mise run -C apps/cli test",
+  "command": "mise //apps/cli:test",
   "format": "junit",
   "report": "apps/cli/junit.xml",
   "source": "apps/cli/src"
