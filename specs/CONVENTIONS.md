@@ -73,7 +73,7 @@ The closed set of allowed `kind:` values. Adding a kind is a deliberate change t
 | `view-model`    | `view-models/`  | `vm.<feature>.<view>`          | State, actions, transitions, derived values.   |
 | `command`       | `commands/`     | `command.<tool>.<verb>`        | One CLI command's behavior: flags, the work it does, output projection, exit code. |
 | `error`         | `errors/`       | `error.<domain>.<kind>`        | User-observable failure + recovery.            |
-| `protocol`      | `protocol/`     | `protocol.<producer>.<op>`     | Cross-workspace wire contract (one producer + ≥2 consumers). A contract kind: no scenarios; verified by drift, not a test join. |
+| `protocol`      | `protocol/`     | `protocol.<producer>.<op>`     | Cross-workspace wire contract (one producer + ≥2 consumers). Carries scenarios, joined to tests like a story's (D12). |
 | `architecture`  | (singular file) | `architecture`                 | Cross-cutting; one per product.                |
 | `design-system` | (singular file) | `design-system`                | Cross-cutting; one per product.                |
 | `conventions`   | (this file)     | `conventions`                  | Cross-cutting; one per product.                |
@@ -93,7 +93,7 @@ IDs are dotted, lowercase, hierarchical, and stable. The first segment is the ki
 
 The filename matches the trailing segment of the ID, dots preserved within the stem: `domain.specmodel` → `models/specmodel.md`; `story.engine.scan` → `stories/engine.scan.md`; `vm.items.list` → `view-models/items.list.md`.
 
-The scanner also accepts the **full dotted ID** as the stem (`stories/story.engine.scan.md`), so a library may name files by either convention — or, like an adopted external project, a mix. Gherkin scenario headings are recognized at any level (`## Scenario …` or a nested `### Scenario N: …` under `## Acceptance Criteria`) on a `story`, and a `domain` spec may declare its acceptance criteria as inline `- [scenario.id] …` bullets — both forms produce scenarios the engine joins.
+The scanner also accepts the **full dotted ID** as the stem (`stories/story.engine.scan.md`), so a library may name files by either convention — or, like an adopted external project, a mix. Gherkin scenario headings are recognized at any level (`## Scenario …` or a nested `### Scenario N: …` under `## Acceptance Criteria`), and a spec may instead declare scenarios as inline `- [scenario.id] …` acceptance bullets — both forms produce scenarios the engine joins, on any non-singular kind (see [Stories and scenarios](#stories-and-scenarios)).
 
 ## Reverse pointers
 
@@ -146,6 +146,8 @@ A story file contains frontmatter, an `As a / I want / So that` block, and an `#
 ```
 
 Sub-IDs follow `scenario.<feature>.<capability>.<short-name>` and are what tests reference in their `[scenario.id]` tag.
+
+Scenarios are not story-exclusive. **Every non-singular (per-file behavioral) kind may carry scenarios** the engine joins — `story`, `use-case`, `flow`, `domain`, `view-model`, `command`, `error`, and `protocol` — in either the `## Scenario` heading form above or the inline `- [scenario.id] …` acceptance-bullet form. The singular cross-cutting kinds (`narrative`, `architecture`, `design-system`, `conventions`) do not: their files are prose, so the engine never parses scenarios from them — which is why the illustrative `scenario.item.create.happy-path` in this file is never read as a real declaration.
 
 ## Marking unspecified content
 
