@@ -179,3 +179,35 @@ func TestWireMonorepoSwiftCrossStackPromotion(t *testing.T) {
 		t.Errorf("apple tuist build must stay inline:\n%s", ap)
 	}
 }
+
+// TestWireMonorepoGoPromotion renders two go-service members (cmd/api, cmd/worker),
+// adds each as a target, wires after each, then asserts the go:test template is
+// hoisted to the root config and both members carry extends = "go:test".
+func TestWireMonorepoGoPromotion(t *testing.T) {
+	root := t.TempDir()
+	mustChdir(t, root)
+	for _, m := range []struct{ name, dir string }{{"api", "cmd/api"}, {"worker", "cmd/worker"}} {
+		renderMember(t, root, "go-service", m.name, m.dir)
+		if err := config.AddTarget(root, m.name, config.Target{
+			Stack: "go-service", Command: "mise //" + m.dir + ":test", Format: "gotest",
+			Report: m.dir + "/test.gotest.json", Source: m.dir, Bindings: "scoped",
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if err := wireMonorepo(root); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rootMise := read(t, filepath.Join(root, "mise.toml"))
+	if !strings.Contains(rootMise, `[task_templates."go:test"]`) {
+		t.Errorf("go:test template not hoisted to root:\n%s", rootMise)
+	}
+	if !strings.Contains(rootMise, `config_roots = ["cmd/*"]`) {
+		t.Errorf("config_roots glob wrong (want cmd/*):\n%s", rootMise)
+	}
+	for _, d := range []string{"cmd/api", "cmd/worker"} {
+		if !strings.Contains(read(t, filepath.Join(root, d, "mise.toml")), `extends = "go:test"`) {
+			t.Errorf("%s not promoted to extends = \"go:test\"", d)
+		}
+	}
+}

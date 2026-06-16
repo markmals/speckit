@@ -63,6 +63,40 @@ func TestNodeFamilyMatchesWebInline(t *testing.T) {
 	}
 }
 
+// TestGoFamilyMatchesMemberInline asserts the go family templates' run strings
+// equal the go-service member scaffold's inline task bodies — the coupling
+// promotion relies on. If you change one, change the other.
+func TestGoFamilyMatchesMemberInline(t *testing.T) {
+	fam, err := LoadFamily(coreassets.FS, "go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub, _ := fs.Sub(coreassets.FS, "templates/scaffolds/go-service")
+	dir := t.TempDir()
+	if _, err := Render(sub, dir, Data{Name: "api", Dir: "cmd/api"}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// go-service member must not carry [tools] (hoisted to root).
+	if strings.Contains(string(data), "[tools]") {
+		t.Errorf("go-service member must not declare [tools] (hoisted to root):\n%s", data)
+	}
+	ex, _ := parseExprs(data)
+	for _, task := range []string{"dev", "build", "test", "vet", "fmt", "fmt:check"} {
+		got, found := inlineRun(ex, task)
+		if !found {
+			t.Errorf("go-service member has no inline [tasks.%s] for family template go:%s", task, task)
+			continue
+		}
+		if got != fam.Templates[task].Run {
+			t.Errorf("drift: go:%s\n  family:  %q\n  member:  %q", task, fam.Templates[task].Run, got)
+		}
+	}
+}
+
 // TestSwiftFamilyMatchesMemberInline asserts the swift family templates' run
 // strings (after vars substitution) equal each swift member scaffold's inline
 // task bodies — the coupling promotion relies on. If you change one, change
