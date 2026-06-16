@@ -428,3 +428,82 @@ func ensureTools(data []byte, pins []ToolPin) ([]byte, error) {
 	}
 	return data, nil
 }
+
+// PromoteMember rewrites the member mise.toml at path in place, converting each
+// inline [tasks.X] whose `run` still equals the family template X's canonical run
+// (after the member's own [vars] substitution) into `extends = "<family>:X"`.
+// Only the `run` key/value is replaced; description, depends, custom tasks, and
+// all comments are preserved (mise merges the member's own keys over the
+// template's). A task the user edited away from canonical is left untouched.
+// Idempotent. Reports whether it changed the file.
+func PromoteMember(path string, fam Family) (bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+	vars := memberVars(data)
+
+	// Collect replacements (run span -> extends) for every canonical task, then
+	// apply right-to-left so earlier spans stay valid.
+	type repl struct {
+		s   span
+		ins string
+	}
+	var repls []repl
+	ex, err := parseExprs(data)
+	if err != nil {
+		return false, err
+	}
+	for task, tpl := range fam.Templates {
+		canonical := substituteVars(tpl.Run, vars)
+		tableName := "tasks." + task
+		for i, e := range ex {
+			if !e.kind.isTable() || e.name != tableName {
+				continue
+			}
+			for j := i + 1; j < len(ex); j++ {
+				if ex[j].kind.isTable() {
+					break
+				}
+				if ex[j].kind.isKeyValue() && ex[j].name == "run" && ex[j].val == canonical {
+					repls = append(repls, repl{ex[j].span, `extends = "` + fam.Name + ":" + task + `"`})
+				}
+			}
+		}
+	}
+	if len(repls) == 0 {
+		return false, nil
+	}
+	sort.Slice(repls, func(a, b int) bool { return repls[a].s.start > repls[b].s.start })
+	for _, r := range repls {
+		out := make([]byte, 0, len(data))
+		out = append(out, data[:r.s.start]...)
+		out = append(out, r.ins...)
+		out = append(out, data[r.s.end:]...)
+		data = out
+	}
+	return true, os.WriteFile(path, data, 0o644)
+}
+
+// memberVars reads the member's [vars] table into a map (for canonical-run
+// substitution). Best-effort: a malformed file yields an empty map.
+func memberVars(data []byte) map[string]string {
+	out := map[string]string{}
+	ex, err := parseExprs(data)
+	if err != nil {
+		return out
+	}
+	for i, e := range ex {
+		if e.kind.isTable() && e.name == "vars" {
+			for j := i + 1; j < len(ex); j++ {
+				if ex[j].kind.isTable() {
+					break
+				}
+				if ex[j].kind.isKeyValue() {
+					out[ex[j].name] = ex[j].val
+				}
+			}
+		}
+	}
+	return out
+}
