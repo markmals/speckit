@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -71,5 +72,22 @@ func TestSourcePathsFirst(t *testing.T) {
 	}
 	if (SourcePaths{}).First() != "" {
 		t.Error("First of empty must be empty")
+	}
+}
+
+func TestSourcePathsRoundTrip(t *testing.T) {
+	cases := []SourcePaths{{"a"}, {"a", "b", "c"}}
+	for _, want := range cases {
+		b, err := json.Marshal(want)
+		if err != nil {
+			t.Fatalf("marshal %v: %v", want, err)
+		}
+		var got SourcePaths
+		if err := json.Unmarshal(b, &got); err != nil {
+			t.Fatalf("unmarshal %s: %v", b, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("round-trip mismatch: %v -> %s -> %v", want, b, got)
+		}
 	}
 }

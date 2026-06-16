@@ -63,7 +63,9 @@ func (sp *SourcePaths) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalJSON writes one path as a bare string and multiple as an array, so an
-// existing single-source config round-trips to the same on-disk shape.
+// existing single-source config round-trips to the same on-disk shape. An empty
+// SourcePaths marshals as JSON null; Validate rejects empty before any Save, so
+// that shape never reaches disk.
 func (sp SourcePaths) MarshalJSON() ([]byte, error) {
 	if len(sp) == 1 {
 		return json.Marshal(sp[0])
