@@ -35,19 +35,81 @@ type Paths struct {
 	Features string `json:"features"`
 }
 
+// SourcePaths is one or more source directories scanned for scenario bindings.
+// It decodes from either a JSON string (one dir) or a JSON array of dirs, so a
+// target whose bound tests span several packages can list them all while a
+// single-dir target stays a bare string. See docs/design/multi-source-targets.md.
+type SourcePaths []string
+
+// UnmarshalJSON accepts a JSON string ("x") or a JSON array of strings
+// (["a","b"]). Each entry is trimmed of surrounding whitespace; blank entries
+// are kept so Validate can report them.
+func (sp *SourcePaths) UnmarshalJSON(b []byte) error {
+	var one string
+	if err := json.Unmarshal(b, &one); err == nil {
+		*sp = SourcePaths{strings.TrimSpace(one)}
+		return nil
+	}
+	var many []string
+	if err := json.Unmarshal(b, &many); err != nil {
+		return fmt.Errorf("source must be a string or an array of strings: %w", err)
+	}
+	out := make(SourcePaths, len(many))
+	for i, s := range many {
+		out[i] = strings.TrimSpace(s)
+	}
+	*sp = out
+	return nil
+}
+
+// MarshalJSON writes one path as a bare string and multiple as an array, so an
+// existing single-source config round-trips to the same on-disk shape. An empty
+// SourcePaths marshals as []/null (nil → null, empty slice → []); Validate
+// rejects empty before any Save, so that shape never reaches disk.
+func (sp SourcePaths) MarshalJSON() ([]byte, error) {
+	if len(sp) == 1 {
+		return json.Marshal(sp[0])
+	}
+	return json.Marshal([]string(sp))
+}
+
+// First returns the first source path, or "" when there are none. Used by the
+// deploy/secrets app-dir heuristic, which is single-app by nature.
+func (sp SourcePaths) First() string {
+	if len(sp) == 0 {
+		return ""
+	}
+	return sp[0]
+}
+
+// Validate reports source problems for the named target: no paths at all, or any
+// blank/whitespace-only entry.
+func (sp SourcePaths) Validate(target string) []error {
+	if len(sp) == 0 {
+		return []error{fmt.Errorf("target %q: missing source dir", target)}
+	}
+	var errs []error
+	for _, s := range sp {
+		if strings.TrimSpace(s) == "" {
+			errs = append(errs, fmt.Errorf("target %q: source contains a blank entry", target))
+		}
+	}
+	return errs
+}
+
 // Target is one implementation of a product: the test command to run (a shell
 // string, à la a Mise task's `run`; empty when the report already exists), the
 // report format/path the engine joins, the source dir scanned for bindings, and
 // an optional product label. A target shared by several products lists them all
 // via Products.
 type Target struct {
-	Product  string   `json:"product,omitempty"`
-	Products []string `json:"products,omitempty"`
-	Stack    string   `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|go-service|node-cli|swift-package|swift-cli|ts-lib|vscode-extension
-	Command  string   `json:"command,omitempty"`
-	Format   string   `json:"format"` // junit | swift | gotest
-	Report   string   `json:"report"`
-	Source   string   `json:"source"`
+	Product  string      `json:"product,omitempty"`
+	Products []string    `json:"products,omitempty"`
+	Stack    string      `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|go-service|node-cli|swift-package|swift-cli|ts-lib|vscode-extension
+	Command  string      `json:"command,omitempty"`
+	Format   string      `json:"format"` // junit | swift | gotest
+	Report   string      `json:"report"`
+	Source   SourcePaths `json:"source"`
 	// Bindings is how untagged tests are treated: "strict" (default — every test
 	// must bind a scenario) or "scoped" (untagged tests are out of scope, so a
 	// suite mixing scenario tests with plain unit tests still verifies what it
@@ -200,9 +262,7 @@ func (c Config) Validate() []error {
 		if t.Report == "" {
 			errs = append(errs, fmt.Errorf("target %q: missing report path", name))
 		}
-		if t.Source == "" {
-			errs = append(errs, fmt.Errorf("target %q: missing source dir", name))
-		}
+		errs = append(errs, t.Source.Validate(name)...)
 		if t.Deploy != nil {
 			errs = append(errs, t.Deploy.Validate(name)...)
 		}

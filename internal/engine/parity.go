@@ -54,6 +54,23 @@ func (r ParityReport) Gated() bool {
 	return false
 }
 
+// ScanDeviationsMany merges deviation markers across every source root under
+// root — the multi-source form of ScanDeviations. A scenario seen in more than
+// one root keeps the last reason scanned.
+func ScanDeviationsMany(root string, paths []string) (map[specmodel.SpecID]string, error) {
+	merged := map[specmodel.SpecID]string{}
+	for _, p := range paths {
+		devs, err := ScanDeviations(filepath.Join(root, p))
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range devs {
+			merged[k] = v
+		}
+	}
+	return merged, nil
+}
+
 // Parity crosses the verify outcome with deviation markers into the five-state
 // matrix (D11). Deviation-presence and test-outcome are computed on independent
 // axes, so a marker over a failing test is suspect, never declared-deviation.
@@ -64,7 +81,7 @@ func Parity(root, target string, cfg VerifyConfig) (ParityReport, error) {
 	if err != nil {
 		return ParityReport{}, err
 	}
-	deviations, err := ScanDeviations(filepath.Join(root, cfg.Source))
+	deviations, err := ScanDeviationsMany(root, cfg.Source)
 	if err != nil {
 		return ParityReport{}, err
 	}

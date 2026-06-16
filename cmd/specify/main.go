@@ -333,7 +333,7 @@ func targetAddCmd() *cobra.Command {
 			}
 			if err := config.AddTarget(".", name, config.Target{
 				Stack: stack, Product: product,
-				Command: rt.Command, Format: rt.Format, Report: rt.Report, Source: rt.Source, Bindings: rt.Bindings,
+				Command: rt.Command, Format: rt.Format, Report: rt.Report, Source: config.SourcePaths{rt.Source}, Bindings: rt.Bindings,
 			}); err != nil {
 				return err
 			}
@@ -399,7 +399,8 @@ func targetAddCmd() *cobra.Command {
 // — or to match a member wired differently than the scaffold — pass the fields as
 // flags. Unlike `target add`, it writes no files and runs no scripts.
 func targetRegisterCmd() *cobra.Command {
-	var stack, dir, product, format, command, report, source, bindings string
+	var stack, dir, product, format, command, report, bindings string
+	var source []string
 	c := &cobra.Command{
 		Use:   "register <name> [flags]",
 		Short: "Register an existing member as a target (no scaffolding)",
@@ -417,14 +418,15 @@ func targetRegisterCmd() *cobra.Command {
 	c.Flags().StringVar(&format, "format", "", "report format (junit|swift|gotest) — overrides the stack default")
 	c.Flags().StringVar(&command, "command", "", "test command that produces the report — overrides the stack default")
 	c.Flags().StringVar(&report, "report", "", "report path the engine joins (root-relative) — overrides the stack default")
-	c.Flags().StringVar(&source, "source", "", "source dir scanned for bindings — overrides the stack default")
+	c.Flags().StringArrayVar(&source, "source", nil, "source dir scanned for bindings (repeatable for multi-source targets) — overrides the stack default")
 	c.Flags().StringVar(&bindings, "bindings", "", "binding mode (strict|scoped) — overrides the stack default")
 	return c
 }
 
 // regOpts are the inputs to registerTarget (the flags of `target register`).
 type regOpts struct {
-	name, stack, dir, product, format, command, report, source, bindings string
+	name, stack, dir, product, format, command, report, bindings string
+	source                                                       []string
 }
 
 // registerTarget records an existing member as a target under root's
@@ -468,10 +470,10 @@ func registerTarget(root string, o regOpts) error {
 		Command:  firstNonEmpty(o.command, rt.Command),
 		Format:   firstNonEmpty(o.format, rt.Format),
 		Report:   firstNonEmpty(o.report, rt.Report),
-		Source:   firstNonEmpty(o.source, rt.Source),
+		Source:   resolveSources(o.source, rt.Source),
 		Bindings: firstNonEmpty(o.bindings, rt.Bindings),
 	}
-	if t.Format == "" || t.Report == "" || t.Source == "" {
+	if t.Format == "" || t.Report == "" || len(t.Source) == 0 {
 		return fmt.Errorf("target register: incomplete wiring — provide --format, --report, and --source (stack %q has no scaffold to derive them from)", o.stack)
 	}
 	if t.Format != "junit" && t.Format != "swift" && t.Format != "gotest" {
@@ -507,6 +509,18 @@ func firstNonEmpty(a, b string) string {
 		return a
 	}
 	return b
+}
+
+// resolveSources picks the explicit --source paths when any were given, else the
+// stack manifest's single derived source (dropped when empty).
+func resolveSources(flags []string, fallback string) config.SourcePaths {
+	if len(flags) > 0 {
+		return config.SourcePaths(flags)
+	}
+	if fallback == "" {
+		return nil
+	}
+	return config.SourcePaths{fallback}
 }
 
 // resolveVariant picks an axis option (runtime/data): the flag value, else the
@@ -1034,7 +1048,7 @@ func verifyConfigFor(root, target string) (engine.VerifyConfig, error) {
 	if !ok {
 		return engine.VerifyConfig{}, fmt.Errorf("target %q not in %s (have: %s)", target, config.File, strings.Join(targetNames(cfg), ", "))
 	}
-	return engine.VerifyConfig{Command: t.Command, Format: t.Format, Report: t.Report, Source: t.Source, Bindings: t.Bindings}, nil
+	return engine.VerifyConfig{Command: t.Command, Format: t.Format, Report: t.Report, Source: []string(t.Source), Bindings: t.Bindings}, nil
 }
 
 // targetNames lists the configured target names, sorted.

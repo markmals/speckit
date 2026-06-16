@@ -24,7 +24,7 @@ func TestRegisterTargetFromManifest(t *testing.T) {
 		t.Fatalf("Load: found=%v err=%v", found, err)
 	}
 	got := cfg.Targets["troved"]
-	if got.Stack != "go-service" || got.Format != "gotest" || got.Bindings != "scoped" || got.Source != "cmd/troved" {
+	if got.Stack != "go-service" || got.Format != "gotest" || got.Bindings != "scoped" || got.Source.First() != "cmd/troved" {
 		t.Errorf("target = %+v, want go-service/gotest/scoped/source=cmd/troved", got)
 	}
 	if got.Report == "" || got.Command == "" {
@@ -46,14 +46,14 @@ func TestRegisterTargetExplicitFlags(t *testing.T) {
 	err := registerTarget(root, regOpts{
 		name: "services", stack: "ts-lib", dir: "packages/services",
 		format: "junit", command: "cd packages/services && mise run test",
-		report: "packages/services/junit.xml", source: "packages/services/src", bindings: "scoped",
+		report: "packages/services/junit.xml", source: []string{"packages/services/src"}, bindings: "scoped",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg, _, _ := config.Load(root)
 	got := cfg.Targets["services"]
-	if got.Stack != "ts-lib" || got.Format != "junit" || got.Source != "packages/services/src" || got.Bindings != "scoped" {
+	if got.Stack != "ts-lib" || got.Format != "junit" || got.Source.First() != "packages/services/src" || got.Bindings != "scoped" {
 		t.Errorf("target = %+v", got)
 	}
 }
@@ -90,5 +90,31 @@ func TestRegisterTargetErrors(t *testing.T) {
 	// bad name
 	if err := registerTarget(root, regOpts{name: "../escape", stack: "go-service", dir: "cmd/x"}); err == nil {
 		t.Error("expected error for an unsafe target name")
+	}
+}
+
+// register a multi-source target via repeated --source flags: the 3-path array
+// round-trips through specs.json. No member files are written (register never
+// scaffolds), though the go-service manifest still seeds the test wiring.
+func TestRegisterTargetMultiSource(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "cmd/troved"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	err := registerTarget(root, regOpts{
+		name: "go-service", stack: "go-service", dir: "cmd/troved",
+		source: []string{"cmd/troved", "internal", "cmd/trove-transcode"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, _, _ := config.Load(root)
+	tgt := cfg.Targets["go-service"]
+	if len(tgt.Source) != 3 || tgt.Source[0] != "cmd/troved" || tgt.Source[2] != "cmd/trove-transcode" {
+		t.Fatalf("expected a 3-source target, got %v", tgt.Source)
+	}
+	// the --source override is orthogonal to the manifest-seeded wiring
+	if tgt.Format != "gotest" {
+		t.Errorf("expected format seeded from the go-service manifest, got %q", tgt.Format)
 	}
 }

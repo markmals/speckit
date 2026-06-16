@@ -121,7 +121,7 @@ func TestSharedTargetListsBothProducts(t *testing.T) {
 
 func TestAddTargetRoundTrips(t *testing.T) {
 	root := t.TempDir() // no specs.json yet → AddTarget creates it
-	if err := AddTarget(root, "web", Target{Stack: "web", Command: "mise run test", Format: "junit", Report: "j.xml", Source: "app"}); err != nil {
+	if err := AddTarget(root, "web", Target{Stack: "web", Command: "mise run test", Format: "junit", Report: "j.xml", Source: SourcePaths{"app"}}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, found, err := Load(root)
@@ -135,7 +135,7 @@ func TestAddTargetRoundTrips(t *testing.T) {
 		t.Errorf("generated config should validate: %v", errs)
 	}
 	// a second target preserves the first
-	if err := AddTarget(root, "ios", Target{Stack: "apple", Format: "swift", Report: "r", Source: "s"}); err != nil {
+	if err := AddTarget(root, "ios", Target{Stack: "apple", Format: "swift", Report: "r", Source: SourcePaths{"s"}}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, _, _ = Load(root)

@@ -22,7 +22,7 @@ func TestWireMonorepoInlineThenPromote(t *testing.T) {
 	writeWebMember(t, root, "apps/web")
 	if err := config.AddTarget(root, "web", config.Target{
 		Stack: "web", Command: "mise //apps/web:test", Format: "junit",
-		Report: "apps/web/junit.xml", Source: "apps/web/app",
+		Report: "apps/web/junit.xml", Source: config.SourcePaths{"apps/web/app"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestWireMonorepoInlineThenPromote(t *testing.T) {
 	writeWebMember(t, root, "apps/web2")
 	if err := config.AddTarget(root, "web2", config.Target{
 		Stack: "web", Command: "mise //apps/web2:test", Format: "junit",
-		Report: "apps/web2/junit.xml", Source: "apps/web2/app",
+		Report: "apps/web2/junit.xml", Source: config.SourcePaths{"apps/web2/app"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestWireMonorepoSwiftCrossStackPromotion(t *testing.T) {
 	renderMember(t, root, "apple", "Photos", "apps/Photos")
 	if err := config.AddTarget(root, "Photos", config.Target{
 		Stack: "apple", Command: "mise //apps/Photos:test", Format: "swift",
-		Report: "apps/Photos/test.swift-events.ndjson", Source: "apps/Photos/Core",
+		Report: "apps/Photos/test.swift-events.ndjson", Source: config.SourcePaths{"apps/Photos/Core"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestWireMonorepoSwiftCrossStackPromotion(t *testing.T) {
 	renderMember(t, root, "swift-package", "Widgets", "packages/Widgets")
 	if err := config.AddTarget(root, "Widgets", config.Target{
 		Stack: "swift-package", Command: "mise //packages/Widgets:test", Format: "swift",
-		Report: "packages/Widgets/test.swift-events.ndjson", Source: "packages/Widgets/Sources",
+		Report: "packages/Widgets/test.swift-events.ndjson", Source: config.SourcePaths{"packages/Widgets/Sources"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestWireMonorepoGoPromotion(t *testing.T) {
 		renderMember(t, root, "go-service", m.name, m.dir)
 		if err := config.AddTarget(root, m.name, config.Target{
 			Stack: "go-service", Command: "mise //" + m.dir + ":test", Format: "gotest",
-			Report: m.dir + "/test.gotest.json", Source: m.dir, Bindings: "scoped",
+			Report: m.dir + "/test.gotest.json", Source: config.SourcePaths{m.dir}, Bindings: "scoped",
 		}); err != nil {
 			t.Fatal(err)
 		}

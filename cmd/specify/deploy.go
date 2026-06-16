@@ -66,7 +66,7 @@ func deployAddCmd() *cobra.Command {
 
 			appDir := dir
 			if appDir == "" {
-				appDir = filepath.Dir(t.Source) // e.g. apps/web/app -> apps/web
+				appDir = filepath.Dir(t.Source.First()) // e.g. apps/web/app -> apps/web
 			}
 			if !safeRenderValue(appDir) {
 				return fmt.Errorf("deploy dir %q contains characters unsafe for a workflow file", appDir)
