@@ -123,11 +123,21 @@ func TestSwiftCLIScaffold(t *testing.T) {
 	}
 
 	// The mise tasks write the event stream the engine joins and expose `run`.
+	// [vars] provides package_path = "." enabling the swift family canonical run.
 	mise := string(mustRead(t, filepath.Join(dir, "mise.toml")))
 	for _, want := range []string{"--event-stream-output-path test.swift-events.ndjson", "swift run greet-tool"} {
 		if !strings.Contains(mise, want) {
 			t.Errorf("mise.toml missing %q:\n%s", want, mise)
 		}
+	}
+	if !strings.Contains(mise, "[vars]") {
+		t.Errorf("swift-cli member mise.toml missing [vars]:\n%s", mise)
+	}
+	if !strings.Contains(mise, `package_path = "."`) {
+		t.Errorf("swift-cli member mise.toml missing package_path = \".\" in [vars]:\n%s", mise)
+	}
+	if !strings.Contains(mise, "--package-path .") {
+		t.Errorf("swift-cli member mise.toml test run must contain --package-path .:\n%s", mise)
 	}
 
 	// The seeded story sub-ids and the test's `.scenario(...)` traits must match.
@@ -150,7 +160,7 @@ func TestSwiftCLIScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rt.Command != "cd packages/greet-tool && mise run test" {
+	if rt.Command != "mise //packages/greet-tool:test" {
 		t.Errorf("target command = %q", rt.Command)
 	}
 	if rt.Report != "packages/greet-tool/test.swift-events.ndjson" || rt.Source != "packages/greet-tool" {

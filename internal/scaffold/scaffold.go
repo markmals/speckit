@@ -29,6 +29,11 @@ type Manifest struct {
 	// that render {{pascal .Name}} as a module/type name (the swift stacks, apple), where
 	// not every safe slug works (e.g. a leading digit). Empty = the base rule only.
 	NameRule string `json:"nameRule,omitempty"`
+	// Family groups stacks that share a mise monorepo contribution — toolchain
+	// pins (hoisted to the root mise.toml) and [task_templates] (hoisted once the
+	// family has two members). e.g. "node" (web), "swift" (apple/swift-package/
+	// swift-cli), "go" (go-service). Empty = the stack contributes no family.
+	Family string `json:"family,omitempty"`
 	// SharedModule makes members of this stack compose into ONE repo-root go.mod
 	// (each member a cmd/<name> sharing internal/ packages — trove's shape) rather
 	// than a self-contained module per member. `target add` creates the root go.mod

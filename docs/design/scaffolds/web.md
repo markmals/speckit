@@ -117,13 +117,25 @@ re-tooling: Node + Go + Swift toolchains side by side, per-platform `fmt`/`lint`
 behind one task interface — and it works with **Astro** (which `vp` doesn't). It's
 what SpecKit itself uses.
 
-**Monorepo layout** — a root config plus one per target:
+**Mise monorepo** — from the first `specify target add`, a SpecKit repo is a real
+[mise monorepo](https://mise.jdx.dev/tasks/monorepo.html). `specify` generates a
+comment-preserving root `mise.toml` alongside the member's own config:
 
 ```
-mise.toml                 # root: shared tools/env + cross-target tasks
-apps/web/mise.toml        # the web target's toolchain + tasks + env
-…                         # apps/<go-daemon>/mise.toml, apps/<swift>/…
+mise.toml                 # root: monorepo_root=true, config_roots, shared [tools]
+apps/web/mise.toml        # the web target's env + inline task bodies (or extends)
+…                         # apps/<go-daemon>/mise.toml, packages/<swift>/…
 ```
+
+The root config carries `monorepo_root = true` and a **required**
+`[monorepo].config_roots` (single-level globs like `apps/*`; filesystem
+auto-discovery is deprecated and warns). Toolchain pins (`node`, `pnpm`, `gh`,
+`1password`) hoist to the root `[tools]` from the first member. Shared task bodies
+stay **inline** in the member until the `node` family gains a **second** member, at
+which point they hoist to root `[task_templates]` and each member's still-canonical
+tasks convert to `extends` ("promotion"). See
+[`docs/design/mise-monorepo.md`](../mise-monorepo.md) for the full design and
+[`docs/design/mise-monorepo-plan.md`](../mise-monorepo-plan.md) for the implementation.
 
 **The bare-binary trick** — so tasks call `vite`/`vitest`/`oxlint` directly, no `npx`:
 
@@ -180,14 +192,15 @@ and a `// SPEC:` pointer.
 ```json
 "web": {
   "stack": "web",
-  "command": "mise run -C apps/web test",
+  "command": "mise //apps/web:test",
   "format": "junit",
   "report": "apps/web/junit.xml",
   "source": "apps/web/app"
 }
 ```
 
-(exact mise monorepo task invocation pinned at build.)
+(native mise monorepo target-path form; runs with cwd = `apps/web`, so
+`junit.xml` lands at `apps/web/junit.xml` relative to the repo root.)
 
 ## Defaults
 

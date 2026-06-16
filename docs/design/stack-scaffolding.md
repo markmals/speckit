@@ -127,7 +127,7 @@ run through `text/template` (so `{{.Dir}}` etc. resolve):
     }
   ],
   "target": {
-    "command": "cd {{.Dir}} && mise run test",
+    "command": "mise //{{.Dir}}:test",
     "format": "junit",
     "report": "{{.Dir}}/junit.xml",
     "source": "{{.Dir}}/app"

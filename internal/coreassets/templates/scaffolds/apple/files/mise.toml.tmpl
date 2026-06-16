@@ -10,8 +10,11 @@
 [tools]
 tuist = "4.196.1"
 
+[vars]
+package_path = "Core"
+
 [tasks.test]
-description = "run the Core suite, writing the event-stream report the engine joins"
+description = "run the test suite, writing the event-stream report the engine joins"
 run = "swift test --package-path Core --event-stream-output-path test.swift-events.ndjson --event-stream-version 0"
 
 [tasks.generate]
@@ -46,7 +49,7 @@ run = '''
 if [ "$#" -gt 0 ]; then
   for f in "$@"; do case "$f" in *.swift) swift format --in-place "$f" ;; esac; done
 else
-  for d in Core macOS iOS; do
+  for d in Core macOS iOS Sources Tests; do
     if [ -d "$d" ]; then swift format --in-place --recursive "$d"; fi
   done
 fi
@@ -57,7 +60,7 @@ alias = "l"
 description = "lint Swift sources (swift-format, strict)"
 run = '''
 dirs=""
-for d in Core macOS iOS; do
+for d in Core macOS iOS Sources Tests; do
   if [ -d "$d" ]; then dirs="$dirs $d"; fi
 done
 if [ -n "$dirs" ]; then swift format lint --strict --recursive $dirs; fi

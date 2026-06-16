@@ -70,8 +70,11 @@ deepened so far — the stranded source had a partial generation).
 
 - **Scaffold scripts run with cwd already in the member dir** (`runIn(dir, …)` in
   `cmd/specify/main.go`), so a phase script is bare `mise trust`, NOT
-  `cd {{.Dir}} && mise trust` (double-cd → fails). But the target `command` stored
-  in specs.json IS run from the project root, so it keeps `cd {{.Dir}} && mise run test`.
+  `cd {{.Dir}} && mise trust` (double-cd → fails). The target `command` stored in
+  specs.json runs from the project root and now records the native mise-monorepo
+  form `mise //{{.Dir}}:test` (which runs with cwd = the member dir) — see
+  [[mise-monorepo]]; pre-migration repos may still carry the older
+  `cd {{.Dir}} && mise run test`, which remains valid.
 
 - **swift-format**: ship gourmand's `.swift-format` (lineLength 100, 4-space,
   `lineBreakBeforeEachArgument: true`); without a config swift-format defaults to
