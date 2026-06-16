@@ -3,6 +3,7 @@ package scaffold
 import (
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func TestParseExprsSpansAndNames(t *testing.T) {
@@ -85,4 +86,41 @@ func names(ex []expr) []string {
 		out = append(out, e.name)
 	}
 	return out
+}
+
+func TestLoadFamilyParsesToolsAndTemplates(t *testing.T) {
+	// A tiny in-memory family file via fstest.
+	fsys := fstest.MapFS{
+		"templates/monorepo/node.toml": {Data: []byte(`[tools]
+node = "24"
+pnpm = "11"
+
+[task_templates."node:test"]
+description = "run Vitest"
+run = "vitest run --reporter=junit --outputFile=junit.xml"
+
+[task_templates."node:fmt:check"]
+run = "oxfmt --check app"
+`)},
+	}
+	fam, err := LoadFamily(fsys, "node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fam.Name != "node" {
+		t.Errorf("Name = %q", fam.Name)
+	}
+	if len(fam.Tools) != 2 || fam.Tools[0].Key != "node" || fam.Tools[0].Val != "24" {
+		t.Errorf("Tools = %+v", fam.Tools)
+	}
+	if fam.Templates["test"].Run != "vitest run --reporter=junit --outputFile=junit.xml" {
+		t.Errorf("test template = %+v", fam.Templates["test"])
+	}
+	if fam.Templates["fmt:check"].Run != "oxfmt --check app" {
+		t.Errorf("fmt:check template = %+v", fam.Templates["fmt:check"])
+	}
+	// Raw must hold the verbatim [task_templates.*] blocks for EOF append.
+	if !strings.Contains(fam.Raw, `[task_templates."node:test"]`) || strings.Contains(fam.Raw, "[tools]") {
+		t.Errorf("Raw should hold only the task_templates blocks:\n%s", fam.Raw)
+	}
 }
