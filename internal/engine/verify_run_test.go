@@ -186,7 +186,7 @@ func TestVerifyProtocolScenarioJoins(t *testing.T) {
 	writeSpecFile(t, root, "go/troved_test.go", protocolSource)
 	writeSpecFile(t, root, "go/report.gotest.json", protocolReport)
 
-	cfg := VerifyConfig{Format: "gotest", Report: "go/report.gotest.json", Source: "go"}
+	cfg := VerifyConfig{Format: "gotest", Report: "go/report.gotest.json", Source: []string{"go"}}
 	v, locked, err := Verify(root, "go", cfg)
 	if err != nil {
 		t.Fatal(err)
