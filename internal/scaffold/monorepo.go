@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
+	"os"
+	"path"
+	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2/unstable"
@@ -203,4 +207,224 @@ func LoadFamily(assets fs.FS, name string) (Family, error) {
 		fam.Raw = strings.TrimRight(string(data[rawStart:]), "\n") + "\n"
 	}
 	return fam, nil
+}
+
+// EnsureRootMise creates or merges the repo-root mise.toml so it declares
+// monorepo_root, the config_roots globs for every target dir, and the union of
+// the present families' [tools]. A family's [task_templates] are appended only
+// when that family is marked Hoist (it has reached two members). Idempotent:
+// re-running adds nothing. Preserves all existing comments and user content via
+// surgical byte-range splices. Reports whether it changed the file.
+func EnsureRootMise(root string, families []Family, targetDirs []string) (bool, error) {
+	misePath := filepath.Join(root, "mise.toml")
+	orig, err := os.ReadFile(misePath)
+	if os.IsNotExist(err) {
+		orig = nil
+	} else if err != nil {
+		return false, err
+	}
+
+	data := orig
+	if len(data) == 0 {
+		data = []byte(rootSkeleton(families, targetDirs))
+	} else {
+		if data, err = ensureMonorepoRoot(data); err != nil {
+			return false, err
+		}
+		for _, g := range globsFor(targetDirs) {
+			if data, err = ensureConfigRoot(data, g); err != nil {
+				return false, err
+			}
+		}
+		for _, fam := range families {
+			if data, err = ensureTools(data, fam.Tools); err != nil {
+				return false, err
+			}
+		}
+	}
+	// Append any hoisted family's templates that aren't present yet.
+	for _, fam := range families {
+		if !fam.Hoist || fam.Raw == "" {
+			continue
+		}
+		if !bytes.Contains(data, []byte(`[task_templates."`+fam.Name+`:`)) {
+			if !bytes.HasSuffix(data, []byte("\n")) {
+				data = append(data, '\n')
+			}
+			data = append(data, '\n')
+			data = append(data, fam.Raw...)
+		}
+	}
+
+	if bytes.Equal(data, orig) {
+		return false, nil
+	}
+	if err := os.WriteFile(misePath, data, 0o644); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// rootSkeleton renders a fresh managed root config.
+func rootSkeleton(families []Family, targetDirs []string) string {
+	var b strings.Builder
+	b.WriteString("# Managed by `specify target` — your edits and comments are preserved.\n")
+	b.WriteString("# Task bodies live in each member's mise.toml until a family has two members,\n")
+	b.WriteString("# then move to a task_templates table here.\n")
+	b.WriteString("monorepo_root = true\n\n")
+	b.WriteString("[monorepo]\n")
+	globs := globsFor(targetDirs)
+	quoted := make([]string, len(globs))
+	for i, g := range globs {
+		quoted[i] = `"` + g + `"`
+	}
+	b.WriteString("config_roots = [" + strings.Join(quoted, ", ") + "]\n")
+	// Union of family tools, in family order then pin order.
+	var pins []ToolPin
+	seen := map[string]bool{}
+	for _, fam := range families {
+		for _, p := range fam.Tools {
+			if !seen[p.Key] {
+				seen[p.Key] = true
+				pins = append(pins, p)
+			}
+		}
+	}
+	if len(pins) > 0 {
+		b.WriteString("\n[tools]\n")
+		for _, p := range pins {
+			b.WriteString(p.Key + " = \"" + p.Val + "\"\n")
+		}
+	}
+	return b.String()
+}
+
+// globsFor maps target dirs to their covering config_roots globs (parent + "/*"),
+// deduped and sorted. A dir at the repo root falls back to an explicit entry.
+func globsFor(dirs []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, d := range dirs {
+		d = filepath.ToSlash(d)
+		parent := path.Dir(d)
+		g := parent + "/*"
+		if parent == "." || parent == "" {
+			g = d // repo-root member: name it explicitly
+		}
+		if !seen[g] {
+			seen[g] = true
+			out = append(out, g)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// ensureMonorepoRoot splices `monorepo_root = true` after any leading comments
+// if the key is absent.
+func ensureMonorepoRoot(data []byte) ([]byte, error) {
+	ex, err := parseExprs(data)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range ex {
+		if e.kind.isKeyValue() && e.name == "monorepo_root" {
+			return data, nil
+		}
+	}
+	// insert at the first non-comment position (or EOF preamble).
+	at := 0
+	for _, e := range ex {
+		if unstable.Kind(e.kind) == unstable.Comment {
+			if e.span.end > at {
+				at = e.span.end
+			}
+			continue
+		}
+		break
+	}
+	ins := "monorepo_root = true\n"
+	if at > 0 {
+		ins = "\n" + ins
+	}
+	return splice(data, at, ins), nil
+}
+
+// ensureConfigRoot ensures glob is an element of [monorepo].config_roots,
+// splicing it before the array's closing ] when missing. Creates the [monorepo]
+// table + key if absent.
+func ensureConfigRoot(data []byte, glob string) ([]byte, error) {
+	ex, err := parseExprs(data)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range ex {
+		if e.kind.isKeyValue() && e.name == "config_roots" {
+			seg := data[e.span.start:e.span.end]
+			if bytes.Contains(seg, []byte(`"`+glob+`"`)) {
+				return data, nil
+			}
+			rb := bytes.LastIndexByte(seg, ']')
+			// handle empty array "[]" vs "[ ... ]"
+			inner := bytes.TrimSpace(seg[bytes.IndexByte(seg, '[')+1 : rb])
+			ins := `, "` + glob + `"`
+			if len(inner) == 0 {
+				ins = `"` + glob + `"`
+			}
+			return splice(data, e.span.start+rb, ins), nil
+		}
+	}
+	// No config_roots key — ensure a [monorepo] table holds one.
+	for i, e := range ex {
+		if e.kind.isTable() && e.name == "monorepo" {
+			at := sectionEnd(ex, i)
+			return splice(data, at, "\nconfig_roots = [\""+glob+"\"]"), nil
+		}
+	}
+	// No [monorepo] table at all — append one.
+	out := data
+	if !bytes.HasSuffix(out, []byte("\n")) {
+		out = append(out, '\n')
+	}
+	return append(out, []byte("\n[monorepo]\nconfig_roots = [\""+glob+"\"]\n")...), nil
+}
+
+// ensureTools splices each missing pin after [tools]'s last key (never
+// overwriting a user-pinned version). Creates [tools] if absent.
+func ensureTools(data []byte, pins []ToolPin) ([]byte, error) {
+	for _, pin := range pins {
+		ex, err := parseExprs(data)
+		if err != nil {
+			return nil, err
+		}
+		toolsIdx := -1
+		present := false
+		for i, e := range ex {
+			if e.kind.isTable() && e.name == "tools" {
+				toolsIdx = i
+				for j := i + 1; j < len(ex); j++ {
+					if ex[j].kind.isTable() {
+						break
+					}
+					if ex[j].kind.isKeyValue() && ex[j].name == pin.Key {
+						present = true
+					}
+				}
+			}
+		}
+		if present {
+			continue
+		}
+		if toolsIdx == -1 {
+			out := data
+			if !bytes.HasSuffix(out, []byte("\n")) {
+				out = append(out, '\n')
+			}
+			data = append(out, []byte("\n[tools]\n"+pin.Key+" = \""+pin.Val+"\"\n")...)
+			continue
+		}
+		at := sectionEnd(ex, toolsIdx)
+		data = splice(data, at, "\n"+pin.Key+" = \""+pin.Val+"\"")
+	}
+	return data, nil
 }
