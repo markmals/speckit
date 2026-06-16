@@ -1,5 +1,6 @@
 {
   "stack": "go-service",
+  "family": "go",
   "memberDir": "cmd",
   "sharedModule": true,
   "scripts": [
@@ -51,7 +52,7 @@
     }
   },
   "target": {
-    "command": "cd {{.Dir}} && mise run test",
+    "command": "mise //{{.Dir}}:test",
     "format": "gotest",
     "report": "{{.Dir}}/test.gotest.json",
     "source": "{{.Dir}}",

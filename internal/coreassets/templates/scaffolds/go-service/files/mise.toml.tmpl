@@ -1,8 +1,6 @@
-# go-service: a Go HTTP daemon. Mise pins the toolchain and exposes the same task
-# names the engine + CI expect; `test` writes the `go test -json` report the
-# engine's gotest format joins.
-[tools]
-go = "1.26"
+# go-service: a Go HTTP daemon. Mise inherits the toolchain from the repo-root
+# mise.toml and exposes the same task names the engine + CI expect; `test` writes
+# the `go test -json` report the engine's gotest format joins.
 
 [tasks.dev]
 description = "run the service"
