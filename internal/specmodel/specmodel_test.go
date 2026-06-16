@@ -25,20 +25,42 @@ func TestKindPrefixes(t *testing.T) {
 		KindConventions: "", // singular cross-cutting kind: ID is just the kind name
 	}
 
-	// command is in the closed taxonomy (CLI command behavior specs), and a domain
-	// spec carries scenarios (the acceptance-bullet form) just like a story.
+	// command is in the closed taxonomy (CLI command behavior specs).
 	if !KindCommand.Valid() {
 		t.Error("KindCommand must be in the closed Kinds taxonomy")
-	}
-	if !KindStory.CarriesScenarios() || !KindDomain.CarriesScenarios() {
-		t.Error("story and domain must carry scenarios")
-	}
-	if KindCommand.CarriesScenarios() || KindConventions.CarriesScenarios() {
-		t.Error("only story/domain carry scenarios")
 	}
 	for k, want := range cases {
 		if got := k.Prefix(); got != want {
 			t.Errorf("%s.Prefix() = %q, want %q", k, got, want)
+		}
+	}
+}
+
+// CarriesScenarios is the scenario-parsing gate. Every non-singular spec kind is a
+// per-file behavioral contract that may declare scenarios the engine joins —
+// story/domain (already) plus protocol and the other behavioral kinds. The singular
+// cross-cutting doc kinds (narrative, architecture, design-system, conventions) do
+// not: CONVENTIONS.md itself carries an *illustrative* `<!-- id: scenario… -->`,
+// which must never be parsed as a real declaration.
+func TestCarriesScenarios(t *testing.T) {
+	carries := []Kind{
+		KindStory, KindDomain, KindProtocol, KindUseCase,
+		KindFlow, KindViewModel, KindCommand, KindError,
+	}
+	for _, k := range carries {
+		if !k.CarriesScenarios() {
+			t.Errorf("%s is a behavioral (non-singular) kind and must carry scenarios", k)
+		}
+		if k.Singular() {
+			t.Errorf("%s must not be Singular()", k)
+		}
+	}
+	for _, k := range []Kind{KindNarrative, KindArchitecture, KindDesignSystem, KindConventions} {
+		if k.CarriesScenarios() {
+			t.Errorf("%s is a singular cross-cutting doc kind and must not carry scenarios", k)
+		}
+		if !k.Singular() {
+			t.Errorf("%s must be Singular()", k)
 		}
 	}
 }
