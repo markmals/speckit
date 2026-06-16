@@ -54,7 +54,7 @@ func setupVerifyProject(t *testing.T, report string) string {
 // SPEC: story.engine.lock (scenario.engine.lock.writes-on-green)
 func TestVerifyGreenWritesLock(t *testing.T) {
 	root := setupVerifyProject(t, junitReport(true, true))
-	cfg := VerifyConfig{Format: "junit", Report: "web/report.junit.xml", Source: "web"}
+	cfg := VerifyConfig{Format: "junit", Report: "web/report.junit.xml", Source: []string{"web"}}
 
 	v, locked, err := Verify(root, "web", cfg)
 	if err != nil {
@@ -117,7 +117,7 @@ func setupGoVerifyProject(t *testing.T) string {
 // SPEC: story.engine.verify (scenario.engine.verify.source-bound-join)
 func TestVerifyGoScopedBindings(t *testing.T) {
 	root := setupGoVerifyProject(t)
-	cfg := VerifyConfig{Format: "gotest", Report: "cmd/x/report.gotest.json", Source: "cmd/x", Bindings: "scoped"}
+	cfg := VerifyConfig{Format: "gotest", Report: "cmd/x/report.gotest.json", Source: []string{"cmd/x"}, Bindings: "scoped"}
 	v, locked, err := Verify(root, "go", cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -137,7 +137,7 @@ func TestVerifyGoScopedBindings(t *testing.T) {
 // proving scoped is an opt-in relaxation, not a change to the default contract.
 func TestVerifyStrictFlagsUntaggedTest(t *testing.T) {
 	root := setupGoVerifyProject(t)
-	cfg := VerifyConfig{Format: "gotest", Report: "cmd/x/report.gotest.json", Source: "cmd/x"} // Bindings "" = strict
+	cfg := VerifyConfig{Format: "gotest", Report: "cmd/x/report.gotest.json", Source: []string{"cmd/x"}} // Bindings "" = strict
 	v, locked, err := Verify(root, "go", cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -153,7 +153,7 @@ func TestVerifyStrictFlagsUntaggedTest(t *testing.T) {
 // SPEC: story.engine.lock (scenario.engine.lock.no-write-on-red)
 func TestVerifyRedWritesNoLock(t *testing.T) {
 	root := setupVerifyProject(t, junitReport(true, false)) // scenario b fails
-	cfg := VerifyConfig{Format: "junit", Report: "web/report.junit.xml", Source: "web"}
+	cfg := VerifyConfig{Format: "junit", Report: "web/report.junit.xml", Source: []string{"web"}}
 
 	v, locked, err := Verify(root, "web", cfg)
 	if err != nil {

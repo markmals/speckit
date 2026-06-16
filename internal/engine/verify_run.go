@@ -19,7 +19,7 @@ type VerifyConfig struct {
 	Command string `json:"command,omitempty"`
 	Format  string `json:"format"` // "junit" | "swift" | "gotest"
 	Report  string `json:"report"` // report path, relative to root
-	Source  string `json:"source"` // test source dir, relative to root
+	Source  []string `json:"source"` // test source dirs, relative to root (one or more)
 	// Bindings selects how an untagged test (one that binds no scenario) is
 	// treated: "strict" (default) makes it an unbound D12 violation — every test
 	// must prove a scenario; "scoped" treats untagged tests as out of scope, so a
@@ -67,7 +67,7 @@ func joinTarget(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.Spec
 		return VerifyResult{}, nil, nil, err
 	}
 
-	bindings, err := ScanBindings(filepath.Join(root, cfg.Source))
+	bindings, err := ScanBindingsMany(root, cfg.Source)
 	if err != nil {
 		return VerifyResult{}, nil, nil, err
 	}

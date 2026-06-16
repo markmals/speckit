@@ -74,7 +74,7 @@ func TestParityFiveStates(t *testing.T) {
 	writeSpecFile(t, root, "web/src/x.ts", parityImpl)
 	writeSpecFile(t, root, "web/report.junit.xml", parityReport)
 
-	report, err := Parity(root, "web", VerifyConfig{Format: "junit", Report: "web/report.junit.xml", Source: "web"})
+	report, err := Parity(root, "web", VerifyConfig{Format: "junit", Report: "web/report.junit.xml", Source: []string{"web"}})
 	if err != nil {
 		t.Fatal(err)
 	}

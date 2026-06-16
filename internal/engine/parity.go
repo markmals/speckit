@@ -81,7 +81,7 @@ func Parity(root, target string, cfg VerifyConfig) (ParityReport, error) {
 	if err != nil {
 		return ParityReport{}, err
 	}
-	deviations, err := ScanDeviations(filepath.Join(root, cfg.Source))
+	deviations, err := ScanDeviationsMany(root, cfg.Source)
 	if err != nil {
 		return ParityReport{}, err
 	}
