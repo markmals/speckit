@@ -64,10 +64,16 @@ func (k Kind) Prefix() string {
 }
 
 // CarriesScenarios reports whether a spec of this kind declares scenarios the
-// engine parses: stories (Gherkin `## Scenario` headings) and domains (the
-// `- [scenario.id]` acceptance-criterion bullet form on a foundational contract).
+// engine parses and joins to tests (D12). Every non-singular kind is a per-file
+// behavioral contract that may carry scenarios — stories and domains, and equally
+// protocols, use-cases, flows, view-models, commands, and errors — in either the
+// Gherkin `## Scenario` heading form or the `- [scenario.id]` acceptance-bullet
+// form. The singular cross-cutting doc kinds (narrative, architecture,
+// design-system, conventions) do not: their files are prose, and CONVENTIONS.md
+// itself contains an illustrative `<!-- id: scenario… -->` that must never be
+// parsed as a real declaration.
 func (k Kind) CarriesScenarios() bool {
-	return k == KindStory || k == KindDomain
+	return !k.Singular()
 }
 
 // Valid reports whether k is a member of the closed taxonomy.

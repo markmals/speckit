@@ -10,7 +10,7 @@ import (
 type Spec struct {
 	Frontmatter
 	Path      string     // slash path within the library FS
-	Scenarios []Scenario // populated for stories (Gherkin) and domains (acceptance bullets)
+	Scenarios []Scenario // populated for every non-singular kind (Gherkin headings or acceptance bullets)
 }
 
 // Scenario is a Gherkin scenario heading and its declared sub-ID (empty if the

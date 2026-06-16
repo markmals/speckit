@@ -150,6 +150,61 @@ func TestVerifyStrictFlagsUntaggedTest(t *testing.T) {
 	}
 }
 
+// A kind: protocol spec that declares a scenario (heading + sub-id comment), and
+// a Go test that binds it with a leading // [scenario.<id>] comment. Protocol is a
+// behavioral contract kind, so its scenarios must be parsed and joinable just like
+// a story's — not reported as a dangling binding to an undeclared scenario (D12).
+const protocolSpec = `---
+id: protocol.troved.search
+kind: protocol
+---
+
+# Protocol: troved search
+
+## Acceptance Criteria
+
+### Scenario 1: search returns mapped results
+
+<!-- id: scenario.troved.search.returns-mapped-results -->
+
+- Given an indexed corpus
+- When a query matches
+- Then results are mapped
+`
+
+const protocolSource = "// [scenario.troved.search.returns-mapped-results]\nfunc TestSearchReturnsMappedResults(t *testing.T) {}\n"
+const protocolReport = "{\"Action\":\"pass\",\"Package\":\"x\",\"Test\":\"TestSearchReturnsMappedResults\"}\n"
+
+// A protocol spec's scenario joins to its source-bound test and verifies green —
+// it must not be reported as a dangling binding to an undeclared scenario, which is
+// what happened when scenario parsing was gated to story/domain only (D12).
+//
+// SPEC: story.engine.verify (scenario.engine.verify.source-bound-join)
+func TestVerifyProtocolScenarioJoins(t *testing.T) {
+	root := t.TempDir()
+	writeSpecFile(t, root, "specs/protocol/troved.search.md", protocolSpec)
+	writeSpecFile(t, root, "go/troved_test.go", protocolSource)
+	writeSpecFile(t, root, "go/report.gotest.json", protocolReport)
+
+	cfg := VerifyConfig{Format: "gotest", Report: "go/report.gotest.json", Source: "go"}
+	v, locked, err := Verify(root, "go", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Dangling) != 0 {
+		t.Fatalf("a protocol scenario's binding must join, not dangle (D12): %+v", v.Dangling)
+	}
+	if !contains(v.Passed, "scenario.troved.search.returns-mapped-results") {
+		t.Errorf("expected the protocol scenario in Passed, got %+v", v.Passed)
+	}
+	if !v.Green() {
+		t.Fatalf("expected green: %+v", v)
+	}
+	if len(locked) != 1 || locked[0] != "protocol.troved.search" {
+		t.Fatalf("expected protocol.troved.search locked, got %v", locked)
+	}
+}
+
 // SPEC: story.engine.lock (scenario.engine.lock.no-write-on-red)
 func TestVerifyRedWritesNoLock(t *testing.T) {
 	root := setupVerifyProject(t, junitReport(true, false)) // scenario b fails
