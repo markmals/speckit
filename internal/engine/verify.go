@@ -218,3 +218,19 @@ func ScanBindings(dir string) ([]Binding, error) {
 	})
 	return bindings, err
 }
+
+// ScanBindingsMany scans every source root under root for scenario↔test
+// bindings and concatenates them — the multi-source form of ScanBindings. Each
+// path is joined to root; a target may list one dir or several (a daemon, shared
+// packages, a sibling CLI). See docs/design/multi-source-targets.md.
+func ScanBindingsMany(root string, paths []string) ([]Binding, error) {
+	var bindings []Binding
+	for _, p := range paths {
+		bs, err := ScanBindings(filepath.Join(root, p))
+		if err != nil {
+			return nil, err
+		}
+		bindings = append(bindings, bs...)
+	}
+	return bindings, nil
+}
