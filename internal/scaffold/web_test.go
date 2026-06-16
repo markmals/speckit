@@ -138,6 +138,9 @@ func TestWebScaffold(t *testing.T) {
 			t.Errorf("mise.toml missing quality task %s", task)
 		}
 	}
+	if strings.Contains(string(mise), "[tools]") {
+		t.Errorf("web member mise.toml must not declare [tools] (hoisted to root):\n%s", mise)
+	}
 
 	root := t.TempDir()
 	w, err := RenderRoot(sub, root, data)
@@ -157,6 +160,9 @@ func TestWebScaffold(t *testing.T) {
 	}
 	if rt.Format != "junit" || rt.Source != "apps/web/app" {
 		t.Errorf("RenderTarget = %+v", rt)
+	}
+	if rt.Command != "mise //apps/web:test" {
+		t.Errorf("web target.command = %q, want mise //apps/web:test", rt.Command)
 	}
 
 	// The github/ subtree drops a project-root CI workflow. Its one GitHub
