@@ -93,8 +93,9 @@ func TestRegisterTargetErrors(t *testing.T) {
 	}
 }
 
-// register a multi-source target via repeated --source: the array round-trips
-// through specs.json (no scaffold, no files written).
+// register a multi-source target via repeated --source flags: the 3-path array
+// round-trips through specs.json. No member files are written (register never
+// scaffolds), though the go-service manifest still seeds the test wiring.
 func TestRegisterTargetMultiSource(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "cmd/troved"), 0o755); err != nil {
@@ -108,8 +109,12 @@ func TestRegisterTargetMultiSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg, _, _ := config.Load(root)
-	got := cfg.Targets["go-service"].Source
-	if len(got) != 3 || got[0] != "cmd/troved" || got[2] != "cmd/trove-transcode" {
-		t.Fatalf("expected a 3-source target, got %v", got)
+	tgt := cfg.Targets["go-service"]
+	if len(tgt.Source) != 3 || tgt.Source[0] != "cmd/troved" || tgt.Source[2] != "cmd/trove-transcode" {
+		t.Fatalf("expected a 3-source target, got %v", tgt.Source)
+	}
+	// the --source override is orthogonal to the manifest-seeded wiring
+	if tgt.Format != "gotest" {
+		t.Errorf("expected format seeded from the go-service manifest, got %q", tgt.Format)
 	}
 }
