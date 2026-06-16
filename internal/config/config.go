@@ -103,13 +103,13 @@ func (sp SourcePaths) Validate(target string) []error {
 // an optional product label. A target shared by several products lists them all
 // via Products.
 type Target struct {
-	Product  string   `json:"product,omitempty"`
-	Products []string `json:"products,omitempty"`
-	Stack    string   `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|go-service|node-cli|swift-package|swift-cli|ts-lib|vscode-extension
-	Command  string   `json:"command,omitempty"`
-	Format   string   `json:"format"` // junit | swift | gotest
-	Report   string   `json:"report"`
-	Source   string   `json:"source"`
+	Product  string      `json:"product,omitempty"`
+	Products []string    `json:"products,omitempty"`
+	Stack    string      `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|go-service|node-cli|swift-package|swift-cli|ts-lib|vscode-extension
+	Command  string      `json:"command,omitempty"`
+	Format   string      `json:"format"` // junit | swift | gotest
+	Report   string      `json:"report"`
+	Source   SourcePaths `json:"source"`
 	// Bindings is how untagged tests are treated: "strict" (default — every test
 	// must bind a scenario) or "scoped" (untagged tests are out of scope, so a
 	// suite mixing scenario tests with plain unit tests still verifies what it
@@ -262,9 +262,7 @@ func (c Config) Validate() []error {
 		if t.Report == "" {
 			errs = append(errs, fmt.Errorf("target %q: missing report path", name))
 		}
-		if t.Source == "" {
-			errs = append(errs, fmt.Errorf("target %q: missing source dir", name))
-		}
+		errs = append(errs, t.Source.Validate(name)...)
 		if t.Deploy != nil {
 			errs = append(errs, t.Deploy.Validate(name)...)
 		}

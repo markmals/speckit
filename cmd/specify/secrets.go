@@ -119,7 +119,7 @@ func secretsSyncCmd() *cobra.Command {
 
 			appDir := dir
 			if appDir == "" {
-				appDir = filepath.Dir(t.Source)
+				appDir = filepath.Dir(t.Source.First())
 			}
 			for _, op := range plan {
 				if err := pushSecret(op, t.Deploy.Kind, repo, appDir); err != nil {
