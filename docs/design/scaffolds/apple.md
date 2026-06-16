@@ -83,7 +83,7 @@ apps/<name>/
 scenarios, both green) into the project root. Target wiring:
 
 ```json
-"command": "cd {{.Dir}} && mise run test",
+"command": "mise //{{.Dir}}:test",
 "format":  "swift",
 "report":  "{{.Dir}}/Core/test.swift-events.ndjson",
 "source":  "{{.Dir}}/Core",

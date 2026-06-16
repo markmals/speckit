@@ -46,7 +46,7 @@ specify target add web --stack web   # green on verify out of the box
 # wired explicitly when the member differs / its stack has no scaffold:
 specify target register api --stack go-service --dir cmd/api
 specify target register lib --stack ts-lib --dir packages/lib \
-  --format junit --command "cd packages/lib && mise run test" \
+  --format junit --command "mise //packages/lib:test" \
   --report packages/lib/junit.xml --source packages/lib/src --bindings scoped
 ```
 
