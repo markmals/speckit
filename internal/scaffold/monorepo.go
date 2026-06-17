@@ -242,6 +242,10 @@ func EnsureRootMise(root string, families []Family, targetDirs []string) (bool, 
 			}
 		}
 	}
+	// Inject the repo-global dependency-update gate (tools + deps/check tasks).
+	if data, err = ensureDepsGate(data); err != nil {
+		return false, err
+	}
 	// Append any hoisted family's templates that aren't present yet.
 	for _, fam := range families {
 		if !fam.Hoist || fam.Raw == "" {
@@ -293,7 +297,7 @@ func rootSkeleton(families []Family, targetDirs []string) string {
 	if len(pins) > 0 {
 		b.WriteString("\n[tools]\n")
 		for _, p := range pins {
-			b.WriteString(p.Key + " = \"" + p.Val + "\"\n")
+			b.WriteString(tomlKey(p.Key) + " = \"" + p.Val + "\"\n")
 		}
 	}
 	return b.String()
@@ -424,9 +428,110 @@ func ensureTools(data []byte, pins []ToolPin) ([]byte, error) {
 			continue
 		}
 		at := sectionEnd(ex, toolsIdx)
-		data = splice(data, at, "\n"+pin.Key+" = \""+pin.Val+"\"")
+		data = splice(data, at, "\n"+tomlKey(pin.Key)+" = \""+pin.Val+"\"")
 	}
 	return data, nil
+}
+
+// tomlKey renders k as a TOML bare key, quoting it only when it carries a
+// character outside the bare-key set (A–Z a–z 0–9 _ -). The mise tool-backend
+// syntax `npm:renovate` has a colon, so it must serialize as `"npm:renovate"`
+// or the document fails to parse. The parsed/decoded key is always bare, so the
+// idempotency comparison in ensureTools still works against the unquoted form.
+func tomlKey(k string) string {
+	for _, r := range k {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-') {
+			return `"` + k + `"`
+		}
+	}
+	return k
+}
+
+// depsGateTools are the toolchain pins the repo-global dependency-update gate
+// needs: node (to run the Renovate npm CLI — pinned to the node family's default
+// so a node repo dedupes to one entry), the renovate CLI itself, and jq (the
+// report formatter). They merge into the root [tools] table for every monorepo,
+// node-family or not; ensureTools never overwrites a user-pinned version.
+func depsGateTools() []ToolPin {
+	return []ToolPin{
+		{"node", "24"},
+		{"npm:renovate", "latest"},
+		{"jq", "latest"},
+	}
+}
+
+// depsGateTasks is the [tasks.deps] + [tasks.check] block appended to the root
+// mise.toml. `deps` runs the advisory Renovate dry-run (never opens PRs, always
+// exits 0); `check` is the repo-wide aggregate gate, today just the deps check.
+const depsGateTasks = `# Local dependency-update gate: ` + "`mise run deps`" + ` runs Renovate over the whole
+# repo in local dry-run mode (never opens PRs, always exits 0) and reports the
+# available updates grouped by ecosystem, majors flagged separately. One gate
+# covers every member — Renovate is ecosystem-agnostic. See scripts/deps-check.sh.
+[tasks.deps]
+description = "report available dependency updates (local Renovate dry-run; no PRs)"
+run = "bash scripts/deps-check.sh"
+
+# Repo-wide aggregate gate. Per-member quality gates (fmt/lint/typecheck/test)
+# live in each member's mise.toml; this is where repo-level checks aggregate.
+[tasks.check]
+description = "run the repo-wide gates (currently: the dependency-update check)"
+depends = ["deps"]
+run = ":"
+`
+
+// ensureDepsGate injects the repo-global dependency-update gate into the root
+// mise.toml: the deps-gate [tools] pins (merged into the single [tools] table)
+// and the [tasks.deps]/[tasks.check] block (appended once). Idempotent — keyed
+// on the presence of [tasks.deps].
+func ensureDepsGate(data []byte) ([]byte, error) {
+	var err error
+	if data, err = ensureTools(data, depsGateTools()); err != nil {
+		return nil, err
+	}
+	if bytes.Contains(data, []byte("[tasks.deps]")) {
+		return data, nil
+	}
+	if !bytes.HasSuffix(data, []byte("\n")) {
+		data = append(data, '\n')
+	}
+	data = append(data, '\n')
+	return append(data, depsGateTasks...), nil
+}
+
+// EnsureDepsGateFiles writes the dependency-update gate's static repo-root files
+// — renovate.json and scripts/deps-check.sh — from the assets FS's
+// templates/monorepo/. A file that already exists is left untouched (a repo's
+// own renovate.json or an edited script survives re-runs); the script is written
+// executable. Returns the project-relative paths it created.
+func EnsureDepsGateFiles(assets fs.FS, projectRoot string) ([]string, error) {
+	specs := []struct {
+		src, dst string
+		mode     os.FileMode
+	}{
+		{"templates/monorepo/renovate.json", "renovate.json", 0o644},
+		{"templates/monorepo/deps-check.sh", filepath.Join("scripts", "deps-check.sh"), 0o755},
+	}
+	var created []string
+	for _, s := range specs {
+		dst := filepath.Join(projectRoot, s.dst)
+		if _, err := os.Stat(dst); err == nil {
+			continue // skip-existing
+		} else if !os.IsNotExist(err) {
+			return created, err
+		}
+		body, err := fs.ReadFile(assets, s.src)
+		if err != nil {
+			return created, err
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return created, err
+		}
+		if err := os.WriteFile(dst, body, s.mode); err != nil {
+			return created, err
+		}
+		created = append(created, s.dst)
+	}
+	return created, nil
 }
 
 // PromoteMember rewrites the member mise.toml at path in place, converting each

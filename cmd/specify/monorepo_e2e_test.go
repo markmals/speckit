@@ -42,6 +42,20 @@ func TestWireMonorepoInlineThenPromote(t *testing.T) {
 	if strings.Contains(read(t, filepath.Join(root, "apps/web/mise.toml")), "extends =") {
 		t.Error("single member must stay inline (no extends)")
 	}
+	// The repo-global dependency-update gate lands at the root (real embedded
+	// assets): the deps/check tasks in mise.toml plus renovate.json + the script.
+	if !strings.Contains(rootMise, "[tasks.deps]") || !strings.Contains(rootMise, `"npm:renovate" = "latest"`) {
+		t.Errorf("root mise.toml missing the deps gate:\n%s", rootMise)
+	}
+	for _, f := range []string{"renovate.json", "scripts/deps-check.sh"} {
+		if _, err := os.Stat(filepath.Join(root, f)); err != nil {
+			t.Errorf("deps gate file %s not written to root: %v", f, err)
+		}
+	}
+	// The member must NOT carry the gate — it's repo-global, not per-member.
+	if strings.Contains(read(t, filepath.Join(root, "apps/web/mise.toml")), "renovate") {
+		t.Error("web member must not carry renovate (gate is repo-global)")
+	}
 
 	// --- member 2: apps/web2 (promotion) ---
 	writeWebMember(t, root, "apps/web2")

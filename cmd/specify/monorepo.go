@@ -72,6 +72,11 @@ func wireMonorepo(root string) error {
 	if _, err := scaffold.EnsureRootMise(root, families, dirs); err != nil {
 		return err
 	}
+	// Drop the repo-global dependency-update gate's static files at the root
+	// (skip-existing). The root mise.toml's deps/check tasks reference them.
+	if _, err := scaffold.EnsureDepsGateFiles(coreassets.FS, root); err != nil {
+		return err
+	}
 	// Promote members of any hoisted family (safe: only canonical tasks convert).
 	for _, m := range members {
 		fam := loaded[m.family]
