@@ -3,6 +3,7 @@ package scaffold
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -419,7 +420,9 @@ func TestEnsureDepsGateFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("deps-check.sh not written: %v", err)
 	}
-	if info.Mode().Perm()&0o100 == 0 {
+	// Windows file modes don't carry a Unix executable bit, so only assert it
+	// where it's meaningful (the script runs under bash on Unix-y systems).
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o100 == 0 {
 		t.Errorf("deps-check.sh not executable: mode %v", info.Mode())
 	}
 	// Skip-existing: a second run touches nothing, even if the file was edited.
