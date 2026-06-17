@@ -92,7 +92,10 @@ specify issues close <issue#>  # close on green
 | `ISSUE_TEMPLATE/config.yml` | disables blank issues, links out to the SpecKit docs |
 | `PULL_REQUEST_TEMPLATE.md` | a spec-touch checklist (specs changed? scenarios bound? `verify` green? `drift` clean?) |
 | `CODEOWNERS` | routes `/features/`, `/specs/`, and `/.speckit/` to the spec owner, so **spec changes require human review** (replace `@OWNER` with a user or team) |
-| `dependabot.yml` | for the stack's ecosystem (web → npm) |
+
+_Dependency updates aren't a GitHub surface: the mise-monorepo root ships a
+repo-global **`deps`** task (a local Renovate dry-run that never opens PRs, wired
+into `mise run check`) plus `renovate.json`, so no `dependabot.yml` is projected._
 
 The lifecycle is **scenario-canonical**:
 

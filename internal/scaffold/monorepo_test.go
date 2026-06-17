@@ -3,6 +3,7 @@ package scaffold
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -331,5 +332,111 @@ run = "swift test --package-path Core --x"
 	}
 	if !changed || !strings.Contains(read(t, member), `extends = "swift:test"`) {
 		t.Errorf("vars-parameterized canonical task not converted:\n%s", read(t, member))
+	}
+}
+
+func TestEnsureRootMiseInjectsDepsGate(t *testing.T) {
+	root := t.TempDir()
+	if _, err := EnsureRootMise(root, []Family{nodeFam(t, false)}, []string{"apps/web"}); err != nil {
+		t.Fatal(err)
+	}
+	got := read(t, filepath.Join(root, "mise.toml"))
+	for _, want := range []string{
+		`"npm:renovate" = "latest"`, // colon key MUST be quoted or it's invalid TOML
+		`jq = "latest"`,
+		"[tasks.deps]",
+		`run = "bash scripts/deps-check.sh"`,
+		"[tasks.check]",
+		`depends = ["deps"]`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("root mise.toml missing deps-gate piece %q:\n%s", want, got)
+		}
+	}
+	// The unquoted form would be invalid TOML — guard against a regression.
+	if strings.Contains(got, "npm:renovate = ") {
+		t.Errorf("npm:renovate key emitted unquoted (invalid TOML):\n%s", got)
+	}
+	if !valid(t, got) {
+		t.Errorf("root mise.toml with deps gate does not re-parse:\n%s", got)
+	}
+}
+
+func TestEnsureRootMiseDepsGateIsIdempotent(t *testing.T) {
+	root := t.TempDir()
+	if _, err := EnsureRootMise(root, []Family{nodeFam(t, false)}, []string{"apps/web"}); err != nil {
+		t.Fatal(err)
+	}
+	first := read(t, filepath.Join(root, "mise.toml"))
+	changed, err := EnsureRootMise(root, []Family{nodeFam(t, false)}, []string{"apps/web"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed {
+		t.Error("re-running with the deps gate already present must be a no-op")
+	}
+	if read(t, filepath.Join(root, "mise.toml")) != first {
+		t.Error("deps gate re-injected on the second run (not idempotent)")
+	}
+}
+
+// A family that contributes no [tools] of its own (swift) still gets a valid
+// [tools] table created by the deps gate.
+func TestEnsureRootMiseDepsGateCreatesToolsWhenFamilyHasNone(t *testing.T) {
+	root := t.TempDir()
+	swift := Family{Name: "swift", Templates: map[string]Template{}} // no Tools
+	if _, err := EnsureRootMise(root, []Family{swift}, []string{"packages/Core"}); err != nil {
+		t.Fatal(err)
+	}
+	got := read(t, filepath.Join(root, "mise.toml"))
+	for _, want := range []string{"[tools]", `node = "24"`, `"npm:renovate" = "latest"`, "[tasks.deps]"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("swift-only root missing %q:\n%s", want, got)
+		}
+	}
+	if !valid(t, got) {
+		t.Errorf("swift-only root with deps gate does not re-parse:\n%s", got)
+	}
+}
+
+func TestEnsureDepsGateFiles(t *testing.T) {
+	assets := fstest.MapFS{
+		"templates/monorepo/renovate.json": {Data: []byte("{\n  \"extends\": [\"config:recommended\"]\n}\n")},
+		"templates/monorepo/deps-check.sh": {Data: []byte("#!/usr/bin/env bash\necho hi\n")},
+	}
+	root := t.TempDir()
+	created, err := EnsureDepsGateFiles(assets, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(created) != 2 {
+		t.Errorf("first run should create 2 files, got %v", created)
+	}
+	if got := read(t, filepath.Join(root, "renovate.json")); !strings.Contains(got, "config:recommended") {
+		t.Errorf("renovate.json content wrong:\n%s", got)
+	}
+	script := filepath.Join(root, "scripts", "deps-check.sh")
+	info, err := os.Stat(script)
+	if err != nil {
+		t.Fatalf("deps-check.sh not written: %v", err)
+	}
+	// Windows file modes don't carry a Unix executable bit, so only assert it
+	// where it's meaningful (the script runs under bash on Unix-y systems).
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o100 == 0 {
+		t.Errorf("deps-check.sh not executable: mode %v", info.Mode())
+	}
+	// Skip-existing: a second run touches nothing, even if the file was edited.
+	if err := os.WriteFile(filepath.Join(root, "renovate.json"), []byte("EDITED"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	created, err = EnsureDepsGateFiles(assets, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(created) != 0 {
+		t.Errorf("second run should create nothing, got %v", created)
+	}
+	if read(t, filepath.Join(root, "renovate.json")) != "EDITED" {
+		t.Error("second run clobbered an existing renovate.json")
 	}
 }
