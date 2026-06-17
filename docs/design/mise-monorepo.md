@@ -136,16 +136,33 @@ pnpm = "11"
 gh = "2.94"
 1password = "2"
 go = "1.26"
+"npm:renovate" = "latest"            # deps gate (repo-global, every monorepo)
+jq = "latest"
 
 # ---- node family (written only once the node family has ≥2 members) ----
 [task_templates."node:test"] …
 # ---- go family ----
 [task_templates."go:test"] …
+
+# ---- dependency-update gate (repo-global, from the first member) ----
+[tasks.deps]                         # advisory local Renovate dry-run; never opens PRs
+run = "bash scripts/deps-check.sh"
+[tasks.check]                        # repo-wide aggregate gate
+depends = ["deps"]
 ```
 
 `monorepo_root`, `[monorepo]`, and `[tools]` are present from the first member;
 a family's `[task_templates]` block appears only when that family gains its
 second member (see [promotion](#promotion-the-member-1-conversion)).
+
+**Dependency-update gate.** From the first member, the root also gets a single
+repo-global Renovate gate: the `node`/`npm:renovate`/`jq` tool pins, the
+`[tasks.deps]` (advisory local dry-run — never opens PRs, always exits 0) and
+`[tasks.check]` tasks, and `renovate.json` + `scripts/deps-check.sh` at the repo
+root (skip-existing). Renovate is ecosystem-agnostic, so one gate covers every
+member (npm, gomod, SwiftPM, Actions, Docker, mise tools) — there's no per-stack
+Dependabot config and the Go/Swift stacks gain no node tooling of their own. The
+colon in the `npm:renovate` mise tool-backend key forces TOML quoting (`tomlKey`).
 
 It is **partly managed, partly the user's**: SpecKit only ever *adds* its
 managed entries (idempotent add-if-absent); the user may add their own

@@ -73,5 +73,24 @@ apple's `test`/`fmt`/`lint` tasks works normally via `[vars] package_path = "Cor
 the tuist-specific `build`/`generate`/`test:app`/`launch:macos` tasks have no
 family template and stay inline permanently.
 
+## Dependency-update gate (repo-global)
+
+`EnsureRootMise` also injects a **repo-global Renovate deps gate** into the root
+(every monorepo, from the first member): `ensureDepsGate` merges
+`node`/`npm:renovate`/`jq` into the single root `[tools]` (deduped vs family pins,
+never overwrites a user pin) and appends `[tasks.deps]` (advisory local dry-run —
+never opens PRs, always exits 0) + `[tasks.check]`. `wireMonorepo` then drops
+`renovate.json` + `scripts/deps-check.sh` at the repo root via
+`EnsureDepsGateFiles` (skip-existing). **One ecosystem-agnostic gate covers all
+members — it is NOT a family contribution**, so the swift-no-tools invariant holds
+and Go/Swift stacks gain no node tooling of their own. There is **no per-member
+deps task and no `dependabot.yml`** (the web scaffold's was removed). Source files
+live at `internal/coreassets/templates/monorepo/{renovate.json,deps-check.sh}`.
+
+**Gotcha:** the `npm:renovate` mise tool-backend key has a colon, so it must
+serialize **quoted** (`"npm:renovate" = "latest"`) or the root mise.toml fails to
+parse — `tomlKey` in `internal/scaffold/monorepo.go` handles this; the idempotency
+compare still uses the decoded bare key.
+
 See [[dev-workflow]] for the CI gate. Design: `docs/design/mise-monorepo.md`.
 Implementation plan (historical): `docs/design/mise-monorepo-plan.md`.

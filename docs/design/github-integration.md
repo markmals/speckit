@@ -179,7 +179,13 @@ the same hierarchy Beads gets from parent-child. *Caveat:* Issue Types are an
 | `ISSUE_TEMPLATE/defect.yml` | a defect form — stamps `type: Bug`, a label, the project; prompts for repro + the target |
 | `ISSUE_TEMPLATE/config.yml` | points docs at *this* repo |
 | `CODEOWNERS` | maps `/features/**` and `/specs/**` to the spec owner, so **spec changes require human review** |
-| `dependabot.yml` | for the stack's ecosystem (web → npm, go → gomod) |
+
+_No `dependabot.yml` is projected. Dependency updates are surfaced by a single
+repo-global **Renovate** gate wired into the mise-monorepo root — `mise run deps`
+(an advisory local dry-run that never opens PRs) and the `check` aggregate, with
+`renovate.json` + `scripts/deps-check.sh` at the repo root. One ecosystem-agnostic
+gate covers every member, so no per-stack Dependabot config and no node tooling
+is forced on the Go/Swift stacks._
 
 ## Pillar 3 — Projects as the work surface (Beads-informed, simplified)
 

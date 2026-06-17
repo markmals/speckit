@@ -196,11 +196,15 @@ func TestWebScaffold(t *testing.T) {
 		".github/ISSUE_TEMPLATE/defect.yml",
 		".github/ISSUE_TEMPLATE/config.yml",
 		".github/CODEOWNERS",
-		".github/dependabot.yml",
 	} {
 		if _, err := os.Stat(filepath.Join(proj, filepath.FromSlash(p))); err != nil {
 			t.Errorf("RenderGitHub did not write %s: %v", p, err)
 		}
+	}
+	// Dependency updates are handled by the repo-global Renovate deps gate (wired
+	// into the monorepo root), not Dependabot — no dependabot.yml is projected.
+	if _, err := os.Stat(filepath.Join(proj, ".github/dependabot.yml")); !os.IsNotExist(err) {
+		t.Errorf("dependabot.yml must not be projected (replaced by the deps gate); stat err = %v", err)
 	}
 	// the defect form stamps the Bug issue type; CODEOWNERS gates the spec library.
 	defect, _ := os.ReadFile(filepath.Join(proj, ".github/ISSUE_TEMPLATE/defect.yml"))
@@ -210,14 +214,6 @@ func TestWebScaffold(t *testing.T) {
 	owners, _ := os.ReadFile(filepath.Join(proj, ".github/CODEOWNERS"))
 	if !strings.Contains(string(owners), "/features/") || !strings.Contains(string(owners), "/specs/") {
 		t.Errorf("CODEOWNERS must route /features and /specs:\n%s", owners)
-	}
-	// dependabot.yml is templated: the npm ecosystem points at the app dir.
-	dep, _ := os.ReadFile(filepath.Join(proj, ".github/dependabot.yml"))
-	if !strings.Contains(string(dep), "directory: /apps/web") {
-		t.Errorf("dependabot.yml npm directory not substituted to the app dir:\n%s", dep)
-	}
-	if strings.Contains(string(dep), "{{") {
-		t.Errorf("dependabot.yml has unrendered template syntax:\n%s", dep)
 	}
 	// the convex data variant overwrites the base router and adds the convex files
 	if m.DataDefault != "convex" {
