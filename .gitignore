@@ -33,5 +33,9 @@ mise.local.toml
 .claude/codex-results/
 .claude/schemas/
 
+# Agent git worktrees live here; never track them (committing the worktree
+# dir embeds a gitlink with no .gitmodules and breaks CI checkout cleanup)
+.claude/worktrees/
+
 # CI checks out the mac-dev-skills source here for the apple-pack drift gate
 .cache/
