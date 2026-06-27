@@ -1,0 +1,29 @@
+---
+id: story.slug.create
+kind: story
+---
+
+**As a** developer using the library
+**I want** to turn arbitrary text into a URL-safe slug
+**So that** the scaffold's spec → test → verify loop is proven end to end
+
+**Independent test:** `mise run -C {{.Dir}} test` proves the scenarios below
+against the library.
+
+# Acceptance Criteria
+
+## Scenario 1: words become a lowercase, hyphenated slug
+
+<!-- id: scenario.slug.create.basic -->
+
+- Given the text "Hello World"
+- When it is slugified
+- Then the result is "hello-world"
+
+## Scenario 2: punctuation collapses and hyphens are trimmed
+
+<!-- id: scenario.slug.create.symbols -->
+
+- Given the text "TypeScript & You!"
+- When it is slugified
+- Then the result is "typescript-you"

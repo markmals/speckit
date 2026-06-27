@@ -1356,7 +1356,7 @@ func wireMonorepo(root string) error {
 func familyAndDir(t config.Target) (family, dir string, err error) {
 	sub, err := fs.Sub(coreassets.FS, "templates/scaffolds/"+t.Stack)
 	if err != nil {
-		return "", "", nil // stack without a scaffold (ts-lib, go-cli): no family
+		return "", "", nil // stack without a scaffold (go-cli, node-cli): no family
 	}
 	m, err := scaffold.LoadManifest(sub)
 	if err != nil {

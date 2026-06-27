@@ -63,6 +63,45 @@ func TestNodeFamilyMatchesWebInline(t *testing.T) {
 	}
 }
 
+// TestNodeFamilyMatchesNpmPackageInline asserts the two node family task bodies that
+// npm-package shares (test, typecheck) stay byte-identical to its inline tasks — so when
+// npm-package is the second node member, PromoteMember converts them to `extends` instead
+// of silently skipping them (the failure the mise-monorepo memory warns about). The
+// member's other tasks (build/fmt/fmt:check/lint) are deliberately src-scoped and differ
+// from web's app-scoped family templates, so they stay inline and are not coupled here.
+func TestNodeFamilyMatchesNpmPackageInline(t *testing.T) {
+	fam, err := LoadFamily(coreassets.FS, "node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub, _ := fs.Sub(coreassets.FS, "templates/scaffolds/npm-package")
+	dir := t.TempDir()
+	if _, err := Render(sub, dir, Data{Name: "string-kit", Dir: "packages/string-kit"}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// npm-package members carry no [tools] (the node family pins hoist to the root).
+	if strings.Contains(string(data), "[tools]") {
+		t.Errorf("npm-package member must not declare [tools] (hoisted to root):\n%s", data)
+	}
+	ex, _ := parseExprs(data)
+	vars := memberVars(data)
+	for _, task := range []string{"test", "typecheck"} {
+		want := substituteVars(fam.Templates[task].Run, vars)
+		got, found := inlineRun(ex, task)
+		if !found {
+			t.Errorf("npm-package member has no inline [tasks.%s] for family template node:%s", task, task)
+			continue
+		}
+		if got != want {
+			t.Errorf("drift: node:%s\n  family:  %q\n  member:  %q", task, want, got)
+		}
+	}
+}
+
 // TestGoFamilyMatchesMemberInline asserts the go family templates' run strings
 // equal the go-service member scaffold's inline task bodies — the coupling
 // promotion relies on. If you change one, change the other.

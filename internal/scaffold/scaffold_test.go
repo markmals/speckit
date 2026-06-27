@@ -123,6 +123,27 @@ func TestValidateName(t *testing.T) {
 			t.Errorf("identifier rule should reject %q (pascal-cases to a digit-led identifier)", bad)
 		}
 	}
+	// the npm rule accepts publishable names and rejects what `npm publish` blocks for a
+	// new package but the base slug still admits (capitals, the blacklist, core modules).
+	npmRule := Manifest{Stack: "npm-package", NameRule: "npm"}
+	for _, ok := range []string{"string-kit", "my-lib", "a", "foo_bar", "foo.bar", "9lives", "react-dom"} {
+		if err := npmRule.ValidateName(ok); err != nil {
+			t.Errorf("npm rule should accept %q: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"MyKit", "X", "Foo-Bar", "node_modules", "favicon.ico", "http", "fs", "events", "stream"} {
+		if err := npmRule.ValidateName(bad); err == nil {
+			t.Errorf("npm rule should reject %q (npm blocks it for a new package)", bad)
+		}
+	}
+	// length: ≤ 214 ok, > 214 rejected.
+	if err := npmRule.ValidateName(strings.Repeat("a", 214)); err != nil {
+		t.Errorf("npm rule should accept a 214-char name: %v", err)
+	}
+	if err := npmRule.ValidateName(strings.Repeat("a", 215)); err == nil {
+		t.Error("npm rule should reject a 215-char name (npm caps at 214)")
+	}
+
 	// the default (no rule) accepts anything the base slug check allowed — incl. a
 	// leading digit, harmless for a dir/npm name (a web app or a go-service binary).
 	none := Manifest{Stack: "web"}

@@ -395,7 +395,7 @@ func targetAddCmd() *cobra.Command {
 // without scaffolding or installing anything — the onboarding path for adopting
 // SpecKit in a repo whose code already exists (converting a Workbench-shaped repo
 // like trove). It seeds the target's test wiring from the stack's scaffold manifest
-// when one exists (web, go-service); for stacks without a scaffold (ts-lib, go-cli)
+// when one exists (web, go-service); for stacks without a scaffold (go-cli, node-cli)
 // — or to match a member wired differently than the scaffold — pass the fields as
 // flags. Unlike `target add`, it writes no files and runs no scripts.
 func targetRegisterCmd() *cobra.Command {
@@ -439,7 +439,7 @@ func registerTarget(root string, o regOpts) error {
 	}
 
 	// Seed wiring from the stack's scaffold manifest when it has one (web,
-	// go-service). Stacks without a scaffold (ts-lib, go-cli) leave rt empty — the
+	// go-service). Stacks without a scaffold (go-cli, node-cli) leave rt empty — the
 	// fields then come from flags.
 	var rt scaffold.RenderedTarget
 	if o.stack != "" {

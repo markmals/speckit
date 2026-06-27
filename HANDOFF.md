@@ -22,7 +22,7 @@ arc is the actual conversion of [`~/Developer/Projects/trove`](file:///Users/ori
 | `cmd/troved`, `cmd/tangerined` | go-service | gotest · scoped |
 | `cmd/trove-transcode` | go CLI | gotest · scoped |
 | `apps/trove`, `apps/tangerine-dashboard` | web | junit · scoped |
-| `packages/services`, `packages/tangerined-contract` | ts-lib | junit · scoped |
+| `packages/services`, `packages/tangerined-contract` | npm-package | junit · scoped |
 
 The conversion work, in order:
 
@@ -142,7 +142,7 @@ or work in a throwaway checkout.
    the `--ssr`/`--spa` modes (trove proves SPA is needed — per-app).
 2. **Tier 2 monorepo (trove parity)** — the go-service shared `go.mod` ✅; still: a root
    `pnpm-workspace.yaml` (+ catalogs) maintained by `target add`, repo-root `internal/`
-   sharing across go members, then the **ts-lib** (`packages/<name>`) + **ts-rest contract**
+   sharing across go members, then the **npm-package** (`packages/<name>`) + **ts-rest contract**
    scaffolds.
 3. **New stack coverage** — **apple next** (exercises the `swift` report format +
    `SpecTraits.swift`), then `kind: library` products + a **go-cli** stack (trove-transcode's
