@@ -26,9 +26,10 @@ orchestrator (`wireMonorepo` in `cmd/specify/monorepo.go`) runs after every
 invocation runs with cwd = the member dir, so `report: {{.Dir}}/junit.xml` still
 resolves correctly from the project root.
 
-Families today: `node` (`web`), `swift` (`apple`, `swift-package`, `swift-cli`),
-`go` (`go-service`). A `node` second member is reachable via a second `web` target;
-a `swift` second member by e.g. `apple` + `swift-package`.
+Families today: `node` (`web`, `npm-package`), `swift` (`apple`, `swift-package`,
+`swift-cli`), `go` (`go-service`). A `node` second member is reachable via `web` +
+`npm-package` (the node analog of `apple` + `swift-package`); a `swift` second member
+by e.g. `apple` + `swift-package`. See [[npm-package-scaffold]].
 
 ## The merge engine (`go-toml/v2` `unstable`)
 
@@ -56,7 +57,8 @@ strings must stay **byte-identical** to the member scaffolds' inline `run` bodie
 means `PromoteMember` silently skips that task forever.
 
 Enforced by drift tests:
-- `TestNodeFamilyMatchesWebInline` (node family ↔ web member)
+- `TestNodeFamilyMatchesWebInline` (node family ↔ web member, all promotable tasks)
+- `TestNodeFamilyMatchesNpmPackageInline` (node family ↔ npm-package's shared `test`/`typecheck`)
 - `TestSwiftFamilyMatchesMemberInline` (swift family ↔ apple/swift-package/swift-cli)
 - `TestGoFamilyMatchesMemberInline` (go family ↔ go-service member)
 

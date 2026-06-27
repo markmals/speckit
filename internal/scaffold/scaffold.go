@@ -163,6 +163,27 @@ func LoadManifest(src fs.FS) (Manifest, error) {
 	return m, nil
 }
 
+// npmReserved is the set of names npm rejects for a NEW package (validate-npm-package-name's
+// validForNewPackages): the two blacklisted names plus the Node.js core modules (a
+// core-module collision is a validForNewPackages=false warning). Bare names only — the
+// '_'-prefixed, 'node:'-prefixed, and '/'-bearing builtins can't pass the base slug check
+// in the first place. This is a conservative snapshot (Node 22/24, removed names like `sys`
+// omitted): the list only ever grows, so a stale entry fails OPEN — a brand-new builtin
+// slips through to publish time, but a valid name is never falsely rejected.
+var npmReserved = map[string]bool{
+	"node_modules": true, "favicon.ico": true,
+	"assert": true, "async_hooks": true, "buffer": true, "child_process": true,
+	"cluster": true, "console": true, "constants": true, "crypto": true,
+	"dgram": true, "diagnostics_channel": true, "dns": true, "domain": true,
+	"events": true, "fs": true, "http": true, "http2": true, "https": true,
+	"inspector": true, "module": true, "net": true, "os": true, "path": true,
+	"perf_hooks": true, "process": true, "punycode": true, "querystring": true,
+	"readline": true, "repl": true, "stream": true, "string_decoder": true,
+	"timers": true, "tls": true, "trace_events": true, "tty": true, "url": true,
+	"util": true, "v8": true, "vm": true, "wasi": true, "worker_threads": true,
+	"zlib": true,
+}
+
 // ValidateName checks a member name against the manifest's NameRule, a constraint
 // beyond the CLI's base slug check (`target add` calls it after LoadManifest, before
 // any render). The rule exists because a stack may render {{pascal .Name}} directly as
@@ -183,6 +204,28 @@ func (m Manifest) ValidateName(name string) error {
 			return fmt.Errorf(
 				"stack %q needs a name that pascal-cases into a valid identifier, but %q -> %q can't be a module/type name (an identifier must start with a letter) — try a letter-led name",
 				m.Stack, name, p)
+		}
+		return nil
+	case "npm":
+		// The member name becomes the npm package name (package.json "name": "{{.Name}}"),
+		// so it must be publishable. The base slug check (validTargetName) runs first and
+		// already excludes spaces, '@', '/', leading '.'/'_'/'-', and other non-URL-friendly
+		// chars; this adds the npm-specific gates a safe slug still slips through, so the
+		// failure surfaces at `target add` instead of at `npm publish`.
+		if low := strings.ToLower(name); low != name {
+			return fmt.Errorf(
+				"stack %q needs an npm-publishable name, but %q has capital letters — npm package names must be lowercase (try %q)",
+				m.Stack, name, low)
+		}
+		if len(name) > 214 {
+			return fmt.Errorf(
+				"stack %q needs an npm-publishable name, but %q is %d characters — npm package names must be 214 or fewer",
+				m.Stack, name, len(name))
+		}
+		if npmReserved[name] {
+			return fmt.Errorf(
+				"stack %q can't use %q — npm rejects it for a new package (a blacklisted name or a Node.js core module); pick a distinct name",
+				m.Stack, name)
 		}
 		return nil
 	default:

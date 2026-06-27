@@ -1,0 +1,25 @@
+# {{.Name}}
+
+A TypeScript library scaffolded by SpecKit. The public surface lives in `src/` and is
+re-exported from `src/index.ts`; tsdown bundles it to `dist/` (with `.d.ts`).
+
+- `mise run test` — Vitest; a test is bound to a spec scenario by an
+  `[scenario.<id>]` prefix on its `it(...)` title (see `src/slugify.test.ts`).
+- `mise run build` — bundle to `dist/` (tsdown)
+- `mise run lint` — Oxlint · `mise run typecheck` — tsgo
+- `mise run fmt` — Oxfmt (format `src/`) · `mise run fmt:check` — the CI check
+
+`specify verify {{.Name}}` runs the tests and joins each scenario to its bound test.
+Only tests whose `it(...)` title carries a `[scenario.<id>]` prefix are bound; plain
+unit/property tests are out of scope for `verify` (`bindings: scoped`), so add as many
+as you like alongside the scenario tests.
+
+In CI, `lint` / `typecheck` / `fmt:check` make up the **quality** job and `verify`
+(the spec gate, which also runs `test`) makes up the **verify** job — both required.
+
+## Publishing
+
+The member name (`{{.Name}}`) is the npm package name; `specify target add` enforces a
+publishable name (lowercase, not a reserved or Node core-module name), so it's ready as-is.
+To publish under a scope, set `name` to `@scope/{{.Name}}` in `package.json`. The package is
+shaped for publishing (`exports` + types + `files`); wiring a release workflow is left to you.

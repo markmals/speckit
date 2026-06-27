@@ -45,7 +45,7 @@ specify target add <name> --stack <stack> [--dir <path>] [--product <p>] [--data
 ```
 
 - `<name>` — the target's key in `.speckit/specs.json` (e.g. `web`, `consumer-web`).
-- `--stack` — which scaffold. The roster is **evidence-based** — only stacks Mark has actually worked on (per `~/Developer` + the `markmals` / `markmals-archive` GitHub accounts). **App stacks:** `web` · `website` · `apple` · `android` · `go-cli` · `go-service` · `node-cli`. **Library stacks:** `swift-package` · `swift-cli` · `ts-lib` · `vscode-extension` — these will set the product `kind: library` once that taxonomy lands ([library-products.md](library-products.md)); the shipped swift stacks' example specs use `kind: story` in the meantime.
+- `--stack` — which scaffold. The roster is **evidence-based** — only stacks Mark has actually worked on (per `~/Developer` + the `markmals` / `markmals-archive` GitHub accounts). **App stacks:** `web` · `website` · `apple` · `android` · `go-cli` · `go-service` · `node-cli`. **Library stacks:** `swift-package` · `swift-cli` · `npm-package` · `vscode-extension` — these will set the product `kind: library` once that taxonomy lands ([library-products.md](library-products.md)); the shipped swift stacks' example specs use `kind: story` in the meantime.
 - `--dir` — where to scaffold (default `<memberDir>/<name>`, where `memberDir` is the manifest's placement — `apps` for web, `cmd` for go-service, `packages` for a library).
 - `--product` — optional product label written onto the target.
 - `--data` / `--runtime` — **variants**: selectable axes the manifest declares (e.g. web's `--data convex|drizzle|none` × `--runtime cloudflare|node`), each rendered *over* the base.
@@ -170,7 +170,7 @@ working loop rather than wiring one. Concretely, per stack:
 
 | stack | test framework → report `format` | binding affordance pre-wired | harness artifact |
 | --- | --- | --- | --- |
-| web / website / node-cli / ts-lib | Vitest → `junit` | `// [scenario.<id>]` above `it(…)` | Vitest config emitting junit at `report` |
+| web / website / node-cli / npm-package | Vitest → `junit` | `// [scenario.<id>]` above `it(…)` | Vitest config emitting junit at `report` |
 | apple / swift-package / swift-cli | Swift Testing → `swift` (event-stream NDJSON) | `@Suite(.spec)` / `@Test(.scenario)` traits | `SpecTraits.swift` (no simulator for package/cli) |
 | android | kotlin.test/JUnit → `junit` | `@Tag("spec:…")` / `@Tag("scenario:…")` | Gradle test task emitting junit |
 | go-cli | `go test` → `junit` | `// [scenario.<id>]` comment | gotestsum junit output |
@@ -188,7 +188,7 @@ the library layout; their example specs use `kind: story` until then.
 The roster is evidence-based, but the **exact framework + tooling** for each
 stack is *not* pre-decided here. The harness table above fixes only the contract
 (report `format` + the binding affordance — SpecKit's convention). The actual
-stack — web framework (TanStack Start vs Solid Start vs …), the `ts-lib` bundler,
+stack — web framework (TanStack Start vs Solid Start vs …), the `npm-package` bundler,
 the `apple` minimum-OS / Swift version, the Vitest/test-runner versions — is
 chosen at build time, targeting the **latest / bleeding-edge** of each ecosystem,
 and **previewed for Mark's sign-off before that stack's scaffold is built**. Each
@@ -263,7 +263,7 @@ Non-JS stacks use the same shape with their own tools (`swift build`,
    the headless SwiftPM `Core` is the verify target (no Tuist/Xcode/simulator/
    signing needed), green-on-arrival on the Xcode toolchain alone. Remaining
    slices (Tuist app surface, `--with` features, the AppKit pack) in
-   [scaffolds/apple.md](scaffolds/apple.md). Then **ts-lib** + **go-cli** (the
+   [scaffolds/apple.md](scaffolds/apple.md). Then **npm-package** + **go-cli** (the
    remaining trove member shapes).
 
 The remaining stacks follow one at a time — each gated on its tooling preview

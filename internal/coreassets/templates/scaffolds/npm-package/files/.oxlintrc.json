@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": [
+    "dist/**"
+  ],
+  "plugins": [
+    "import",
+    "typescript"
+  ],
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "jsPlugins": [
+    "eslint-plugin-perfectionist",
+    "eslint-plugin-prefer-let"
+  ],
+  "rules": {
+    "typescript/no-floating-promises": "allow",
+    "typescript/unbound-method": "allow",
+    "import/extensions": "off",
+    "eslint/prefer-const": "off",
+    "prefer-let/prefer-let": [
+      2,
+      {
+        "forceUpperCaseConst": true
+      }
+    ]
+  }
+}

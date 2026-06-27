@@ -22,7 +22,7 @@ A product is one or the other. The kind selects the authoring path; it does
 
 - **Default from stack.** App stacks (`web`, `website`, `apple`, `android`,
   the CLI stacks) ⇒ `app`. Library stacks (`swift-package`, `swift-cli`,
-  `ts-lib`, `vscode-extension`) ⇒ `library`. An explicit `kind` overrides.
+  `npm-package`, `vscode-extension`) ⇒ `library`. An explicit `kind` overrides.
 - **Open: where it's declared.** Cleanest is to derive it from the feature's
   target stacks, with an explicit override when a repo mixes both. (CLIs are the
   ambiguous case — a CLI has a human user, so `remctl` is app-flavored, but a

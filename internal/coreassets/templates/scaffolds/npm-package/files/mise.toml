@@ -1,0 +1,29 @@
+# Call npm binaries (vitest, tsgo, tsdown, oxlint, oxfmt) by bare name — no npx.
+[env]
+_.path = ['{{config_root}}/node_modules/.bin']
+
+[tasks.test]
+description = "run Vitest with the junit reporter the engine joins"
+run = "vitest run --reporter=junit --outputFile=junit.xml"
+
+[tasks.build]
+description = "bundle the library to dist/ (tsdown, with .d.ts)"
+run = "tsdown"
+
+# Quality tasks — the CI `quality` job calls fmt:check / lint / typecheck. Scoped to
+# src/ (the library source) so the gate stays on code, not config or build output.
+[tasks.typecheck]
+description = "type-check with tsgo"
+run = "tsgo --noEmit"
+
+[tasks.fmt]
+description = "format src/ in place (Oxfmt)"
+run = "oxfmt src"
+
+[tasks."fmt:check"]
+description = "fail if src/ needs formatting (Oxfmt)"
+run = "oxfmt --check src"
+
+[tasks.lint]
+description = "lint src/ (Oxlint)"
+run = "oxlint src"

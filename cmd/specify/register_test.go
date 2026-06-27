@@ -36,7 +36,7 @@ func TestRegisterTargetFromManifest(t *testing.T) {
 	}
 }
 
-// register a member whose stack has NO scaffold (e.g. ts-lib): the wiring comes
+// register a member whose stack has NO scaffold (e.g. go-cli): the wiring comes
 // entirely from flags.
 func TestRegisterTargetExplicitFlags(t *testing.T) {
 	root := t.TempDir()
@@ -44,7 +44,7 @@ func TestRegisterTargetExplicitFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := registerTarget(root, regOpts{
-		name: "services", stack: "ts-lib", dir: "packages/services",
+		name: "services", stack: "go-cli", dir: "packages/services",
 		format: "junit", command: "cd packages/services && mise run test",
 		report: "packages/services/junit.xml", source: []string{"packages/services/src"}, bindings: "scoped",
 	})
@@ -53,7 +53,7 @@ func TestRegisterTargetExplicitFlags(t *testing.T) {
 	}
 	cfg, _, _ := config.Load(root)
 	got := cfg.Targets["services"]
-	if got.Stack != "ts-lib" || got.Format != "junit" || got.Source.First() != "packages/services/src" || got.Bindings != "scoped" {
+	if got.Stack != "go-cli" || got.Format != "junit" || got.Source.First() != "packages/services/src" || got.Bindings != "scoped" {
 		t.Errorf("target = %+v", got)
 	}
 }
@@ -84,7 +84,7 @@ func TestRegisterTargetErrors(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "packages/x"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := registerTarget(root, regOpts{name: "x", stack: "ts-lib", dir: "packages/x"}); err == nil {
+	if err := registerTarget(root, regOpts{name: "x", stack: "go-cli", dir: "packages/x"}); err == nil {
 		t.Error("expected error for incomplete wiring (no scaffold, no --format)")
 	}
 	// bad name

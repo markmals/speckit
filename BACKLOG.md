@@ -210,11 +210,13 @@ Ready) and baked in as `specify work`'s defaults.
     (design doc updated). `.vscode` is inert to the build (outside `app/`); render-tested + a full combo stays green.
 - ⬜ **Library / non-app coverage** — add a product **`kind: app | library`** (relax the
   "actor is human" rule for libraries; `story`+`domain`+`error` apply, UI kinds don't) and the
-  stacks **`swift-package`**, **`swift-cli`**, **`ts-lib`**, **`vscode-extension`**. Engine
+  stacks **`swift-package`**, **`swift-cli`**, **`npm-package`**, **`vscode-extension`**. Engine
   unchanged (joins scenario↔test regardless). Design:
   [library-products.md](docs/design/library-products.md). Roster is evidence-based (web ·
-  website · apple · android · go-cli · node-cli · swift-package · swift-cli · ts-lib ·
-  vscode-extension; dropped rust-cli/windows/linux/browser-extension).
+  website · apple · android · go-cli · node-cli · swift-package · swift-cli · npm-package ·
+  vscode-extension; dropped rust-cli/windows/linux/browser-extension). **`npm-package`
+  shipped 2026-06-27** — the node-family single-TS-library stack (tsdown + Vitest junit +
+  scoped bindings), the node twin of `swift-package`.
 - ✅ **`go-service` scaffold (Tier-2 structural, trove's daemon).** A new stack: a runnable Go HTTP
   daemon (net/http ServeMux + graceful shutdown + a scenario-bound httptest) that's green-on-arrival
   via the **Tier-1 gotest format + Go leading-comment bindings + scoped mode** (dogfoods Tier 1:

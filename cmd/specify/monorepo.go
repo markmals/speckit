@@ -95,7 +95,7 @@ func wireMonorepo(root string) error {
 // and member dir (the recorded report's parent — every scaffold's report is
 // "<dir>/<file>", so filepath.Dir(t.Report) recovers the member dir, honoring a
 // --dir override without re-deriving memberDir/<name>). A stack with no scaffold
-// (ts-lib, go-cli) has no family; a malformed scaffold.json is a real error.
+// (go-cli, node-cli) has no family; a malformed scaffold.json is a real error.
 func familyAndDir(t config.Target) (family, dir string, err error) {
 	sub, err := fs.Sub(coreassets.FS, "templates/scaffolds/"+t.Stack)
 	if err != nil {
