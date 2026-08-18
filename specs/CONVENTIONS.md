@@ -13,7 +13,7 @@ This file is derived from the Workbench conventions and amended per the fork pla
 
 ## Why specs at all
 
-Native, idiomatic implementations on every target mean the _behavior_ must converge even though the _code_ won't. Specs are the only artifact shared across targets — they are the contract. Everything else (the web app, the UIKit app, the Convex schema) is a regeneration target. Specs describe **what** must hold; tests prove it; implementations satisfy it. None of the three is the source of truth on its own.
+Native, idiomatic implementations on every target mean the _behavior_ must converge even though the _code_ won't. Specs are the only artifact shared across targets — they are the contract. Everything else — each target's implementation — is a regeneration target. Specs describe **what** must hold; tests prove it; implementations satisfy it. None of the three is the source of truth on its own.
 
 SpecKit is its own first user: the engine's behavior is specified here under `features/` and `specs/models/`, and its tests carry the same reverse pointers any product would.
 
@@ -122,14 +122,18 @@ The engine joins a scenario to the test that proves it. The binding is **declare
 
 | Framework | Affordance — binds without touching the description |
 | --- | --- |
-| **Swift Testing** (apple) | Custom traits: `@Suite(.spec("<id>"))` + `@Test(.scenario("<sub-id>"))` (shipped as `SpecTraits.swift`), with **raw-identifier** function names for the human description. The dotted ID lives in the trait. |
-| **MSTest** (C# / Windows) | Attributes: `[TestProperty("spec", "<id>")]` and `[TestProperty("scenario", "<sub-id>")]` (or `[TestCategory]`) — metadata, not the method name. |
-| **kotlin.test** (android, JUnit-target) | Annotations: `@Tag("spec:<id>")` and `@Tag("scenario:<sub-id>")` — metadata, not the `@DisplayName`. |
-| **Vitest** (web) | No native trait — a `// [scenario.<sub-id>]` comment directly above the `it(...)`, keeping the title clean. (A `[scenario.…]`-prefixed title is also accepted.) |
+| **Swift Testing** | Custom traits: `@Suite(.spec("<id>"))` + `@Test(.scenario("<sub-id>"))` (shipped as `SpecTraits.swift`), with **raw-identifier** function names for the human description. The dotted ID lives in the trait. |
+| **MSTest** (C#) | Attributes: `[TestProperty("spec", "<id>")]` and `[TestProperty("scenario", "<sub-id>")]` (or `[TestCategory]`) — metadata, not the method name. |
+| **kotlin.test** (JUnit-target) | Annotations: `@Tag("spec:<id>")` and `@Tag("scenario:<sub-id>")` — metadata, not the `@DisplayName`. |
+| **Vitest** | No native trait — a `// [scenario.<sub-id>]` comment directly above the `it(...)`, keeping the title clean. (A `[scenario.…]`-prefixed title is also accepted.) |
 | **cargo-nextest** (Rust) | No native trait — a `// [scenario.<sub-id>]` comment above the `#[test]` fn (fn names can't hold dots/brackets). |
 | **go test** | No native trait — a `// [scenario.<sub-id>]` comment above the test func / `t.Run`. |
 
 In every case the per-format verify adapter normalizes the report to pass/fail by test identity, and the join overlays the source-declared scenario binding. Because the binding is source-side, encoding the scenario into test _names_ — and the fragile mangling that needs — is never required.
+
+### Binding forms are language-scoped
+
+A framework's affordance is only read from files of that framework's language: the `it("[scenario.id] …")` title form only from JS/TS sources, the `.scenario(…)` trait only from Swift sources, and the `// [scenario.id]` leading comment from any of them. A code sample embedded in another language's string literal is therefore never a binding — a project whose own tests carry sample binding syntax as fixture data declares nothing.
 
 ## Stories and scenarios
 
@@ -158,7 +162,7 @@ Do not silently guess. Mark gaps inline with `[NEEDS CLARIFICATION: <question>]`
 When a target must diverge — constraint, idiom, or deliberate UX choice — annotate it so the pointer stays live:
 
 ```swift
-// SPEC: vm.items.list (deviates: iOS uses pull-to-refresh; web uses a button)
+// SPEC: vm.items.list (deviates: this target uses pull-to-refresh; the reference target uses a button)
 ```
 
 ```ts
@@ -170,7 +174,7 @@ When a target must diverge — constraint, idiom, or deliberate UX choice — an
 **Scenario-scoped deviations.** Parity is computed per scenario, so a story-level marker is too coarse when only one scenario diverges. Target the scenario sub-ID directly:
 
 ```swift
-// SPEC: scenario.items.list.empty (deviates: iOS shows a system empty view)
+// SPEC: scenario.items.list.empty (deviates: this target shows a system empty view)
 ```
 
 The engine crosses deviation-presence with the joined test outcome on **independent axes** (spike 0001): a marker over a _failing_ test is classified `suspect`, never `declared-deviation` — a marker can never suppress a red test.
@@ -191,4 +195,4 @@ When one target's implementation diverges from the spec (usually a direct bug fi
 
 ## What is NOT a spec
 
-Reference material an agent may read but must not place under `specs/` or a feature's spec subdirectories: wireframes/Figma URLs, prototype code, meeting notes/RFCs (use `docs/`), analytics/telemetry, and target-local cosmetic defects (those go in `apps/<target>/DEFECTS.md`). The test: **could a different target realize this differently and still be correct?** If no, it's implementation, not spec.
+Reference material an agent may read but must not place under `specs/` or a feature's spec subdirectories: wireframes/Figma URLs, prototype code, meeting notes/RFCs (use `docs/`), analytics/telemetry, and target-local cosmetic defects (those go in the target's own defect log). The test: **could a different target realize this differently and still be correct?** If no, it's implementation, not spec.

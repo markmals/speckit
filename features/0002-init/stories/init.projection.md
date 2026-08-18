@@ -39,13 +39,14 @@ Reference manifests captured from the oracle live in `testdata/oracle-init/` (D1
 - Then the command set is written to `.github/agents/speckit.<cmd>.agent.md` and `.github/prompts/speckit.<cmd>.prompt.md`
 - And the orientation file is `.github/copilot-instructions.md`
 
-## Scenario 4: Generic projects to a configurable commands dir + AGENTS.md
+## Scenario 4: Generic projects to the vendor-neutral convention
 
 <!-- id: scenario.init.projection.generic -->
 
-- Given `specify init --integration generic --integration-options "--commands-dir <dir>"`
-- Then the command set is written to `<dir>/speckit.<cmd>.md`
+- Given `specify init --integration generic` — an agent with no dedicated adapter
+- Then the command set is written to `.agents/skills/speckit-<cmd>/SKILL.md`
 - And the orientation file is `AGENTS.md`
+- And the projection is identical to `codex`'s, because `.agents/` + `AGENTS.md` *is* the vendor-neutral convention — `generic` exists so an unlisted agent is a supported integration rather than a special case
 
 ## Scenario 5: The prompt content is identical across agents
 

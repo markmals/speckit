@@ -37,6 +37,6 @@ So that framework-curation claims get receipts (`specify bench` reads the ledger
 
 <!-- id: scenario.lifecycle.ledger.feeds-bench -->
 
-- Given a ledger with records across candidate stacks for the same spec set
+- Given a ledger with records across candidate implementations for the same spec set
 - When `specify bench` runs (post-v1)
 - Then it derives its comparison table from these records, not from a separate measurement run

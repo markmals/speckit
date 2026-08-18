@@ -12,9 +12,9 @@ So that I can see, per spec, where the work stands across the target matrix.
 
 # Acceptance Criteria
 
-## Scenario 1: Shows per-platform coverage
+## Scenario 1: Shows per-target coverage
 
-<!-- id: scenario.engine.cover.per-platform -->
+<!-- id: scenario.engine.cover.per-target -->
 
 - Given a spec implemented on some targets and not others
 - When the user runs `specify cover <spec-id>`

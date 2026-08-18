@@ -32,7 +32,7 @@ So that enforcement is agent-agnostic and stronger than Claude-only hooks (D8).
 
 <!-- id: scenario.engine.gate.scoped-commit -->
 
-- Given a commit whose subject scope is not a defined scope (a spec id, an `apps/*` dir, a harness area, or `treewide`)
+- Given a commit whose subject scope is not a defined scope (a spec id, a `features/<slug>` dir, one of the fixed harness areas, `specs`, `treewide`, or a scope declared in `.claude/commit-scopes`)
 - When `specify gate` runs
 - Then it rejects the subject and explains the scope rule
 

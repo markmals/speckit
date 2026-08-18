@@ -7,7 +7,7 @@ depends-on: [conventions]
 # Story: Initialize a project for an agent
 
 As a developer starting a SpecKit project,
-I want `specify init` to scaffold a working project projected for my agent,
+I want `specify init` to set up a working project projected for my agent,
 So that I can begin authoring specs immediately, with the runtime binary present and no script layer to maintain.
 
 # Acceptance Criteria

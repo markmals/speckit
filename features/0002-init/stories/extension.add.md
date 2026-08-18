@@ -36,7 +36,7 @@ Behaviors mined from the oracle's `tests/test_extensions.py` (D14).
 
 - Given an id that matches no bundled or catalog extension
 - When the user runs `specify extension add <id>`
-- Then the command exits non-zero with a clear "not found" message naming the id, not a stack trace
+- Then the command exits non-zero with a clear "not found" message naming the id, not a raw traceback
 
 ## Scenario 4: Add from a URL prompts before doing work
 

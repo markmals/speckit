@@ -20,7 +20,7 @@ So that a fix or change made straight in code becomes the shared contract instea
 - When the user runs `reconcile <target>`
 - Then it reads that target's impl + tests, diffs against the spec, and proposes spec updates
 
-## Scenario 2: Proposes cross-platform updates
+## Scenario 2: Proposes cross-target updates
 
 <!-- id: scenario.lifecycle.reconcile.proposes-others -->
 
@@ -32,7 +32,7 @@ So that a fix or change made straight in code becomes the shared contract instea
 
 <!-- id: scenario.lifecycle.reconcile.human-approves -->
 
-- Given proposed spec and cross-platform diffs
+- Given proposed spec and cross-target diffs
 - When they are presented
 - Then each is applied only after a human approves it — reconciliation is never automatic (CONVENTIONS)
 

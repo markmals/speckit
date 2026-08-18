@@ -24,7 +24,7 @@ So that bringing a target in line with a spec is one command that ends in a veri
 
 <!-- id: scenario.lifecycle.apply.disposable-artifacts -->
 
-- Given `apply` generates `plan.md`/`tasks.md` as execution scaffolding
+- Given `apply` generates `plan.md`/`tasks.md` as disposable execution artifacts
 - When the target reaches green and the lock is written
 - Then those artifacts are deleted or archived — they are never the durable record (D9)
 

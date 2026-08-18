@@ -44,7 +44,7 @@ So that "green" provably means "the right scenarios were proven," and the result
 
 <!-- id: scenario.engine.verify.source-bound-join -->
 
-- Given a target whose report identifies each test by suite/class + name (v1: Vitest junit for web; Swift Testing's `--event-stream-output-path` NDJSON for apple) but does **not** carry the scenario ID (spike 0001)
+- Given a target whose report identifies each test by suite/class + name (v1: Vitest junit; Swift Testing's `--event-stream-output-path` NDJSON) but does **not** carry the scenario ID (spike 0001)
 - When the user runs `specify verify <target>`
 - Then the engine reads each test's scenario binding from source (the `.scenario(…)` trait / `// [scenario.<id>]` comment) and joins it to the report outcome by test identity
 - And per-scenario pass/fail is produced regardless of which runner emitted the report
@@ -57,3 +57,12 @@ So that "green" provably means "the right scenarios were proven," and the result
 - When the user runs `specify verify <target>`
 - Then the engine reports it as a hard error rather than silently dropping it (D12)
 - And likewise a binding that points at a scenario the spec does not declare is a hard error
+
+## Scenario 6: Binding forms are language-scoped
+
+<!-- id: scenario.engine.verify.language-scoped-binding-forms -->
+
+- Given a source file in language A that contains, inside a string literal, a test written in language B's binding syntax
+- When the user runs `specify verify <target>`
+- Then the embedded syntax is not read as a binding — each framework's affordance is only read from files of its own language
+- And so a project whose own tests carry sample binding syntax as fixture data does not report dangling bindings

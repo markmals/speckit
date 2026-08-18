@@ -13,10 +13,10 @@ The manifest that describes an extension or integration — the fork's own forma
 - `id` — canonical, unique within a catalog (kebab-case).
 - `name` — human display name (used by `extension add "<Display Name>"`).
 - `version` — semver.
-- `kind` — `extension` | `integration` | `preset` | `platform` | `backend`.
+- `kind` — `extension` | `integration` | `preset`.
 - `requires.speckit_version` — **advisory** (D6): a mismatch warns, never blocks.
 - `provides` — the assets it projects: `commands`, `skills`, `templates`, `scripts` (git-hook trampolines only).
-- `speckit:` — fork-namespaced fields: `verify` (the platform's verify-adapter config), `scaffold` (entrypoint), `platform` (identity), `mise` (task fragments).
+- `speckit:` — fork-namespaced fields: `verify` (the extension's verify-adapter config).
 
 ## Invariants
 
