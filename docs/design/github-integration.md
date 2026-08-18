@@ -59,7 +59,7 @@ standalone install path never needs `gh` at all.
 
 The engine as a **required status check**: `specify gate firewall` as a PR check
 means *you cannot merge a test that silently drifted from its spec*. The
-composite action (`markmals/speckit/gate@v1`) and the reusable workflow
+composite action (`markmals/speckit/gate@v0.2.0`) and the reusable workflow
 (`gate.yml`) run `scan` → firewall → `verify <target>` → `parity --gate`, each
 with `--format github` so failures annotate the exact `file:line` in the PR.
 The gate is stack-neutral: it runs the target's configured `command` and the

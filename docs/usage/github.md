@@ -23,7 +23,7 @@ is one job:
 
 ```yaml
 verify:
-  uses: markmals/speckit/.github/workflows/gate.yml@v1
+  uses: markmals/speckit/.github/workflows/gate.yml@v0.2.0
   with:
     target: web
 ```
@@ -31,7 +31,7 @@ verify:
 The reusable workflow installs `specify` and runs, in order: `scan` → the
 test-edit firewall → `verify <target>` (which runs the target's configured
 `command`) → `parity --gate`. A target that needs its own toolchain setup runs
-the composite action `markmals/speckit/gate@v1` inside its own job instead,
+the composite action `markmals/speckit/gate@v0.2.0` inside its own job instead,
 after its own setup steps.
 
 Each step runs `--format github`, so every failure — a test edited away from its

@@ -1,7 +1,7 @@
 # SpecKit's reusable spec-gate workflow. A project's ci.yml calls it as one line:
 #
 #   verify:
-#     uses: markmals/speckit/.github/workflows/gate.yml@v1
+#     uses: markmals/speckit/.github/workflows/gate.yml@v0.2.0
 #     with:
 #       target: web
 #
@@ -13,7 +13,7 @@
 # (via `specify verify`) plus the specify checks. It performs no toolchain or
 # dependency setup — use it when the runner's default toolchain can run your
 # target's command (or the report is committed/prebuilt). A target that needs
-# its own setup should run the composite action `markmals/speckit/gate@v1` as
+# its own setup should run the composite action `markmals/speckit/gate@v0.2.0` as
 # a step inside its own job, after its own setup steps.
 name: SpecKit gate
 
@@ -35,6 +35,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # the firewall diffs against the PR base
-      - uses: markmals/speckit/gate@v1
+      - uses: markmals/speckit/gate@v0.2.0
         with:
           target: ${{ inputs.target }}

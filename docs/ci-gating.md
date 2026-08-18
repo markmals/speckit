@@ -51,7 +51,7 @@ line:
 on: { pull_request: {} }
 jobs:
   verify:
-    uses: markmals/speckit/.github/workflows/gate.yml@v1
+    uses: markmals/speckit/.github/workflows/gate.yml@v0.2.0
     with:
       target: web
 ```
@@ -69,7 +69,7 @@ jobs:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
       # …your project's own toolchain + dependency setup steps here…
-      - uses: markmals/speckit/gate@v1
+      - uses: markmals/speckit/gate@v0.2.0
         with:
           target: web
 ```
@@ -78,10 +78,12 @@ The gate itself contains nothing stack-shaped: it installs `specify` (via Go),
 then runs `scan` → firewall → `verify <target>` → `parity --gate`. Everything
 the target needs to run its own `command` is the caller's business.
 
-> **The `@v1` references are dormant until SpecKit's first release tag.** Both
-> `go install …@v1` and `…/gate@v1` resolve only once `v1` is published. To try
-> the gate before then, pin a branch or SHA: set the action's `specify_version`
-> input and reference `…/gate.yml@main` / `…/gate@main`.
+> **Pin the ref deliberately.** SpecKit is pre-1.0, so there is no floating
+> `v1` to track — the examples pin the concrete release tag, and you bump it
+> when you want the new version. The composite action installs `specify` with
+> `go install …@<specify_version>`, whose default is that same tag; override the
+> input to pin a different tag, a branch, or a SHA. To run against unreleased
+> `main`, use `…/gate.yml@main` / `…/gate@main` and set `specify_version: main`.
 
 ## Make the check required (branch protection)
 

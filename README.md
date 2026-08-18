@@ -173,7 +173,7 @@ Run the engine as a **required status check** so nothing merges with drift or br
 
 ```yaml
 verify:
-  uses: markmals/speckit/.github/workflows/gate.yml@v1
+  uses: markmals/speckit/.github/workflows/gate.yml@v0.2.0
   with: { target: web }
 ```
 

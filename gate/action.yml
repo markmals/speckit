@@ -15,7 +15,7 @@ inputs:
   specify_version:
     description: The `specify` version/ref installed via `go install` (a tag, branch, or SHA).
     required: false
-    default: v1
+    default: v0.2.0
   specify_source:
     description: >-
       Where `specify` comes from. `release` (default) installs it with
