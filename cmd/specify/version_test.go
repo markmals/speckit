@@ -49,7 +49,13 @@ func cliBuildSpecify(t *testing.T, ldflags string) string {
 	if !ok {
 		t.Fatal("cannot locate the cmd/specify package directory")
 	}
-	bin := filepath.Join(t.TempDir(), "specify")
+	// Windows refuses to exec a file with no .exe suffix, and `go build -o`
+	// writes exactly the path it is handed.
+	name := "specify"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	bin := filepath.Join(t.TempDir(), name)
 	args := []string{"build"}
 	if ldflags != "" {
 		args = append(args, "-ldflags", ldflags)
