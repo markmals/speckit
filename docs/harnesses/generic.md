@@ -80,7 +80,7 @@ skills or commands; run `specify …` in your terminal for the engine checks.
 | `/speckit.plan` | Per-target technical plan for a feature. |
 | `/speckit.tasks` | Ordered, story-prioritized task list for a target; each task maps to a spec ID. |
 | `/speckit.implement` | Implement on a target: failing tests first, layered review, adversarial pass, then verify-and-lock. |
-| `/speckit.taskstoissues` | File a feature's task list as GitHub issues on the repo matching the git remote. (The one command that touches GitHub.) |
+| `/speckit.taskstowork` | File a feature's task list as work items through the configured work provider (`specify work create`, one item per task). |
 
 ## Skills, rules, and memory
 
@@ -120,6 +120,6 @@ ability to dispatch subagents — so only the `claude` integration gets it.
 ## Next
 
 - [Offline engine usage](../usage/offline.md) — the engine alone: `scan` / `verify` / `drift` / `cover` / `parity` / `gate`
-- [Working with GitHub](../usage/github.md) — the optional PR gate, Issues, Projects, deploys, secrets
+- [Working with GitHub](../usage/github.md) — the optional PR gate and the `github-projects` work provider
 - [Project README](../../README.md) — overview and full command reference
 - Other harnesses: [Claude Code](claude.md) · [Codex](codex.md) · [GitHub Copilot](copilot.md)

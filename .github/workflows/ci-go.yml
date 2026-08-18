@@ -18,17 +18,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
-      # Source for the generated slice of the apple pack. PINNED to a commit so the drift
-      # gate is deterministic — an unrelated mac-dev-skills change can't turn this repo's CI
-      # red. To pick up new source content: bump this `ref`, run `mise run apple-pack:generate`,
-      # and commit both.
-      - name: checkout mac-dev-skills source
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/checkout@v6
-        with:
-          repository: markmals/mac-dev-skills
-          ref: 9bfc1cf6cedf63ff301d8d73a268a1aae03b2ed5
-          path: .cache/mac-dev-skills
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -38,14 +27,34 @@ jobs:
         run: |
           unformatted=$(gofmt -l cmd internal)
           if [ -n "$unformatted" ]; then echo "gofmt needed:"; echo "$unformatted"; exit 1; fi
-      - name: apple pack drift
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          MAC_DEV_SKILLS_ROOT: .cache/mac-dev-skills
-        run: scripts/generate-apple-pack.sh --check
       - name: build
         run: go build ./...
       - name: vet
         run: go vet ./...
       - name: test
         run: go test ./...
+
+  # SpecKit specifies itself: the engine's own behavior lives in features/ and
+  # specs/models/, and its tests carry the same reverse pointers any adopting
+  # project's would. If this job goes red, the spec library and the code
+  # disagree.
+  #
+  # `verify` rewrites the committed lock shards on green, so this job must never
+  # be paired with `gate generated` — see docs/ci-gating.md.
+  spec:
+    name: spec (self-verify)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: build specify
+        run: go build -o /usr/local/bin/specify ./cmd/specify
+      - name: scan
+        run: specify scan
+      - name: verify
+        run: specify verify engine
+      - name: drift
+        run: specify drift engine

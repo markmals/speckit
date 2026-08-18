@@ -103,7 +103,7 @@ discipline — adapted from how Claude Code maintains memory:
 
 ## What `specify` does
 
-- `init` scaffolds the chosen agent's `<root>/memory/MEMORY.md` (a seed index) and
+- `init` seeds the chosen agent's `<root>/memory/MEMORY.md` (a starter index) and
   wires the loading above; ships the `managing-memory` skill.
 - The **engine ignores memory entirely** — it's agent context, not spec state.
   (This keeps the integrity core clean.)

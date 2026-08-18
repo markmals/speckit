@@ -1,23 +1,17 @@
 name: SpecKit gate
 description: >-
   Run the SpecKit spec gate for a target — lint the spec library (scan), the
-  test-edit firewall, verify (which runs the test suite and joins each scenario
-  to its bound test), and the parity matrix — emitting GitHub annotations on the
-  files that drift. Assumes the repo is already checked out with full history
-  (fetch-depth: 0) so the firewall can diff against the PR base.
+  test-edit firewall, verify (which runs the target's configured command and
+  joins each scenario to its bound test), and the parity matrix — emitting
+  GitHub annotations on the files that drift. Assumes the repo is already
+  checked out with full history (fetch-depth: 0) so the firewall can diff
+  against the PR base, and that the target's toolchain is already set up: the
+  gate runs only the target's configured command plus the specify checks.
 
 inputs:
   target:
     description: The target to verify — a key in .speckit/specs.json.
     required: true
-  working_directory:
-    description: >-
-      The target's app directory (e.g. apps/web). Its toolchain is installed
-      with `mise install`, and if it has a package.json its npm deps are
-      installed with `pnpm install --frozen-lockfile`, before verify runs.
-      Leave empty for stacks that need no per-directory setup.
-    required: false
-    default: ""
   specify_version:
     description: The `specify` version/ref installed via `go install` (a tag, branch, or SHA).
     required: false
@@ -63,23 +57,6 @@ runs:
         fi
         echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-    - name: Set up mise
-      uses: jdx/mise-action@v4
-
-    - name: Install target toolchain & deps
-      shell: bash
-      env:
-        WORKING_DIRECTORY: ${{ inputs.working_directory }}
-      run: |
-        if [ -n "$WORKING_DIRECTORY" ]; then
-          cd "$WORKING_DIRECTORY"
-          mise trust
-          mise install
-          if [ -f package.json ]; then
-            pnpm install --frozen-lockfile
-          fi
-        fi
-
     - name: Lint the spec library (scan)
       shell: bash
       working-directory: ${{ inputs.project_dir }}
@@ -97,7 +74,7 @@ runs:
           echo "not a pull_request event — skipping the test-edit firewall"
         fi
 
-    - name: Verify (run tests, join scenarios to specs)
+    - name: Verify (run the target's command, join scenarios to specs)
       shell: bash
       working-directory: ${{ inputs.project_dir }}
       env:

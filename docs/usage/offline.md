@@ -1,22 +1,32 @@
 # Using SpecKit offline
 
 The engine is offline by construction. `scan`, `verify`, `lock`, `drift`,
-`cover`, `parity`, and `gate` live in `internal/engine` + `internal/specmodel`,
-and they never read GitHub or the network. Every line of GitHub/network code
-lives in `internal/github`, which is imported only by the `cmd/specify` command
-constructors — never by the engine. So the offline guarantee holds
-*structurally*, not by convention: nothing GitHub is required for correctness,
-and a board-sync or issue-call failure can never block a local `verify`.
+`cover`, `parity`, and `gate` live in `internal/engine` + `internal/specmodel`
+(reading reports via `internal/reports` and config via `internal/config`), and
+those packages import **neither the GitHub client nor any work provider** —
+not directly, not transitively. Every line of network code lives in
+`internal/github` and the work-provider adapters under `internal/work/`, which
+are wired up only in the `cmd/specify` command constructors, never in the
+engine. So the offline guarantee holds *structurally*, not by convention:
+nothing networked is required for correctness, and a board call or GitHub
+failure can never block a local `verify`.
+
+That claim is enforced, not asserted. `TestEngineImportFirewall`
+(`internal/engine/import_firewall_test.go`) walks the transitive import closure
+of `internal/engine`, `internal/specmodel`, `internal/reports`, and
+`internal/config` and fails if `internal/github` or any `internal/work` package
+appears in it. It runs with the rest of the suite, so the wall cannot be
+breached by a stray import that merely compiles.
 
 That line is the spine of this whole document. Everything here runs from your
-terminal against the repo on disk. No `gh`, no token, no config, no remote.
+terminal against the repo on disk. No `gh`, no token, no remote.
 
-The truth lives in the repo: scenarios and acceptance criteria; the lock, drift,
-and parity state under `.speckit/`; code and tests with their `// SPEC:`
-pointers; agent memory in markdown. GitHub only ever holds ephemeral
-*coordination* — defects, a work board, PR gating — and you could delete all of
-it without losing anything the engine verifies. The GitHub workflow is the
-[companion doc](github.md); this one is SpecKit with the network unplugged.
+The truth lives in the repo: scenarios and acceptance criteria; the lock,
+drift, and parity state under `.speckit/`; code and tests with their `// SPEC:`
+pointers; agent memory in markdown. Even work tracking is offline by default —
+the `markdown` provider is a committed `WORK.md`, no network and no external
+binary ([../work-providers.md](../work-providers.md)). The GitHub workflow is
+the [companion doc](github.md); this one is SpecKit with the network unplugged.
 
 ## The offline loop
 
@@ -38,21 +48,16 @@ specify scan
 ```
 
 ```sh
-# 3. target add — register a target so verify knows how to run its tests
-specify target add web --stack web   # green on verify out of the box
-
-# …or, adopting SpecKit in a repo whose code already exists, register the member
-# in place (writes no files, runs nothing) — seeded from the stack's scaffold, or
-# wired explicitly when the member differs / its stack has no scaffold:
-specify target register api --stack go-service --dir cmd/api
-specify target register lib --stack vscode-extension --dir packages/lib \
-  --format junit --command "mise //packages/lib:test" \
-  --report packages/lib/junit.xml --source packages/lib/src --bindings scoped
+# 3. target add — register your existing code so verify knows how to run its
+# tests and read their report (writes one .speckit/specs.json entry, nothing else)
+specify target add web --dir apps/web --format junit \
+  --report apps/web/report.junit.xml --source apps/web/src \
+  --command "npm --prefix apps/web test" --bindings scoped
 ```
 
 ```text
 # 4. implement on the target — tests first, each bound to its scenario
-/speckit.plan      "Web: React + TanStack, tests in Vitest"
+/speckit.plan
 /speckit.tasks
 /speckit.implement
 ```
@@ -101,12 +106,12 @@ find their report and source bindings.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": "claude",
   "targets": {
     "web": {
-      "stack": "web",
-      "command": "pnpm -C apps/web test --run",
+      "dir": "apps/web",
+      "command": "npm --prefix apps/web test",
       "format": "junit",
       "report": "apps/web/report.junit.xml",
       "source": "apps/web/src"
@@ -115,15 +120,15 @@ find their report and source bindings.
 }
 ```
 
-`command` is what runs the tests; `report` is where their results land; `format`
-is `junit` (Vitest, Gradle) or `swift` (Swift Testing's event stream); `source`
-is the directory scanned for the scenario↔test bindings. `stack` selects the
-target's platform pack, and an optional `product` label groups targets. `agent`
-records your integration (`specify init --integration <agent>` seeds it) so
-`target add`/`packs` can project that stack's platform pack into the agent's
-skills dir. `scan` validates this file whenever it's present; an absent one is
-fine — engine commands that need a target just tell you to configure one. Full
-schema in [../config.md](../config.md).
+`command` is what runs the tests; `report` is where their results land;
+`format` is `junit` (any runner with a JUnit XML reporter), `swift` (Swift
+Testing's event stream), or `gotest` (`go test -json`); `source` is the
+directory (or directories) scanned for the scenario↔test bindings. `dir`
+records where the target lives; an optional `product` label groups targets.
+`scan` validates this file whenever it's present; an absent one is fine —
+engine commands that need a target just tell you to configure one. Full schema
+in [../config.md](../config.md); the flag-by-flag walkthrough (with a worked
+example per report format) in [../adopting.md](../adopting.md).
 
 ## Keep commits honest with git hooks
 
@@ -135,7 +140,7 @@ not in CI. (The PR gate is in the [GitHub doc](github.md).)
 | Check | What it blocks |
 | --- | --- |
 | `specify gate firewall` | A change that edits a scenario-tagged test without touching that scenario's spec. |
-| `specify gate generated` | Edits to files SpecKit generates and owns (`.speckit/lock/`, codegen). |
+| `specify gate generated` | Edits to files SpecKit generates and owns (`.speckit/lock/`). |
 | `specify gate scope [subject]` | A commit subject that doesn't start with a recognized scope. |
 
 Wire them as hooks:
@@ -164,7 +169,7 @@ timestamps — git doesn't preserve those. The lock is the durable proof, and it
 just a file in the repo.
 
 **The join.** The scenario↔test binding is declared in *source* (a comment, a
-Swift trait, a Vitest title), and the outcomes come from the runner's report,
+Swift trait, a test title), and the outcomes come from the runner's report,
 matched by test identity. The two halves meet in `verify`. Anything that can't
 be joined — a scenario with no test, a test naming a scenario that doesn't
 exist — is a **hard error**, not a silent pass.
@@ -177,31 +182,19 @@ intentional cannot hide a real failure.
 
 ## Adopt on an existing repo
 
-The engine works on an existing spec library with **no migration**. SpecKit uses
-the same conventions as the Workbench template, so `specify scan` runs clean on a
-Workbench-conventions project today. To adopt SpecKit offline:
-
-```sh
-# 1. Confirm the library is healthy
-specify scan
-
-# 2. After declaring your targets in .speckit/specs.json (above), verify one
-specify verify web
-
-# 3. Project the platform packs for your targets' stacks
-specify packs
-```
-
-Then make sure each test names its scenario in source — that's the binding
-`verify` joins on. If your existing tests already carry scenario tags, you're
-done; otherwise add them as you verify each spec. You don't need `init` on an
-existing project (it's for new ones); `init --here` can add the `/speckit.*`
-command projections to a project that lacks them.
+The engine works on an existing spec library with **no migration** — `specify
+scan` runs clean on a Workbench-conventions project today. The full walkthrough
+(one `target add` per existing implementation, a worked example per report
+format, when to use `--bindings scoped` and `--reference`) is
+[../adopting.md](../adopting.md).
 
 ## Next
 
+- [Adopting SpecKit](../adopting.md) — register the project you already have.
 - [Working with GitHub](github.md) — add the GitHub workflow on top of this
-  offline core: PR gating, Issues, Projects, deploys.
+  offline core: PR gating and the Projects work provider.
+- [Work providers](../work-providers.md) — the work-tracking surface, offline
+  by default.
 - [Project README](../../README.md) — the full command reference and project
   overview.
 - [Spec conventions](../../specs/CONVENTIONS.md) — how specs are written, and

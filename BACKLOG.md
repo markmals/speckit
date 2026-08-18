@@ -7,9 +7,51 @@ in [Completed](#completed) at the bottom**. Status: ✅ done · 🔄 in progress
 
 ---
 
-## P1 · ✅ Shipped — GitHub Pillar 1 (PR gating)
+## 2026-08-17 · ✅ Stack-agnostic refactor
 
-Spec-honesty is now a non-bypassable required check. **Next build is P2.**
+SpecKit dropped the project-generator half and became a stack-agnostic spec
+engine with pluggable work tracking. This entry supersedes every scaffolding-,
+pack-, deploy-, secrets-, protect-, and issues-shaped item below; P1–P3 are
+kept as historical record, marked in place.
+
+**Removed:** all scaffolding (`internal/scaffold`, the scaffold/pack/deploy/
+monorepo template trees, the mise-monorepo wiring, the apple-pack generation
+script + CI drift gate); the platform skill packs and `specify packs`; the
+closed stack vocabulary (`Target.Stack`, `Target.Deploy`);
+`specify target register`, `specify deploy`, `specify secrets`,
+`specify protect`, `specify issues`, `specify work discover`; the scaffolded
+`ci.yml`/`deploy.yml` and per-target `.github/` drop; the hardcoded "Web is
+the reference target" in projected prose.
+
+**Replaced by:** one non-scaffolding `specify target add` (explicit
+`--dir`/`--format`/`--report`/`--source`/`--command`/`--bindings`/`--product`/
+`--reference`); a `reference_target` config key that projected prose reads
+instead of naming a platform; config schema v2 (`stack`/`deploy` retired and
+ignored with a one-line notice, new per-target `dir`, optional `work` block);
+a work-provider interface (`internal/work`) with four adapters — `markdown`
+(default: a committed `WORK.md`), `beads` (the `bd` CLI), `github-projects`
+(the old board surface; defect intake is `work create --type defect`), and
+`none`; a stack-neutral gate (no toolchain/dependency setup — that's the
+calling workflow's job). The engine, spec model, report formats, `--json`
+surface, and the offline guarantee are unchanged; `internal/github` survives
+as the `github-projects` client, still imported only by `cmd/specify`.
+New docs: `MIGRATION.md`, `docs/adopting.md`, `docs/work-providers.md`,
+`docs/report-formats.md`.
+
+**Surviving open items:** the P4 engine/workflow enhancements (protocol
+`x-spec` reader, scanner binding formats, product rollup, hooks, non-Claude
+review subagents, VS Code extension), the non-scaffolding P5 doc decisions,
+and the P6 release gate.
+
+---
+
+## P1 · ✅ Shipped — GitHub Pillar 1 (PR gating) — partly historical
+
+Spec-honesty is a non-bypassable required check. **2026-08-17:** the gate
+action/workflow and the branch-protection recipe survive (the gate is now
+stack-neutral — no mise/pnpm setup; toolchain belongs to the calling
+workflow); the web-scaffold quality tasks and the scaffolded `ci.yml`
+described below are removed surfaces, kept as record.
 
 - ✅ **Web-scaffold quality tasks (prerequisite).** `fmt`/`fmt:check` (Oxfmt) + `lint`
   (Oxlint) mise tasks in the web scaffold, scoped to `app/`; `pnpm` pinned in `[tools]`.
@@ -48,7 +90,12 @@ Design: [docs/design/github-integration.md](docs/design/github-integration.md).
 
 ---
 
-## P2 · ✅ Shipped (mostly) — GitHub-native core + agent memory
+## P2 · ✅ Shipped — GitHub-native core + agent memory — partly historical
+
+**2026-08-17:** the gh-auth-inheriting client, the PR gate, and agent memory
+survive; `issues`, `work discover`, `deploy`, `secrets`, and `protect` below
+are removed surfaces — work tracking is now the provider-based `specify work`
+(`markdown`/`beads`/`github-projects`/`none`). Kept as record.
 
 The pivot's heart. Architecture: a portable spec-integrity core (engine works offline,
 never needs GitHub for correctness) + a GitHub-native workflow shell; the engine
@@ -111,12 +158,16 @@ Ready) and baked in as `specify work`'s defaults.
 
 ---
 
-## P3 · Scaffolding & stack coverage
+## P3 · Historical — scaffolding & stack coverage (removed 2026-08-17)
+
+**All of P3 is historical record.** Scaffolding, stacks, packs, and the
+mise-monorepo wiring were removed in the 2026-08-17 refactor; nothing below is
+open work.
 
 - 🔄 **Web scaffold — flesh out** to the full default. Approach: prototype-first / resolve-by-running
   (build the real app green, then templatize), grounded in inspecting the reference apps (trove ·
   tangerine-dashboard · contacts main+convex). Engine decision: **plain Vite + oxc + Mise** (not
-  vite-plus), confirmed with Mark — matches [scaffolds/web.md](docs/design/scaffolds/web.md).
+  vite-plus), confirmed with Mark — matched the since-removed `docs/design/scaffolds/web.md`.
   - ✅ **Slice 1 — default app, green-on-arrival (verified for real).** TanStack Start SSR +
     Router (virtual file routes, `app/routes.ts` → `routes.gen.ts` via `tsr generate`) + Query;
     React 19 + **React Compiler** (`@rolldown/plugin-babel` + `reactCompilerPreset()`); **Tailwind
@@ -260,7 +311,7 @@ Ready) and baked in as `specify work`'s defaults.
   - ✅ **trove-parity series complete** — all four bundles (root `go.mod` · openapi · sqlite · client)
     compose into one troved-shaped green-on-arrival service. ⬜ Still later: pnpm-workspace membership +
     repo-root `internal/` sharing land with the broader monorepo slice; the protocol `x-spec` coverage reader.
-- 🟡 **Per-stack scaffold builds** — **apple in progress** ([scaffolds/apple.md](docs/design/scaffolds/apple.md)):
+- 🟡 **Per-stack scaffold builds** — **apple in progress** (per the since-removed `docs/design/scaffolds/apple.md`):
   - ✅ **Slice 1 — headless Core harness** — `specify target add <name> --stack apple` renders a
     self-contained SwiftPM package (`apps/<name>/Core`, a `@Observable` view-model + a pure domain
     type), the `SpecTraits.swift` binding harness, an example bound story, and the `swift`-format
@@ -331,7 +382,7 @@ Ready) and baked in as `specify work`'s defaults.
     breaks `specify packs` — `loadPack` treats a missing pack dir as "no pack" for a real scaffold (still
     errors on a genuinely unknown stack). No pack/MCP/features for these (factor later if needed).
   - Then the rest one at a time, each gated on a tooling preview. node-cli already spec'd
-    ([scaffolds/node-cli.md](docs/design/scaffolds/node-cli.md)).
+    (per the since-removed `docs/design/scaffolds/node-cli.md`).
 - ⬜ **Feature-folder templates** (minor) — `NARRATIVE`/story/model/view-model/error templates
   under `.speckit/templates/feature/` so the commands scaffold faster (today they point at
   `specs/CONVENTIONS.md`, which works).
@@ -339,6 +390,14 @@ Ready) and baked in as `specify work`'s defaults.
 ---
 
 ## P4 · Engine & workflow enhancements
+
+- ⬜ **`generic` integration — configurable commands dir.** `generic` currently registers the
+  same `agentsAdapter` as `codex`, so its projection is byte-identical (`.agents/skills/…` +
+  `AGENTS.md`). `story.init.projection` scenario 4 used to specify
+  `--integration-options "--commands-dir <dir>"`, which was never implemented; the scenario was
+  restated on 2026-08-17 to the implemented vendor-neutral behavior and the idea moved here.
+  If it lands, `generic` gains a reason to exist beyond an alias: an agent whose prompts live
+  somewhere else entirely (`--commands-dir`) plus a chosen orientation filename.
 
 - 🔄 **Trove adoption — Tier 1 (engine readiness, in review).** Makes the engine able to scan +
   verify a real Workbench-shaped repo (trove, the first conversion). Validated end-to-end against
@@ -360,12 +419,11 @@ Ready) and baked in as `specify work`'s defaults.
     unbound D12 violation), so the scaffold + SpecKit's own repo are unchanged. ⚠️ This softens the
     documented "every untagged test is a hard error" philosophy *only when opted in* — confirm the
     name/shape.
-  ⬜ Tier-1 follow-ups: protocol `x-spec` coverage reader (still deferred). ✅ go-service stack/scaffold
-  (shipped, with the trove-parity feature set). ✅ **onboarding an existing repo** — `specify target
-  register <name> --stack <s>` records an existing member as a target in `.speckit/specs.json` without
-  scaffolding/installing (seeds the wiring from the stack's scaffold manifest when it has one — web,
-  go-service — else takes `--format`/`--command`/`--report`/`--source`/`--bindings` flags; flags override
-  manifest defaults). Smoke-tested on real trove: registered `troved` (go-service) + a TS package, `scan`
+  ⬜ Tier-1 follow-ups: protocol `x-spec` coverage reader (still deferred). ✅ go-service stack support
+  (shipped, then removed with scaffolding 2026-08-17). ✅ **onboarding an existing repo** — shipped as
+  `specify target register`, since replaced by the non-scaffolding `specify target add` (2026-08-17):
+  explicit `--format`/`--command`/`--report`/`--source`/`--bindings` flags, nothing seeded, nothing
+  rendered. Smoke-tested on real trove: registered `troved` + a TS package, `scan`
   clean. **The next step (converting trove) is the target decomposition** — which scenarios/tests scope to
   which target (trove's bound tests span `cmd/troved` + `internal/`), reconciling scenario ids, and the
   per-member wiring — plus the deferred protocol `x-spec` reader + product-rollup render.
@@ -381,8 +439,9 @@ Ready) and baked in as `specify work`'s defaults.
   `@Tag("scenario:…")`. (Today: Swift traits, Vitest titles, and the leading-comment form.)
 - ⬜ **Product-rollup render** — `cover`/`parity` grouping + per-product verdict. `ProductTargets()`
   exists; lands with the multi-target slice.
-- ⬜ **triaging-defects skill** — reframe around **GitHub Issues** (Pillar 2 supersedes the old
-  `DEFECTS.md`-ledger blocker): triage an issue → scenario/regression test → close on green.
+- ⬜ **triaging-defects skill** — reframe around **work items** (`specify work create
+  --type defect` on the configured provider): triage a defect item → scenario/regression
+  test → move to `done` on green.
 - ⬜ **Hooks (claude-pack overlay)** — `format-on-edit`, `spec-reconcile`, `stop-lint`,
   `notify-long-task`, `user-prompt-context` + codegen hooks (convex/openapi/tuist). `gate`
   already mechanizes the enforcement ones (firewall/generated/scope) — decide which hooks remain
@@ -409,13 +468,16 @@ Ready) and baked in as `specify work`'s defaults.
     `scan`/`verify`/`lock`/`drift`/`cover`/`parity`/`gate` + git hooks, determinism line as the spine,
     no `gh`/network) and [`docs/usage/github.md`](docs/usage/github.md) (the optional shell: PR gate +
     `protect`, Issues/`taskstoissues`, the `work` board, `deploy`/`secrets` — every command marked
-    optional). Reflects the shipped P2 surface.
+    optional). Reflected the shipped P2 surface; **2026-08-17:** both usage pages since
+    rewritten for the stack-agnostic surface (`protect`/Issues/`deploy`/`secrets` removed,
+    work tracking now provider-based — see the refactor entry).
 - ⬜ **Decision — historical-doc vocab.** `FORK.md` / `FORK-PLAN.md` still use engine-key
   `platform` (~100× in FORK-PLAN) as dated planning records. Migrate to `target`, or leave as
   pinned artifacts? (Untouched for now.)
-- ⬜ **Decision — `init --platforms` / `extension add` vs `target add --stack`.** The
-  `features/0002-init` extension stories spec a surface that overlaps the shipped `target add` +
-  `packs`. Reconcile, or relabel as a deferred Phase-4 design.
+- ⬜ **Decision — the `features/0002-init` extension stories.** They spec'd a surface
+  overlapping the removed `target add --stack` + `packs` (both gone 2026-08-17).
+  Reconcile the stories against the non-scaffolding `target add`, or relabel them as a
+  dead design.
 - ⬜ **Legacy whole-file templates.** `plan-template.md` / `tasks-template.md` /
   `checklist-template.md` still use the upstream `spec.md`/`plan.md`/`tasks.md` model + unrendered
   `__SPECKIT_COMMAND_*__` tokens — at odds with the feature-folder model.

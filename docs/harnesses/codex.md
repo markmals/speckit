@@ -60,7 +60,7 @@ The nine commands are projected as Codex's skill set under `.agents/skills/speck
 | `/speckit.plan` | Produce the per-target technical plan for a feature. |
 | `/speckit.tasks` | Produce an ordered, story-prioritized task list for a target; each task maps to a spec ID. |
 | `/speckit.implement` | Implement on a target: failing tests first, layered review, an adversarial pass, then verify-and-lock. |
-| `/speckit.taskstoissues` | File a feature's task list as GitHub issues on the repo matching the git remote. (The one command that touches GitHub.) |
+| `/speckit.taskstowork` | File a feature's task list as work items through the configured work provider (`specify work create`, one item per task). |
 
 ## Skills, rules, and memory
 
@@ -81,6 +81,6 @@ There are **no review subagents** under the Codex projection: the review pack (`
 ## Next
 
 - [Offline engine usage](../usage/offline.md) — the engine alone: `scan` / `verify` / `drift` / `cover` / `parity` / `gate`
-- [Working with GitHub](../usage/github.md) — the optional PR gate, Issues, Projects, deploys, secrets
+- [Working with GitHub](../usage/github.md) — the optional PR gate and the `github-projects` work provider
 - [Project README](../../README.md) — overview and full command reference
 - Other harnesses: [Claude Code](claude.md) · [Generic (AGENTS.md)](generic.md) · [GitHub Copilot](copilot.md)

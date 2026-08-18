@@ -1,116 +1,126 @@
 # Configuration — `.speckit/specs.json`
 
-`.speckit/specs.json` declares your project's **targets** — the native
-implementations the engine verifies. It's plain JSON (strict — no comments or
-trailing commas).
+`.speckit/specs.json` declares your project's **targets** — the implementations
+the engine verifies — plus the optional reference target and the work-tracking
+provider. It's plain JSON (strict — no comments or trailing commas).
 
-## Schema (today)
+The config is deliberately stack-agnostic: a target is described by where it
+lives, how to run its tests, and how to read the resulting report. Nothing in
+this file names a framework, runtime, or platform.
+
+## Schema (version 2)
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "agent": "claude",
+  "reference_target": "web",
   "paths": { "specs": "specs", "features": "features" },
   "targets": {
     "web": {
-      "stack": "web",
-      "command": "pnpm -C apps/web test --run",
+      "dir": "apps/web",
+      "command": "npm --prefix apps/web test",
       "format": "junit",
       "report": "apps/web/report.junit.xml",
       "source": "apps/web/src",
       "product": "consumer-app"
     },
     "ios": {
-      "stack": "apple",
-      "command": "xcodebuild test -scheme App -resultBundlePath …",
+      "dir": "apps/ios",
+      "command": "swift test --package-path apps/ios --event-stream-output-path apps/ios/.build/tests.ndjson --event-stream-version 0",
       "format": "swift",
       "report": "apps/ios/.build/tests.ndjson",
       "source": "apps/ios/Tests",
       "product": "consumer-app"
     },
     "daemon": {
-      "stack": "go-service",
+      "dir": "cmd/daemon",
       "command": "go test -json ./cmd/... ./internal/... > .speckit/daemon.gotest.json",
       "format": "gotest",
       "report": ".speckit/daemon.gotest.json",
-      "source": ["cmd/troved", "internal", "cmd/trove-transcode"],
+      "source": ["cmd/daemon", "internal"],
       "bindings": "scoped"
     }
-  }
+  },
+  "work": { "provider": "markdown", "file": "WORK.md" }
 }
 ```
 
-Field by field: `version` is this file's schema version; `agent` is who `init`
-projected for — `init --integration <agent>` records it here so `target add` /
-`packs` know where to project each stack's pack; `paths` (optional, defaults
-shown) locates the spec library; each
-**target** carries a `stack` (selects its platform pack — see below), the verify
-wiring (`command` to run, `report` `format` ∈ `junit`/`swift`/`gotest`, `report`
-path, `source` dir(s) scanned for bindings), an optional `product` label, and an
-optional `bindings` mode.
+## Top-level keys
 
-- **`format`** — how the test report is parsed: `junit` (Vitest, Gradle), `swift`
-  (Swift Testing's event stream), or `gotest` (the NDJSON `go test -json` writes;
-  the join identity is the `func Test…` name).
+- **`version`** — the file's schema version. This build reads and writes `2`.
+  An older file loads fine (with a one-line notice) and is normalized to `2`
+  the next time SpecKit writes it.
+- **`agent`** — who `init` projected for (`claude` · `codex` · `copilot` ·
+  `generic`). `specify init --integration <agent>` records it.
+- **`reference_target`** — the target whose behavior the other targets match
+  when a spec is ambiguous across them. Purely informational: the engine
+  privileges no target; projected agent guidance reads this key instead of
+  hardcoding a platform. Set it with `specify target add <name> … --reference`.
+  When unset, no target is privileged (a single-target project needs no key —
+  the sole target is trivially the reference).
+- **`paths`** — locates the spec library (optional; defaults `specs/` and
+  `features/`).
+- **`targets`** — the verifiable implementations; see below.
+- **`work`** — the work-tracking provider block (optional; see
+  [work-providers.md](work-providers.md)). Absent means the `markdown` provider
+  on `WORK.md`. No engine command reads this block.
+
+## Target keys
+
+- **`dir`** — the target's root, relative to the project root. Informational —
+  nothing is generated into it — but it records what the target *is*.
+  `specify target add --dir <path>` writes it; a target that omits it is
+  treated as rooted at the project root.
+- **`command`** — the shell command that runs the target's tests and produces
+  the report. Optional: leave it empty when the report already exists before
+  `verify` runs.
+- **`format`** — how the report is parsed: `junit` (JUnit-family XML from any
+  runner with a JUnit reporter), `swift` (Swift Testing's
+  `--event-stream-output-path` NDJSON), or `gotest` (the NDJSON
+  `go test -json` writes; the join identity is the `func Test…` name).
+- **`report`** — where the report lands, relative to the project root.
 - **`source`** — the directory (or directories) scanned for scenario bindings.
   A single string scans one dir; a JSON array scans every listed dir and joins
   the bindings into one target (e.g. a Go service whose tests span `cmd/` and
   `internal/`). One or more non-empty paths are required.
 - **`bindings`** — how an untagged test (one that binds no scenario) is treated:
-  `strict` (the default — every test must prove a scenario, an untagged one is an
-  unbound D12 violation) or `scoped` (untagged tests are out of scope, so a suite
-  that mixes scenario tests with plain unit tests still verifies what it binds).
-  A failing bound test and a dangling binding remain violations in both modes.
+  `strict` (the default — every test must prove a scenario, an untagged one is
+  an unbound D12 violation) or `scoped` (untagged tests are out of scope, so a
+  suite that mixes scenario tests with plain unit tests still verifies what it
+  binds). A failing bound test and a dangling binding remain violations in both
+  modes.
+- **`product`** / **`products`** — an optional label (or list of labels)
+  grouping targets into products; see below.
 
-### What the engine does with it
+### Retired keys: `stack` and `deploy`
 
-- `specify verify <target>` runs the target's `command`, parses the `report` in
-  `format`, scans `source` for source-declared scenario bindings (D15), joins
-  results to declared scenarios, and on green writes the lock at
+Earlier schema versions carried a per-target `stack` (which selected a scaffold
+and a platform skill pack) and `deploy` (a deployment manifest). Both are
+**retired and ignored**: an unmigrated config still loads and every command
+still runs — SpecKit prints a one-line notice naming the ignored keys and drops
+them on the next write. What a target is built with, and how it deploys, is the
+adopting project's business, not the spec engine's.
+
+## What the engine does with it
+
+- `specify verify <target>` runs the target's `command` (if any), parses the
+  `report` in `format`, scans `source` for source-declared scenario bindings
+  (D15), joins results to declared scenarios, and on green writes the lock at
   `.speckit/lock/<target>/<spec-id>.json`.
 - `specify drift <target>` · `cover <spec-id>` · `parity <target>` read that
   per-target lock.
 - `specify scan` validates this file when it's present: every target needs a
-  valid `format` (`junit` | `swift` | `gotest`), a `report`, and a `source`, and
-  any `bindings` value must be `strict` or `scoped`. An absent `specs.json` is
-  fine — engine commands that need a target just tell you to configure one.
+  valid `format` (`junit` | `swift` | `gotest`), a `report`, and a `source`,
+  and any `bindings` value must be `strict` or `scoped`. An absent `specs.json`
+  is fine — engine commands that need a target just tell you to configure one.
 
-A **target is the atomic unit**: a globally-unique name with its own lock. The
-`platform` vocabulary from earlier builds is gone — it's `target` everywhere now.
-
-## Platform packs
-
-A target's optional **`stack`** selects a **pack** of platform skills — the
-stack-specific dev and verification guidance (React/TanStack, UIKit/SwiftUI,
-Compose, WinUI, the CLI stacks, …). Unlike the process-discipline skills (which
-`init` projects for every project), platform skills are stack-specific, so
-they're projected **on demand**:
-
-```sh
-specify packs        # project the packs for every stack in specs.json
-```
-
-`packs` reads `specs.json`, takes the distinct `stack` values across your
-targets, and projects each pack's skills into the agent's skills dir — using the
-`agent` field to know where (`.claude/skills`, `.agents/skills`, `.github/skills`).
-Packs may also include per-stack agents; adapters without an agent directory skip
-those files. Re-run it after adding a target on a new stack.
-
-| `stack` | pack skills projected |
-| --- | --- |
-| `web` | `web-development`, `web-verification` |
-| `website` | `website-development` |
-| `apple` | `ios-development`, `ios-simulator-control`, `appkit-design`, `apple-hig`, `appkit-private-apis`, `appkit-app-inspector`, plus the Claude `appkit-dev` stack agent |
-| `android` | `android-development`, `android-emulator-control` |
-| `go-cli` · `node-cli` | the matching `*-development` skill |
-
-The GUI packs pair with the `visual-verifier` subagent, which drives a real
-browser / simulator / emulator through a story's Gherkin scenarios.
+A **target is the atomic unit**: a globally-unique name with its own lock.
 
 ## Products — today, a label
 
-A **product** is an application; a **target** is one implementation of it (web,
-iOS, a Convex server, a Go daemon — all targets of one product). A repo can hold
+A **product** is an application; a **target** is one implementation of it (a
+web app, an iOS app, a Go daemon — all targets of one product). A repo can hold
 several products.
 
 Today a product is expressed as an optional **label** on a target: `"product":
@@ -145,18 +155,19 @@ is the seed of this — migrating is mechanical.
 
 ### `contracts`
 
-A **contract** is how a product's targets communicate through a service —
-currently a Convex backend or an OpenAPI server (Node/Go). A single contract can
-be consumed by targets across *several* products, so contracts would be a
-top-level collection referencing targets, not nested under any one product:
+A **contract** is how a product's targets communicate through a service — an
+API schema (e.g. OpenAPI) served by one target and consumed by others. A single
+contract can be consumed by targets across *several* products, so contracts
+would be a top-level collection referencing targets, not nested under any one
+product:
 
 ```json
 "contracts": {
   "auth-api": {
-    "kind":       "openapi",                      // openapi | convex
-    "definition": "contracts/auth.openapi.yaml",  // the interface schema
-    "provider":   "auth-server",                  // the target that serves it
-    "consumers":  ["web", "ios", "admin-web"]     // targets that call it — may cross products
+    "kind":       "openapi",
+    "definition": "contracts/auth.openapi.yaml",
+    "provider":   "auth-server",
+    "consumers":  ["web", "ios", "admin-web"]
   }
 }
 ```
@@ -166,7 +177,6 @@ top-level collection referencing targets, not nested under any one product:
 otherwise. Its real payoff is **contract-drift**: flagging the consumer targets
 when a provider changes the interface. That's a second acknowledgment/lock
 mechanism (parallel to spec-drift) and arguably overlaps with codegen/diff
-tooling (OpenAPI diff, `openapi-codegen`). The schema should be shaped by that
-drift behavior once it's designed — not guessed at now. Until then, document a
-product's service topology in its `NARRATIVE.md` or an `ARCHITECTURE.md`, not the
-tooling config.
+tooling. The schema should be shaped by that drift behavior once it's designed —
+not guessed at now. Until then, document a product's service topology in its
+`NARRATIVE.md` or an `ARCHITECTURE.md`, not the tooling config.

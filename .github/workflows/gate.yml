@@ -1,15 +1,20 @@
-# SpecKit's reusable spec-gate workflow. A scaffolded project's ci.yml calls it
-# as one line:
+# SpecKit's reusable spec-gate workflow. A project's ci.yml calls it as one line:
 #
 #   verify:
 #     uses: markmals/speckit/.github/workflows/gate.yml@v1
 #     with:
 #       target: web
-#       working_directory: apps/web
 #
 # The resulting required status check is named `verify / verify` (caller job /
 # reusable job) — use that exact context in the branch-protection ruleset. See
 # docs/ci-gating.md.
+#
+# The gate is stack-neutral: it runs only the target's configured `command`
+# (via `specify verify`) plus the specify checks. It performs no toolchain or
+# dependency setup — use it when the runner's default toolchain can run your
+# target's command (or the report is committed/prebuilt). A target that needs
+# its own setup should run the composite action `markmals/speckit/gate@v1` as
+# a step inside its own job, after its own setup steps.
 name: SpecKit gate
 
 on:
@@ -19,11 +24,6 @@ on:
         description: The target to verify — a key in .speckit/specs.json.
         required: true
         type: string
-      working_directory:
-        description: The target's app directory, for toolchain & dep install.
-        required: false
-        type: string
-        default: ""
 
 permissions:
   contents: read
@@ -38,4 +38,3 @@ jobs:
       - uses: markmals/speckit/gate@v1
         with:
           target: ${{ inputs.target }}
-          working_directory: ${{ inputs.working_directory }}

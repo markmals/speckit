@@ -20,14 +20,12 @@ an engine change.
 A product is one or the other. The kind selects the authoring path; it does
 **not** change the engine, the lock, or the join.
 
-- **Default from stack.** App stacks (`web`, `website`, `apple`, `android`,
-  the CLI stacks) ⇒ `app`. Library stacks (`swift-package`, `swift-cli`,
-  `npm-package`, `vscode-extension`) ⇒ `library`. An explicit `kind` overrides.
-- **Open: where it's declared.** Cleanest is to derive it from the feature's
-  target stacks, with an explicit override when a repo mixes both. (CLIs are the
-  ambiguous case — a CLI has a human user, so `remctl` is app-flavored, but a
-  developer-facing CLI/SDK is library-flavored. Default CLIs to `app`; override
-  to `library` for SDK-shaped tools.)
+- **Declared, not derived.** SpecKit no longer models what a target is built
+  with, so the kind cannot be inferred from tooling config — it's an explicit
+  declaration on the product/feature. (CLIs are the ambiguous case — a CLI has
+  a human user, so a user-facing tool is app-flavored, but a developer-facing
+  CLI/SDK is library-flavored. Default CLIs to `app`; declare `library` for
+  SDK-shaped tools.)
 
 ## The library authoring path
 
@@ -70,12 +68,10 @@ When `kind: library`, the authoring skills branch:
 
 ## What changes (summary)
 
-- A `kind` (derived-from-stack, overridable) on the product/feature.
+- An explicitly declared `kind` on the product/feature.
 - Library branches in `writing-user-stories` and `brainstorming-feature`.
 - A note in `specs/CONVENTIONS.md`: which kinds apply per product kind; the
   relaxed actor rule for libraries.
-- The library/CLI/extension **scaffolds** (in
-  [stack-scaffolding.md](stack-scaffolding.md)).
 - **No engine change.**
 
 ## Out of scope here

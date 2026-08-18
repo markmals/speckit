@@ -55,14 +55,11 @@ type SourcePaths []string
   non-strings) is a clear unmarshal error.
 - **`MarshalJSON`** is *ergonomic*: a single path serializes back as a bare
   string, multiple paths as an array. Existing single-source configs round-trip
-  byte-for-byte the same shape when SpecKit rewrites the file (`target add`,
-  `deploy add`, `secrets sync`), so this change causes **zero churn** on configs
-  in the wild.
+  byte-for-byte the same shape when SpecKit rewrites the file (`target add`),
+  so this change causes **zero churn** on configs in the wild.
 - **`Validate(target string) []error`** — an empty list is "missing source dir"
   (same message class as today); any blank/whitespace-only entry is its own
   explicit error.
-- **`First() string`** — the first path (or `""`). Used only by the deploy/secrets
-  app-dir heuristic, which is single-app by nature.
 
 `Target.Source` becomes `SourcePaths`. `Target.Validate` delegates its source
 checks to `SourcePaths.Validate`.
@@ -96,19 +93,9 @@ would otherwise break.
 ## Component 3 — CLI wiring (`cmd/specify`)
 
 - `verifyConfigFor`: `Source: []string(t.Source)`.
-- `target add` (scaffold path): scaffolds emit one source string → wrap as
-  `config.SourcePaths{rt.Source}`.
-- `targetRegisterCmd` / `registerTarget`:
-  - `--source` becomes **repeatable** (`StringArrayVar`). Zero `--source` flags →
-    fall back to the manifest's single derived source; one or more → use them
-    verbatim. This lets a user author Trove's multi-source target without
-    hand-editing JSON, though hand-editing remains fully supported.
-  - The completeness check becomes "at least one source path".
-- `deploy.go` / `secrets.go`: `filepath.Dir(t.Source.First())`.
-
-The scaffold layer (`internal/scaffold`) is untouched: a generated target is
-always single-source, and `RenderedTarget.Source` stays a string. No projected
-assets change, so no golden-manifest regeneration is needed.
+- `target add`: `--source` is **repeatable** (`StringArrayVar`); at least one is
+  required. This lets a user author a multi-source target without hand-editing
+  JSON, though hand-editing remains fully supported.
 
 ## Component 4 — docs
 
@@ -136,7 +123,7 @@ Engine (`internal/engine`):
 
 CLI (`cmd/specify`):
 
-8. `target register` with repeated `--source` writes an array-form target.
+8. `target add` with repeated `--source` writes an array-form target.
 
 ## Touch points (full enumeration)
 
@@ -145,14 +132,11 @@ CLI (`cmd/specify`):
   uses `ScanBindingsMany`.
 - `internal/engine/verify.go` — add `ScanBindingsMany`.
 - `internal/engine/parity.go` — add `ScanDeviationsMany`; `Parity` uses it.
-- `cmd/specify/main.go` — `verifyConfigFor`, `target add` wrap, `register` flag +
+- `cmd/specify` — `verifyConfigFor`, the repeatable `target add --source` flag +
   completeness check.
-- `cmd/specify/deploy.go`, `cmd/specify/secrets.go` — `t.Source.First()`.
 - `docs/config.md`, `README` — array-form examples.
 
 ## Out of scope / non-goals
 
 - Modeling products/contracts as first-class config (tracked separately).
 - Per-source binding modes (one `bindings` mode still governs the whole target).
-- Changing scaffold output to emit multi-source targets (scaffolds are
-  single-source by construction).
