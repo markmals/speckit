@@ -1,0 +1,9 @@
+{
+  "spec_hash": "b443dabee0494b6a45034acae3e3f1c0814bf1b5f2fb20d2ce8ce46ad291b4fa",
+  "scenarios": {
+    "scenario.adoption.reference-target.configured": "pass",
+    "scenario.adoption.reference-target.must-name-a-target": "pass",
+    "scenario.adoption.reference-target.sole-target-is-reference": "pass",
+    "scenario.adoption.reference-target.unset-privileges-nothing": "pass"
+  }
+}

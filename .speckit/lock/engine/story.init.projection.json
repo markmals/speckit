@@ -1,0 +1,12 @@
+{
+  "spec_hash": "4e451afff15ed0a33a96d5daa4400dcd05c9ea2dffbc07718cf9ff9d88a3035f",
+  "scenarios": {
+    "scenario.init.projection.claude": "pass",
+    "scenario.init.projection.codex": "pass",
+    "scenario.init.projection.copilot": "pass",
+    "scenario.init.projection.fork-divergence": "pass",
+    "scenario.init.projection.generic": "pass",
+    "scenario.init.projection.one-adapter": "pass",
+    "scenario.init.projection.shared-prompt-content": "pass"
+  }
+}

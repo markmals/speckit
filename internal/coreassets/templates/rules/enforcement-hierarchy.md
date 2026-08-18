@@ -18,8 +18,9 @@ new rule, reach down this hierarchy first.
   defined spec/feature ID, target, or harness area. Wired as git hooks and as the
   CI required check. If a rule can be a gate check, it should be.
 - **Tier 1 — Commands & the engine.** The `/speckit.*` authoring commands and the
-  `specify` engine (`scan` / `verify` / `drift` / `cover` / `parity`) plus the
-  target's `mise` `fmt` / `lint` / `test` tasks. Agent-invoked, but the
+  `specify` engine (`scan` / `verify` / `drift` / `cover` / `parity`) plus each
+  target's own configured commands (its test command in `.speckit/specs.json`,
+  the project's fmt/lint tooling). Agent-invoked, but the
   _behavior_ is codified, not recalled. Drift, coverage, parity, and verification
   belong here — and already live here: the engine computes them from the repo, it
   doesn't ask the agent to.

@@ -1,0 +1,10 @@
+{
+  "spec_hash": "60b77da0d284e02e553e11140c10dd40c40f8a2551054645762c5d9e30d4b3ab",
+  "scenarios": {
+    "scenario.engine.gate.agent-agnostic": "pass",
+    "scenario.engine.gate.generated-block": "pass",
+    "scenario.engine.gate.scoped-commit": "pass",
+    "scenario.engine.gate.subchecks": "pass",
+    "scenario.engine.gate.test-edit-firewall": "pass"
+  }
+}

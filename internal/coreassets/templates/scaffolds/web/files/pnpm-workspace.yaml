@@ -1,5 +1,0 @@
-# pnpm 11 blocks dependency build scripts by default and hard-errors when any are
-# ignored. The toolchain (and several add-ons, e.g. posthog-js → core-js) ship
-# postinstall scripts; allow them so a fresh install is green. The runtime/data
-# variants overwrite this file with the same setting.
-dangerouslyAllowAllBuilds: true

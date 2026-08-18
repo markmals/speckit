@@ -1,5 +1,10 @@
 // Package config loads .speckit/specs.json — the project's targets (each a
-// product implementation with its test/report wiring) plus version/agent/paths.
+// product implementation with its test/report wiring), the optional reference
+// target, and the work-tracking provider.
+//
+// The config is stack-agnostic on purpose: a target is described by where it
+// lives, how to run its tests, and how to read the resulting report. Nothing
+// here names a framework, runtime, or platform.
 //
 // products and contracts are intentionally NOT modeled as first-class config
 // yet (see docs/config.md for the rationale and the future shape). Today a
@@ -21,12 +26,28 @@ import (
 // File is the config path relative to the project root.
 const File = ".speckit/specs.json"
 
+// SchemaVersion is the version this build writes. Older files load (their
+// retired keys are ignored with a notice) and are rewritten at this version on
+// the next Save.
+const SchemaVersion = 2
+
 // Config is the parsed .speckit/specs.json.
 type Config struct {
-	Version int               `json:"version"`
-	Agent   string            `json:"agent,omitempty"`
-	Paths   Paths             `json:"paths"`
-	Targets map[string]Target `json:"targets"`
+	Version int    `json:"version"`
+	Agent   string `json:"agent,omitempty"`
+	// ReferenceTarget names the target whose behavior other targets match when a
+	// spec is ambiguous across them. Purely informational — the engine privileges
+	// no target — but projected agent guidance reads it instead of hardcoding a
+	// platform.
+	ReferenceTarget string            `json:"reference_target,omitempty"`
+	Paths           Paths             `json:"paths"`
+	Targets         map[string]Target `json:"targets"`
+	Work            *Work             `json:"work,omitempty"`
+
+	// Notice is a non-fatal load-time message (an older schema version, keys this
+	// build no longer honors). Never serialized: it describes the file as read,
+	// not the config as written.
+	Notice string `json:"-"`
 }
 
 // Paths locates the spec library (defaults: specs/ and features/).
@@ -73,15 +94,6 @@ func (sp SourcePaths) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]string(sp))
 }
 
-// First returns the first source path, or "" when there are none. Used by the
-// deploy/secrets app-dir heuristic, which is single-app by nature.
-func (sp SourcePaths) First() string {
-	if len(sp) == 0 {
-		return ""
-	}
-	return sp[0]
-}
-
 // Validate reports source problems for the named target: no paths at all, or any
 // blank/whitespace-only entry.
 func (sp SourcePaths) Validate(target string) []error {
@@ -97,51 +109,110 @@ func (sp SourcePaths) Validate(target string) []error {
 	return errs
 }
 
-// Target is one implementation of a product: the test command to run (a shell
-// string, à la a Mise task's `run`; empty when the report already exists), the
-// report format/path the engine joins, the source dir scanned for bindings, and
-// an optional product label. A target shared by several products lists them all
-// via Products.
+// Formats are the report formats the engine can read. Adding one is a change to
+// internal/reports plus this list — see docs/report-formats.md.
+var Formats = []string{"junit", "swift", "gotest"}
+
+// Target is one implementation of a product: where it lives, the test command to
+// run (a shell string, à la a Mise task's `run`; empty when the report already
+// exists), the report format/path the engine joins, the source dirs scanned for
+// bindings, and an optional product label. A target shared by several products
+// lists them all via Products.
 type Target struct {
-	Product  string      `json:"product,omitempty"`
-	Products []string    `json:"products,omitempty"`
-	Stack    string      `json:"stack,omitempty"` // selects the pack/scaffold: web|website|apple|android|go-cli|go-service|node-cli|swift-package|swift-cli|npm-package|vscode-extension
-	Command  string      `json:"command,omitempty"`
-	Format   string      `json:"format"` // junit | swift | gotest
-	Report   string      `json:"report"`
-	Source   SourcePaths `json:"source"`
+	Product  string   `json:"product,omitempty"`
+	Products []string `json:"products,omitempty"`
+	// Dir is the target's root, relative to the project root. Informational —
+	// nothing is rendered into it — but it records what the target *is* now that
+	// no platform label does.
+	Dir     string      `json:"dir"`
+	Command string      `json:"command,omitempty"`
+	Format  string      `json:"format"`
+	Report  string      `json:"report"`
+	Source  SourcePaths `json:"source"`
 	// Bindings is how untagged tests are treated: "strict" (default — every test
 	// must bind a scenario) or "scoped" (untagged tests are out of scope, so a
 	// suite mixing scenario tests with plain unit tests still verifies what it
 	// binds). See engine.VerifyConfig.
-	Bindings string  `json:"bindings,omitempty"`
-	Deploy   *Deploy `json:"deploy,omitempty"`
+	Bindings string `json:"bindings,omitempty"`
 }
 
-// Deploy is a target's optional deploy manifest: which platform it ships to, and
-// the secret references — 1Password op:// pointers, never values — to wire into CI
-// and the platform's own runtime store (`specify deploy add` / `secrets sync`).
-// Non-secret identifiers (e.g. CLOUDFLARE_ACCOUNT_ID) live in the stack's own
-// config such as wrangler.jsonc, not here. See docs/design/github-integration.md.
-type Deploy struct {
-	Kind    string            `json:"kind"`
-	CI      map[string]string `json:"ci,omitempty"`      // GitHub Actions secrets: ENV -> op:// ref
-	Runtime map[string]string `json:"runtime,omitempty"` // platform runtime secrets: ENV -> op:// ref
+// Work provider ids. markdown is the default: a committed file, no network, no
+// external binary. none disables the surface entirely.
+const (
+	WorkMarkdown       = "markdown"
+	WorkBeads          = "beads"
+	WorkGitHubProjects = "github-projects"
+	WorkNone           = "none"
+)
+
+// WorkProviders are the work-tracking backends `specify work` can drive.
+var WorkProviders = []string{WorkMarkdown, WorkBeads, WorkGitHubProjects, WorkNone}
+
+// DefaultWorkFile is the markdown provider's committed file.
+const DefaultWorkFile = "WORK.md"
+
+// Work selects and configures the work-tracking provider. Absent from the config
+// entirely, the markdown provider is used — so `specify work` needs no setup, and
+// no engine command needs this block at all.
+type Work struct {
+	Provider string `json:"provider"`
+	// File is the markdown provider's committed work file (default WORK.md).
+	File string `json:"file,omitempty"`
+	// Project and Owner address a GitHub Projects v2 board. Owner defaults to the
+	// resolved repo's owner.
+	Project int    `json:"project,omitempty"`
+	Owner   string `json:"owner,omitempty"`
 }
 
-// DeployKinds are the deploy platforms specify can wire. The matching workflow
-// template lives at templates/deploy/<kind>/deploy.yml.tmpl.
-var DeployKinds = []string{
-	"cloudflare-workers-ssr",
-	"cloudflare-workers-spa",
-	"railway",
-	"github-pages-spa",
-	"app-store-connect",
+// Validate checks a work block: a known provider, and the fields that provider
+// requires.
+func (w Work) Validate() []error {
+	if !slices.Contains(WorkProviders, w.Provider) {
+		return []error{fmt.Errorf("work: unknown provider %q (want one of %s)", w.Provider, strings.Join(WorkProviders, ", "))}
+	}
+	if w.Provider == WorkGitHubProjects && w.Project <= 0 {
+		return []error{fmt.Errorf(`work: provider %q needs a positive "project" (the board number)`, WorkGitHubProjects)}
+	}
+	return nil
+}
+
+// WorkConfig returns the work block with defaults applied. An absent block means
+// the markdown provider on DefaultWorkFile.
+func (c Config) WorkConfig() Work {
+	w := Work{Provider: WorkMarkdown}
+	if c.Work != nil {
+		w = *c.Work
+	}
+	if w.Provider == "" {
+		w.Provider = WorkMarkdown
+	}
+	if w.Provider == WorkMarkdown && strings.TrimSpace(w.File) == "" {
+		w.File = DefaultWorkFile
+	}
+	return w
+}
+
+// Reference resolves the reference target: the explicit reference_target, else
+// the only target when there is exactly one (nothing else could be the
+// reference), else "" — no target is privileged.
+func (c Config) Reference() string {
+	if c.ReferenceTarget != "" {
+		return c.ReferenceTarget
+	}
+	if len(c.Targets) == 1 {
+		for name := range c.Targets {
+			return name
+		}
+	}
+	return ""
 }
 
 // Load reads and parses .speckit/specs.json under root. found is false (with a
 // nil error) when the file is absent — engine commands that need targets treat
 // that as "configure your targets first"; scan treats it as nothing to validate.
+//
+// An older schema version, or keys this build no longer honors, load fine and
+// surface as cfg.Notice. A config file is never a hard failure for being old.
 func Load(root string) (cfg Config, found bool, err error) {
 	b, err := os.ReadFile(filepath.Join(root, File))
 	if os.IsNotExist(err) {
@@ -153,8 +224,56 @@ func Load(root string) (cfg Config, found bool, err error) {
 	if err := json.Unmarshal(b, &cfg); err != nil {
 		return Config{}, true, fmt.Errorf("%s: %w", File, err)
 	}
+	cfg.Notice = legacyNotice(b)
 	cfg.applyDefaults()
 	return cfg, true, nil
+}
+
+// retiredKeys are per-target keys earlier versions honored and this one ignores:
+// `stack` selected a scaffold and skill pack, `deploy` a deployment platform.
+// Both are the adopting project's business, not the spec engine's.
+var retiredKeys = []string{"stack", "deploy"}
+
+// legacyNotice describes an out-of-date config in one line, or returns "" when
+// the file is current. It reports rather than rejects: an unmigrated project must
+// still be able to run every engine command.
+func legacyNotice(b []byte) string {
+	var raw struct {
+		Version int                        `json:"version"`
+		Targets map[string]json.RawMessage `json:"targets"`
+	}
+	if json.Unmarshal(b, &raw) != nil {
+		return ""
+	}
+	found := map[string]bool{}
+	for _, t := range raw.Targets {
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(t, &fields) != nil {
+			continue
+		}
+		for _, k := range retiredKeys {
+			if _, ok := fields[k]; ok {
+				found[k] = true
+			}
+		}
+	}
+	if len(found) == 0 && raw.Version >= SchemaVersion {
+		return ""
+	}
+	msg := fmt.Sprintf("%s: schema v%d (this build writes v%d)", File, raw.Version, SchemaVersion)
+	if len(found) > 0 {
+		msg += "; ignoring retired keys: " + strings.Join(sortedKeys(found), ", ")
+	}
+	return msg + " — see MIGRATION.md"
+}
+
+func sortedKeys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func (c *Config) applyDefaults() {
@@ -164,13 +283,22 @@ func (c *Config) applyDefaults() {
 	if c.Paths.Features == "" {
 		c.Paths.Features = "features"
 	}
+	// A target written before `dir` existed is rooted at the project root.
+	for name, t := range c.Targets {
+		if t.Dir == "" {
+			t.Dir = "."
+			c.Targets[name] = t
+		}
+	}
 }
 
-// Save writes the config to .speckit/specs.json (creating .speckit/ if needed).
+// Save writes the config to .speckit/specs.json (creating .speckit/ if needed),
+// normalizing it to the current schema version.
 func (c Config) Save(root string) error {
+	c.Version = SchemaVersion
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false) // keep && in shell commands readable, not &&
+	enc.SetEscapeHTML(false) // keep && in shell commands readable, not \u0026\u0026
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(c); err != nil {
 		return err
@@ -181,17 +309,14 @@ func (c Config) Save(root string) error {
 	return os.WriteFile(filepath.Join(root, File), buf.Bytes(), 0o644)
 }
 
-// AddTarget loads the config (or starts a fresh v1 one), adds or replaces the
-// named target, and writes it back. Used by `specify target add`.
+// AddTarget loads the config (or starts a fresh one), adds or replaces the named
+// target, and writes it back. Used by `specify target add`.
 func AddTarget(root, name string, t Target) error {
-	cfg, found, err := Load(root)
+	cfg, _, err := Load(root)
 	if err != nil {
 		return err
 	}
-	if !found {
-		cfg = Config{Version: 1}
-		cfg.applyDefaults()
-	}
+	cfg.applyDefaults()
 	if cfg.Targets == nil {
 		cfg.Targets = map[string]Target{}
 	}
@@ -199,18 +324,13 @@ func AddTarget(root, name string, t Target) error {
 	return cfg.Save(root)
 }
 
-// SetAgent records the agent integration in .speckit/specs.json so `specify target
-// add` and `specify packs` can project the stack packs (both are gated on a recorded
-// agent). It creates a fresh v1 config (with default paths) when none exists and
-// preserves any existing targets/paths otherwise (re-init / `init --here`). Used by
-// `specify init`.
+// SetAgent records the agent integration in .speckit/specs.json. It creates a
+// fresh config (with default paths) when none exists and preserves any existing
+// targets/paths otherwise (re-init / `init --here`). Used by `specify init`.
 func SetAgent(root, agent string) error {
-	cfg, found, err := Load(root)
+	cfg, _, err := Load(root)
 	if err != nil {
 		return err
-	}
-	if !found {
-		cfg = Config{Version: 1}
 	}
 	cfg.applyDefaults()
 	if cfg.Targets == nil {
@@ -220,9 +340,9 @@ func SetAgent(root, agent string) error {
 	return cfg.Save(root)
 }
 
-// SetDeploy attaches (or replaces) a target's deploy manifest and writes the
-// config back. Errors if the target is unknown. Used by `specify deploy add`.
-func SetDeploy(root, target string, d *Deploy) error {
+// SetReferenceTarget records which target other targets match when a spec is
+// ambiguous across them. The target must already exist.
+func SetReferenceTarget(root, name string) error {
 	cfg, found, err := Load(root)
 	if err != nil {
 		return err
@@ -230,12 +350,10 @@ func SetDeploy(root, target string, d *Deploy) error {
 	if !found {
 		return fmt.Errorf("no %s — add the target first (specify target add)", File)
 	}
-	t, ok := cfg.Targets[target]
-	if !ok {
-		return fmt.Errorf("target %q not in %s", target, File)
+	if _, ok := cfg.Targets[name]; !ok {
+		return fmt.Errorf("target %q not in %s", name, File)
 	}
-	t.Deploy = d
-	cfg.Targets[target] = t
+	cfg.ReferenceTarget = name
 	return cfg.Save(root)
 }
 
@@ -246,94 +364,50 @@ func (c Config) Validate() []error {
 	if len(c.Targets) == 0 {
 		errs = append(errs, fmt.Errorf("no targets defined in %s", File))
 	}
-	for name, t := range c.Targets {
-		switch t.Format {
-		case "junit", "swift", "gotest":
-		case "":
-			errs = append(errs, fmt.Errorf("target %q: missing format (junit|swift|gotest)", name))
-		default:
-			errs = append(errs, fmt.Errorf("target %q: unknown format %q (want junit|swift|gotest)", name, t.Format))
+	for _, name := range c.TargetNames() {
+		errs = append(errs, c.Targets[name].validate(name)...)
+	}
+	if c.ReferenceTarget != "" {
+		if _, ok := c.Targets[c.ReferenceTarget]; !ok {
+			errs = append(errs, fmt.Errorf("reference_target %q is not a defined target in %s", c.ReferenceTarget, File))
 		}
-		switch t.Bindings {
-		case "", "strict", "scoped":
-		default:
-			errs = append(errs, fmt.Errorf("target %q: unknown bindings mode %q (want strict|scoped)", name, t.Bindings))
-		}
-		if t.Report == "" {
-			errs = append(errs, fmt.Errorf("target %q: missing report path", name))
-		}
-		errs = append(errs, t.Source.Validate(name)...)
-		if t.Deploy != nil {
-			errs = append(errs, t.Deploy.Validate(name)...)
-		}
+	}
+	if c.Work != nil {
+		errs = append(errs, c.Work.Validate()...)
 	}
 	return errs
 }
 
-// Validate checks a deploy manifest: a known kind, and every secret a committable
-// op:// reference (never a raw value). Exported so `specify deploy add` can reject
-// a bad manifest before writing it.
-func (d Deploy) Validate(target string) []error {
+func (t Target) validate(name string) []error {
 	var errs []error
-	if !slices.Contains(DeployKinds, d.Kind) {
-		errs = append(errs, fmt.Errorf("target %q: unknown deploy kind %q (want one of %s)", target, d.Kind, strings.Join(DeployKinds, ", ")))
+	switch {
+	case t.Format == "":
+		errs = append(errs, fmt.Errorf("target %q: missing format (%s)", name, strings.Join(Formats, "|")))
+	case !slices.Contains(Formats, t.Format):
+		errs = append(errs, fmt.Errorf("target %q: unknown format %q (want %s)", name, t.Format, strings.Join(Formats, "|")))
 	}
-	for env, ref := range d.CI {
-		errs = append(errs, validateSecretEntry(target, "ci", env, ref)...)
+	switch t.Bindings {
+	case "", "strict", "scoped":
+	default:
+		errs = append(errs, fmt.Errorf("target %q: unknown bindings mode %q (want strict|scoped)", name, t.Bindings))
 	}
-	for env, ref := range d.Runtime {
-		errs = append(errs, validateSecretEntry(target, "runtime", env, ref)...)
+	if t.Report == "" {
+		errs = append(errs, fmt.Errorf("target %q: missing report path", name))
 	}
-	return errs
+	if strings.TrimSpace(t.Dir) == "" {
+		errs = append(errs, fmt.Errorf("target %q: missing dir", name))
+	}
+	return append(errs, t.Source.Validate(name)...)
 }
 
-// validateSecretEntry checks one ENV→ref pair: a valid env-var name and a
-// committable op:// reference (never a raw value).
-func validateSecretEntry(target, section, env, ref string) []error {
-	var errs []error
-	if !validEnvName(env) {
-		errs = append(errs, fmt.Errorf("target %q: deploy.%s key %q is not a valid env var name", target, section, env))
+// TargetNames lists the configured target names, sorted.
+func (c Config) TargetNames() []string {
+	names := make([]string, 0, len(c.Targets))
+	for name := range c.Targets {
+		names = append(names, name)
 	}
-	if !IsOpRef(ref) {
-		errs = append(errs, fmt.Errorf("target %q: deploy.%s[%q] = %q is not an op:// reference (commit references, never secret values)", target, section, env, ref))
-	}
-	return errs
-}
-
-// validEnvName reports whether s is a usable env-var / secret name:
-// [A-Za-z_][A-Za-z0-9_]* (not starting with a digit, no spaces or punctuation).
-func validEnvName(s string) bool {
-	if s == "" {
-		return false
-	}
-	for i, r := range s {
-		ok := r == '_' || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9' && i > 0)
-		if !ok {
-			return false
-		}
-	}
-	return true
-}
-
-// IsOpRef reports whether s is a 1Password secret reference: op://vault/item/field
-// or op://vault/item/section/field — 3 or 4 non-empty path segments. Exported so
-// `specify deploy add` can reject a raw value before it ever lands in committed
-// config.
-func IsOpRef(s string) bool {
-	rest, ok := strings.CutPrefix(s, "op://")
-	if !ok {
-		return false
-	}
-	parts := strings.Split(rest, "/")
-	if len(parts) < 3 || len(parts) > 4 {
-		return false
-	}
-	for _, p := range parts {
-		if p == "" {
-			return false
-		}
-	}
-	return true
+	sort.Strings(names)
+	return names
 }
 
 // ProductTargets maps each product label to the targets that carry it. A target
@@ -346,21 +420,6 @@ func (c Config) ProductTargets() map[string][]string {
 		}
 	}
 	return m
-}
-
-// Stacks lists the distinct, non-empty target stacks (which platform packs
-// `specify packs` should project).
-func (c Config) Stacks() []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, t := range c.Targets {
-		if t.Stack != "" && !seen[t.Stack] {
-			seen[t.Stack] = true
-			out = append(out, t.Stack)
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 func (t Target) productLabels() []string {

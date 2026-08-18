@@ -38,9 +38,6 @@ func joinTarget(root string, cfg VerifyConfig) (VerifyResult, map[specmodel.Spec
 		// cfg.Command is a shell string from the project's own .speckit/specs.json
 		// target (developer-controlled, like a Mise task's `run`), so shell
 		// interpretation is intended — the project owner is the trust boundary.
-		// Newly-scaffolded targets record the native monorepo form `mise //<dir>:test`
-		// (run with cwd = the member dir); pre-existing targets may record the older
-		// `cd <dir> && mise run test` — both are valid here.
 		var cmd *exec.Cmd
 		if runtime.GOOS == "windows" {
 			cmd = exec.Command("cmd", "/c", cfg.Command)

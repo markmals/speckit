@@ -1,0 +1,10 @@
+{
+  "spec_hash": "89267ed9399f332f81a779c4d883747b838ebbbbd7ae073d31792afc16de337a",
+  "scenarios": {
+    "scenario.engine.scan.clean": "pass",
+    "scenario.engine.scan.dangling-depends-on": "pass",
+    "scenario.engine.scan.duplicate-id": "pass",
+    "scenario.engine.scan.filename-id-mismatch": "pass",
+    "scenario.engine.scan.missing-scenario-id": "pass"
+  }
+}

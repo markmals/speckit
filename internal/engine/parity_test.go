@@ -66,8 +66,11 @@ const parityReport = `<testsuites><testsuite name="x">
 <testcase classname="x" name="[scenario.demo.x.d] d"><failure message="x"/></testcase>
 </testsuite></testsuites>`
 
-// SPEC: story.engine.parity (conforming, declared-deviation, suspect-lying-marker, drifted, missing, independent-axes)
-func TestParityFiveStates(t *testing.T) {
+// parityBMatrix builds the shared five-state fixture — every (marker × test
+// outcome) combination plus an untested scenario — and runs Parity over it,
+// returning the report and a scenario -> cell index.
+func parityBMatrix(t *testing.T) (ParityReport, map[specmodel.SpecID]ParityCell) {
+	t.Helper()
 	root := t.TempDir()
 	writeSpecFile(t, root, "features/0001-demo/stories/demo.x.md", paritySpec)
 	writeSpecFile(t, root, "web/test/x.test.ts", parityTests)
@@ -78,23 +81,117 @@ func TestParityFiveStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[specmodel.SpecID]string{}
+	cells := map[specmodel.SpecID]ParityCell{}
 	for _, c := range report.Cells {
-		got[c.Scenario] = c.State
+		cells[c.Scenario] = c
 	}
-	want := map[specmodel.SpecID]string{
-		"scenario.demo.x.a": "conforming",
-		"scenario.demo.x.b": "declared-deviation",
-		"scenario.demo.x.c": "suspect", // marker over a FAILING test (D11)
-		"scenario.demo.x.d": "drifted",
-		"scenario.demo.x.e": "missing",
+	return report, cells
+}
+
+// A passing joined test with no deviation marker is conforming.
+//
+// [scenario.engine.parity.conforming]
+func TestParityConforming(t *testing.T) {
+	_, cells := parityBMatrix(t)
+	if got := cells["scenario.demo.x.a"]; got.State != "conforming" {
+		t.Errorf("passing + no marker: got %q, want conforming", got.State)
 	}
-	for s, w := range want {
-		if got[s] != w {
-			t.Errorf("%s: got %q, want %q", s, got[s], w)
-		}
+}
+
+// A passing joined test with a deviation marker is declared-deviation, shown
+// with its reason — and treated as needing sign-off, never as green: a matrix
+// whose only non-conforming cell is a declared-deviation still gates (D11).
+//
+// [scenario.engine.parity.declared-deviation]
+func TestParityDeclaredDeviation(t *testing.T) {
+	_, cells := parityBMatrix(t)
+	got := cells["scenario.demo.x.b"]
+	if got.State != "declared-deviation" {
+		t.Errorf("passing + marker: got %q, want declared-deviation", got.State)
+	}
+	if got.Reason != "web uses a button" {
+		t.Errorf("the cell must carry the declared reason, got %q", got.Reason)
+	}
+
+	// Never green (D11): a report whose sole deviation is honest still gates.
+	honest := ParityReport{Target: "web", Cells: []ParityCell{
+		{Scenario: "scenario.demo.x.a", State: "conforming"},
+		{Scenario: "scenario.demo.x.b", State: "declared-deviation", Reason: "web uses a button"},
+	}}
+	if !honest.Gated() {
+		t.Error("a declared-deviation needs sign-off — it must never pass --gate as green")
+	}
+}
+
+// A deviation marker over a FAILING test is suspect, never declared-deviation
+// — the marker cannot be machine-verified as intentional — and the matrix
+// fails the --gate predicate.
+//
+// [scenario.engine.parity.suspect-lying-marker]
+func TestParitySuspectLyingMarker(t *testing.T) {
+	report, cells := parityBMatrix(t)
+	got := cells["scenario.demo.x.c"]
+	if got.State != "suspect" {
+		t.Errorf("failing + marker: got %q, want suspect", got.State)
+	}
+	if got.State == "declared-deviation" {
+		t.Error("a lying marker must never launder a failing test into declared-deviation")
+	}
+	if got.Reason == "" {
+		t.Error("the suspect cell must surface the unverifiable marker's reason")
 	}
 	if !report.Gated() {
-		t.Error("a matrix with non-conforming cells must fail --gate")
+		t.Error("a matrix with a suspect cell must fail --gate (non-zero exit)")
+	}
+}
+
+// A failing joined test with no marker is drifted.
+//
+// [scenario.engine.parity.drifted]
+func TestParityDrifted(t *testing.T) {
+	_, cells := parityBMatrix(t)
+	if got := cells["scenario.demo.x.d"]; got.State != "drifted" {
+		t.Errorf("failing + no marker: got %q, want drifted", got.State)
+	}
+}
+
+// A scenario with no joined test at all is missing — distinct from drifted.
+//
+// [scenario.engine.parity.missing]
+func TestParityMissing(t *testing.T) {
+	_, cells := parityBMatrix(t)
+	got := cells["scenario.demo.x.e"]
+	if got.State != "missing" {
+		t.Errorf("untested scenario: got %q, want missing", got.State)
+	}
+	if got.State == "drifted" {
+		t.Error("missing must be distinct from drifted")
+	}
+}
+
+// Marker presence and test outcome are independent axes, crossed: all four
+// (marker × outcome) combinations classify distinctly, and a marker never
+// overrides or suppresses a failing test result.
+//
+// [scenario.engine.parity.independent-axes]
+func TestParityIndependentAxes(t *testing.T) {
+	_, cells := parityBMatrix(t)
+	cross := []struct {
+		scenario specmodel.SpecID
+		combo    string
+		want     string
+	}{
+		{"scenario.demo.x.a", "pass × no marker", "conforming"},
+		{"scenario.demo.x.b", "pass × marker", "declared-deviation"},
+		{"scenario.demo.x.c", "fail × marker", "suspect"},
+		{"scenario.demo.x.d", "fail × no marker", "drifted"},
+	}
+	for _, c := range cross {
+		if got := cells[c.scenario].State; got != c.want {
+			t.Errorf("%s: got %q, want %q", c.combo, got, c.want)
+		}
+	}
+	if cells["scenario.demo.x.c"].State == "declared-deviation" {
+		t.Error("the marker axis must never suppress the failing-test axis")
 	}
 }

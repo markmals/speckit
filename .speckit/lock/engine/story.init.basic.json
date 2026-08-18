@@ -1,0 +1,9 @@
+{
+  "spec_hash": "d442b2afb43d7636df5f5ed9e37955691eee50a3f059dfec80057a94a3887f04",
+  "scenarios": {
+    "scenario.init.basic.cross-os": "pass",
+    "scenario.init.basic.fresh": "pass",
+    "scenario.init.basic.non-empty-guard": "pass",
+    "scenario.init.basic.per-agent-projection": "pass"
+  }
+}

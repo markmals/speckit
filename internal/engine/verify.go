@@ -119,23 +119,29 @@ var (
 
 // bindingsInContent extracts scenario↔test bindings from one source file's
 // text, tagging each with the file and its 1-based line (for CI annotations).
+// Each framework affordance is read only from its language's files — the Swift
+// trait form from .swift, the Vitest title form from .ts/.tsx/.js/.mjs — so a
+// test snippet quoted inside another language's string literal never becomes a
+// binding. The language-agnostic leading `// [scenario.id]` comment form is
+// read from every supported extension.
 func bindingsInContent(path, src string) []Binding {
 	var bs []Binding
-	// scenarioGroup/identityGroup are the submatch indices for each binding form.
-	add := func(re *regexp.Regexp, scenarioGroup, identityGroup int) {
-		for _, m := range re.FindAllStringSubmatchIndex(src, -1) {
+	switch filepath.Ext(path) {
+	case ".swift":
+		bs = append(bs, swiftBindings(path, src)...) // @Test(.scenario("…")[, .scenario("…")]) func `…`
+	case ".ts", ".tsx", ".js", ".mjs":
+		// it("[scenario.…] …" — the Vitest title form. Submatch 2 is the
+		// scenario id, submatch 1 the full title (the join identity).
+		for _, m := range vitestBindRe.FindAllStringSubmatchIndex(src, -1) {
 			bs = append(bs, Binding{
-				Scenario: specmodel.SpecID(src[m[2*scenarioGroup]:m[2*scenarioGroup+1]]),
-				Identity: src[m[2*identityGroup]:m[2*identityGroup+1]],
+				Scenario: specmodel.SpecID(src[m[4]:m[5]]),
+				Identity: src[m[2]:m[3]],
 				File:     filepath.ToSlash(path),
 				Line:     1 + strings.Count(src[:m[0]], "\n"),
 			})
 		}
 	}
-	bs = append(bs, swiftBindings(path, src)...) // @Test(.scenario("…")[, .scenario("…")]) func `…`
-	add(vitestBindRe, 2, 1)                      // it("[scenario.…] …"
-	bs = append(bs, leadingCommentBindings(path, src)...)
-	return bs
+	return append(bs, leadingCommentBindings(path, src)...)
 }
 
 // swiftBindings reads the Swift Testing trait form: every `.scenario("id")` in a
@@ -203,10 +209,12 @@ func leadingCommentBindings(path, src string) []Binding {
 	return bs
 }
 
-// ScanBindings reads scenario↔test bindings from a target's test source (D15):
-// Swift Testing `.scenario(...)` traits on raw-identifier funcs, and Vitest
-// it() titles that lead with [scenario.id]. The binding's Identity is the test
-// name as it appears in the runner's report. Generated and vendored
+// ScanBindings reads scenario↔test bindings from a target's test source (D15).
+// Each binding form is language-scoped: Swift Testing `.scenario(...)` traits
+// are read only from .swift files, Vitest it() titles that lead with
+// [scenario.id] only from .ts/.tsx/.js/.mjs, and the leading `// [scenario.id]`
+// comment form from every supported extension. The binding's Identity is the
+// test name as it appears in the runner's report. Generated and vendored
 // directories (node_modules, .gitignore'd trees) are skipped — see
 // walkSourceFiles.
 //

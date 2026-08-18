@@ -17,14 +17,25 @@
   the marker never suppresses a failing test.
 - **The spec defines what; the test proves it; the implementation satisfies it.**
   None is the source of truth alone.
-- **Web is the reference target.** When implementing a spec on any other target
-  (Apple, Android, a CLI), read the web realization for context — but the spec is
-  authoritative.
+- **The reference target is configuration, not convention.** It is read from
+  `reference_target` in `.speckit/specs.json` (set via
+  `specify target add <name> … --reference`). When implementing a spec on any
+  other target, read the reference target's realization for context — but the
+  spec is authoritative. When `reference_target` is unset, no target is
+  privileged: if behavior is unclear across targets, ask rather than assume.
+- **Work items are ephemeral coordination, never spec truth.** Work tracking is
+  pluggable — `work.provider` in `.speckit/specs.json` selects `markdown`,
+  `beads`, `github-projects`, or `none` (default `markdown`), and the verbs are
+  identical across providers: `specify work ready` / `create` / `claim` /
+  `move` / `list`, with states `ready` → `in-progress` → `blocked` → `done`.
+  Required behavior lives in the spec library; work items are never an input to
+  `scan` / `verify` / `drift` / `cover` / `parity` / `gate`.
 
 ## Before writing implementation code
 
 1. Read the spec file. Confirm the ID, depends-on chain, and behavior.
-2. Read the web reference implementation if one exists.
+2. Read the reference target's realization if one exists (see
+   `reference_target` above).
 3. Read the target's existing patterns for similar specs (look for other
    `// SPEC:` annotations in the same area).
 4. Write the failing tests first, tagged with the scenario IDs.
@@ -48,6 +59,18 @@
 2. If behavior change: update the spec first, then bring each target back to green.
 3. If bug fix: fix it, run `specify verify`, and check no other target has the
    same bug (`specify cover <id>`).
+
+## Registering a target
+
+```
+specify target add <name> --dir <path> --format <junit|swift|gotest> \
+    --report <root-relative path> --source <path>[ --source <path>...] \
+    [--command <shell>] [--bindings strict|scoped] [--product <label>] [--reference]
+```
+
+It records configuration in `.speckit/specs.json` — it renders no files and runs
+no scripts. `--format` names the test-report format the engine parses, not a
+technology choice; `--reference` makes this target the `reference_target`.
 
 ## Where to read more
 

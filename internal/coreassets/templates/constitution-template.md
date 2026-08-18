@@ -32,7 +32,7 @@
 <!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
 
 [SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+<!-- Example: Technology constraints, compliance standards, deployment policies, etc. -->
 
 ## [SECTION_3_NAME]
 <!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->

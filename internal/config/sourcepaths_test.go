@@ -66,15 +66,6 @@ func TestSourcePathsValidate(t *testing.T) {
 	}
 }
 
-func TestSourcePathsFirst(t *testing.T) {
-	if (SourcePaths{"a", "b"}).First() != "a" {
-		t.Error("First must return the first path")
-	}
-	if (SourcePaths{}).First() != "" {
-		t.Error("First of empty must be empty")
-	}
-}
-
 func TestSourcePathsRoundTrip(t *testing.T) {
 	cases := []SourcePaths{{"a"}, {"a", "b", "c"}}
 	for _, want := range cases {

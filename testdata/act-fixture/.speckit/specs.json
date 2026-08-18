@@ -1,12 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "paths": {
     "specs": "specs",
     "features": "features"
   },
   "targets": {
     "app": {
-      "stack": "node",
+      "dir": "app",
       "command": "cd app && mise run test",
       "format": "junit",
       "report": "app/junit.xml",

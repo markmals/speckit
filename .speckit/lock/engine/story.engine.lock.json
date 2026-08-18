@@ -1,0 +1,9 @@
+{
+  "spec_hash": "0bd9463475b3c61dc9fbbce75b6f45e46ccbf851e73c1c14cb21bc627f9a28a3",
+  "scenarios": {
+    "scenario.engine.lock.generated-guard": "pass",
+    "scenario.engine.lock.no-write-on-red": "pass",
+    "scenario.engine.lock.sole-writer": "pass",
+    "scenario.engine.lock.writes-on-green": "pass"
+  }
+}

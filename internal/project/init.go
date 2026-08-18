@@ -1,5 +1,5 @@
-// Package project implements project scaffolding — `specify init` and the
-// per-agent projection adapters (D2/D4), built from the 0002-init specs.
+// Package project implements `specify init` — the per-agent projection
+// adapters (D2/D4), built from the 0002-init specs.
 package project
 
 import (
@@ -17,7 +17,7 @@ type Options struct {
 	Force       bool   // proceed even if root is non-empty
 }
 
-// Init scaffolds a SpecKit project at root for the chosen agent, returning the
+// Init sets up a SpecKit project at root for the chosen agent, returning the
 // paths written. The fork's runtime lives under .speckit/ with no shell scripts
 // (D2/D6) and no banner (D1).
 //
@@ -124,9 +124,9 @@ func Init(root string, assets fs.FS, opts Options) ([]string, error) {
 		}
 	}
 
-	// Record the chosen agent in .speckit/specs.json so `specify target add` /
-	// `specify packs` can project the stack packs — both are gated on a recorded
-	// agent. Preserves an existing config's targets (re-init / `init --here`).
+	// Record the chosen agent in .speckit/specs.json so projected guidance knows
+	// which agent owns the runtime dirs. Preserves an existing config's targets
+	// (re-init / `init --here`).
 	if err := config.SetAgent(root, opts.Integration); err != nil {
 		return nil, err
 	}

@@ -15,12 +15,12 @@ var sourceExts = map[string]bool{".swift": true, ".ts": true, ".tsx": true, ".js
 
 // walkSourceFiles walks dir and calls fn for each readable file, skipping any
 // directory that should never hold spec bindings: .git, node_modules, and every
-// directory named in the project's .gitignore files (so the scan never descends
-// into generated or vendored trees — notably pnpm's symlink-laden node_modules,
-// whose symlinks-to-directories otherwise crash the read). When exts is non-nil
-// only files with those extensions are read. A missing dir, or an unreadable
-// file (a symlink to a directory, a dangling link, a permission error), is
-// skipped rather than fatal.
+// directory named by an unanchored entry in the project's .gitignore files (so the
+// scan never descends into generated or vendored trees — notably pnpm's
+// symlink-laden node_modules, whose symlinks-to-directories otherwise crash the
+// read). When exts is non-nil only files with those extensions are read. A missing
+// dir, or an unreadable file (a symlink to a directory, a dangling link, a
+// permission error), is skipped rather than fatal.
 func walkSourceFiles(dir string, exts map[string]bool, fn func(path string, content []byte)) error {
 	skip := ignoredDirNames(dir)
 	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
@@ -73,8 +73,17 @@ func ignoredDirNames(dir string) map[string]bool {
 }
 
 // readGitignoreDirs adds the bare directory-name entries from a .gitignore file
-// to skip. Comments, negations, globs, and nested paths are ignored — only a
-// plain name (optionally with a leading or trailing slash) becomes a skip.
+// to skip. Comments, negations, globs, nested paths, and root-anchored entries
+// are ignored — only an unanchored plain name (optionally with a trailing slash)
+// becomes a skip.
+//
+// A leading slash anchors the pattern to the directory holding the .gitignore, so
+// `/specify` (a built binary at the repo root) must never skip `cmd/specify`. The
+// skip set is name-based and carries no path context, so an anchored entry is left
+// alone rather than over-matched. Erring this way is deliberate: scanning a
+// directory we could have skipped surfaces loudly as a dangling binding, while
+// skipping a directory we should have scanned silently drops real bindings and
+// fakes a green verify.
 func readGitignoreDirs(path string, skip map[string]bool) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -82,10 +91,10 @@ func readGitignoreDirs(path string, skip map[string]bool) {
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "!") {
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "!") || strings.HasPrefix(line, "/") {
 			continue
 		}
-		line = strings.TrimPrefix(strings.TrimSuffix(line, "/"), "/")
+		line = strings.TrimSuffix(line, "/")
 		if line == "" || strings.ContainsAny(line, `/*?[]\`) {
 			continue // only bare directory names become skips
 		}

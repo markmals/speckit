@@ -1,14 +1,15 @@
-// Package github is the GitHub-native shell of SpecKit: a small REST + GraphQL
-// client that drives Issues (Pillar 2) and Projects (Pillar 3), plus secret and
-// ruleset provisioning. It inherits gh's auth (`gh auth token`, or the GH_TOKEN /
-// GITHUB_TOKEN env) so there is zero separate token plumbing, and contains its own
-// GraphQL client so it depends on no external gh extension.
+// Package github is a small REST + GraphQL client for Issues and Projects v2 —
+// the backend of the github-projects work provider. It inherits gh's auth
+// (`gh auth token`, or the GH_TOKEN / GITHUB_TOKEN env) so there is zero
+// separate token plumbing, and contains its own GraphQL client so it depends on
+// no external gh extension.
 //
 // Determinism line: this package owns all of SpecKit's network and GitHub state.
-// It is imported ONLY by cmd/specify command constructors — never by
-// internal/engine or internal/specmodel. The engine stays offline and repo-local;
-// Issues/Projects are ephemeral coordination, never a verify/lock input. A board
-// or issue call failing must never block a local `verify`.
+// It is imported ONLY by cmd/specify and the work providers — never by
+// internal/engine, internal/specmodel, internal/reports, or internal/config. The
+// engine stays offline and repo-local; work items are ephemeral coordination,
+// never a verify/lock input. A board or issue call failing must never block a
+// local `verify`.
 package github
 
 import (

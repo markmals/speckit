@@ -1,11 +1,7 @@
 [tools]
 go = "1.26"
-# gh supplies the token the GitHub-native commands inherit (`gh auth token`) and
-# backs `gh secret set`. 2.94 is the floor for the --type/--parent/--blocked-by
-# automation the design relies on.
+# gh supplies the token the github-projects work provider inherits (`gh auth token`).
 gh = "2.94"
-# op (1Password CLI) resolves the op:// secret references for `specify secrets sync`.
-op = "2"
 
 # Local-only container tooling for the gate self-test (`mise run act`). OS-gated
 # so the Windows CI matrix never tries to install them; CI's mise-action skips
@@ -48,14 +44,6 @@ fi
 description = "everything CI runs, plus a gofmt gate — run before pushing"
 depends = ["fmt:check"]
 run = ["go build ./...", "go vet ./...", "go test ./..."]
-
-[tasks."apple-pack:generate"]
-description = "Regenerate the embedded apple pack from mac-dev-skills"
-run = "scripts/generate-apple-pack.sh"
-
-[tasks."apple-pack:check"]
-description = "Fail if the embedded apple pack has drifted from mac-dev-skills"
-run = "scripts/generate-apple-pack.sh --check"
 
 [tasks.act]
 description = "run the gate self-test workflow locally via act (boots colima if needed)"

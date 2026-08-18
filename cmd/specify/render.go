@@ -120,7 +120,7 @@ func renderCover(r engine.CoverReport) string {
 	for i, c := range r.Cells {
 		rows[i] = []string{c.Target, stateSymbol(c.State) + " " + c.State}
 	}
-	tbl := stateTable([]string{"PLATFORM", "STATE"}, rows, 1, func(row int) string { return r.Cells[row].State })
+	tbl := stateTable([]string{"TARGET", "STATE"}, rows, 1, func(row int) string { return r.Cells[row].State })
 	return title("cover", string(r.Spec)) + "\n" + tbl
 }
 

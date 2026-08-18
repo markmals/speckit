@@ -52,7 +52,7 @@ For a regression test, the full proof: write the test → run it with the fix (P
 ## How to phrase results
 
 ```
-✅ Ran `specify verify web` — story.items.list and story.item.create green, lock written.
+✅ Ran `specify verify app` — story.items.list and story.item.create green, lock written.
 ```
 
 Not "Looks good now!" / "Tests should be passing." / "I think we're done."
@@ -60,7 +60,7 @@ Not "Looks good now!" / "Tests should be passing." / "I think we're done."
 State bad results just as cleanly:
 
 ```
-`specify verify web` is not green:
+`specify verify app` is not green:
   FAIL       story.item.create   ([scenario.item.create.duplicate] — no error thrown)
   unjoinable story.items.list     (scenario.items.list.empty has no test)
 Investigating now.

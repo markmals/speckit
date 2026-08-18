@@ -1,0 +1,11 @@
+{
+  "spec_hash": "3026f2e3f4788bb97b0af7facb0a5792fa87a9a7fc28b2fce117311492330124",
+  "scenarios": {
+    "scenario.engine.verify.dangling-test-ref": "pass",
+    "scenario.engine.verify.green-writes-lock": "pass",
+    "scenario.engine.verify.language-scoped-binding-forms": "pass",
+    "scenario.engine.verify.source-bound-join": "pass",
+    "scenario.engine.verify.unbound-test": "pass",
+    "scenario.engine.verify.unjoinable-scenario-fails": "pass"
+  }
+}

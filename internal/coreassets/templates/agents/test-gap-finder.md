@@ -1,6 +1,6 @@
 ---
 name: test-gap-finder
-description: Use to find Gherkin scenarios that don't have a bound, passing test on a given target. Reads the spec, runs `specify verify`, returns uncovered/failing scenarios with suggested test names and locations. Different from drift-hunter — that catches code drift; this catches test-coverage drift. Read-only. Examples — <example>user: "Are all the story.items.list scenarios covered on ios?" assistant: "I'll send test-gap-finder to cross-reference the spec scenarios with the ios suite."</example> <example>user: "Before I commit, what tests are missing?" assistant: "Dispatching test-gap-finder to find uncovered scenarios."</example>
+description: Use to find Gherkin scenarios that don't have a bound, passing test on a given target. Reads the spec, runs `specify verify`, returns uncovered/failing scenarios with suggested test names and locations. Different from drift-hunter — that catches code drift; this catches test-coverage drift. Read-only. Examples — <example>user: "Are all the story.items.list scenarios covered on the app target?" assistant: "I'll send test-gap-finder to cross-reference the spec scenarios with the app target's suite."</example> <example>user: "Before I commit, what tests are missing?" assistant: "Dispatching test-gap-finder to find uncovered scenarios."</example>
 tools: Read, Bash, Grep, Glob
 model: sonnet
 ---

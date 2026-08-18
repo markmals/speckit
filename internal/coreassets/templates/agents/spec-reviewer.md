@@ -51,7 +51,7 @@ Run `specify scan`. It owns frontmatter validity, ID↔filename, the kind taxono
 - ...
 
 ### Cross-target coverage
-- Implementations found: web `<file:line>` · ios `<file:line>` · android (missing)
+- Implementations found, per target: `<target>` `<file:line>` · `<target>` (missing)
 - Expected vs. found: <gap or "complete">
 
 ### Notes

@@ -60,8 +60,8 @@ specs/[###-feature]/
 <!--
   ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
   for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
+  this repository's real paths. The delivered plan must not include Option
+  labels.
 -->
 
 ```text
@@ -77,27 +77,14 @@ tests/
 ├── integration/
 └── unit/
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
+# [REMOVE IF UNUSED] Option 2: Multiple components (a service and one or more clients, targets with separate trees, …)
+<component-a>/
 ├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
 └── tests/
 
-frontend/
+<component-b>/
 ├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
 └── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [target-specific structure: feature modules, UI flows, target tests]
 ```
 
 **Structure Decision**: [Document the selected structure and reference the real

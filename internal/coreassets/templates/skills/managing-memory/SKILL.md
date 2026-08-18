@@ -35,7 +35,7 @@ Write one when you learn a **durable, non-obvious** fact about this repo that is
 
 - ✅ "the e2e suite needs `--no-sandbox` in CI or it hangs"
 - ✅ "we standardized on the REST envelope `{data, error}`"
-- ✅ "the offline determinism line: the engine never reads GitHub or agent dirs"
+- ✅ "the offline determinism line: the engine never reads the work tracker or agent dirs"
 - ❌ required behavior → that's a scenario in the spec library
 - ❌ something already obvious from the code, a spec, or `git log`
 - ❌ facts that only matter to the task in front of you

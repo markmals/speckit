@@ -9,6 +9,7 @@ import (
 // own first user, so it must scan clean.
 //
 // SPEC: story.engine.scan (scenario.engine.scan.clean)
+// [scenario.engine.scan.clean]
 func TestScanForkSpecsClean(t *testing.T) {
 	findings, err := Scan(os.DirFS("../..")) // repo root from internal/engine
 	if err != nil {

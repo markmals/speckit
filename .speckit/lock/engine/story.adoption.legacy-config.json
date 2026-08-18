@@ -1,0 +1,8 @@
+{
+  "spec_hash": "af80915f6ec8eea3a4c8668475c7a17c644441654984c52427413fbcbbe3bc5a",
+  "scenarios": {
+    "scenario.adoption.legacy-config.older-version-loads": "pass",
+    "scenario.adoption.legacy-config.retired-keys-ignored": "pass",
+    "scenario.adoption.legacy-config.rewritten-current": "pass"
+  }
+}

@@ -1,349 +1,327 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/markmals/speckit/internal/github"
+	"github.com/markmals/speckit/internal/config"
+	"github.com/markmals/speckit/internal/work"
+	"github.com/markmals/speckit/internal/work/beads"
+	"github.com/markmals/speckit/internal/work/ghprojects"
+	"github.com/markmals/speckit/internal/work/markdown"
 )
 
-// Default column set, confirmed against APL-Innovation-Lab/projects/1 (the
-// "Meeting Room Reservations" board): Backlog → Ready → In Progress → On Hold →
-// Cancelled → Closed. "Ready" is the actionable column (the ready queue), not a
-// computed field; "On Hold" is the blocked-signal column, which `ready` skips for
-// free by only listing the actionable column. These are FLAGS (--column /
-// --status-field), so `specify work` drives any board with a different set.
-const (
-	defaultStatusField = "Status"
-	defaultReadyColumn = "Ready"
-	defaultDoingColumn = "In Progress"
-	discoveredLabel    = "discovered-from"
-)
-
-// workCmd is Pillar 3: the agent's work surface on GitHub Projects (Beads-informed,
-// simplified). The board is ephemeral coordination, driven via the inlined Projects
-// GraphQL client; durable truth stays in the repo (specs/locks/memory).
+// workCmd drives the configured work-tracking provider (the "work" block in
+// .speckit/specs.json; absent, the markdown provider on WORK.md). Durable
+// truth stays in the repo — specs, locks, memory; work items are
+// coordination.
 //
-// Column names default to the confirmed APL-Innovation-Lab board set (see the
-// const block); --column / --status-field override them for any other board.
+// The board flags (--repo, --project, --owner, --status-field, --column)
+// belong to the github-projects provider; the local providers ignore no
+// flags because they read none of these.
 func workCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "work",
-		Short: "Drive the agent's GitHub Projects board (Pillar 3)",
+		Short: "Track work items in the configured provider",
 	}
 	addRepoFlag(c.PersistentFlags())
-	c.AddCommand(workReadyCmd(), workClaimCmd(), workMoveCmd(), workDiscoverCmd())
+	c.PersistentFlags().Int("project", 0, "github-projects: board number (default: the config's work.project)")
+	c.PersistentFlags().String("owner", "", "github-projects: board owner (default: the config's work.owner, else the repo owner)")
+	c.PersistentFlags().String("status-field", "", "github-projects: the single-select field holding the column (default Status)")
+	c.PersistentFlags().StringArray("column", nil, "github-projects: map a state to a column as state=Column (repeatable), e.g. --column ready=Todo")
+	c.AddCommand(workReadyCmd(), workCreateCmd(), workClaimCmd(), workMoveCmd(), workListCmd())
 	return c
 }
 
 func workReadyCmd() *cobra.Command {
-	var project int
-	var owner, statusField, column string
 	var jsonOut bool
 	c := &cobra.Command{
 		Use:   "ready",
-		Short: "List the actionable column (the ready queue)",
+		Short: "List items ready to pick up",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, repo, err := resolveGitHub(repoFlag(cmd))
+			p, err := resolveWorkProvider(cmd)
 			if err != nil {
 				return err
 			}
-			ctx := cmd.Context()
-			proj, err := client.ResolveProject(ctx, ownerOr(owner, repo), project)
+			if p == nil {
+				return noWorkProvider()
+			}
+			items, err := p.Ready(cmd.Context())
 			if err != nil {
 				return err
-			}
-			items, err := client.ListItems(ctx, proj.ID, statusField)
-			if err != nil {
-				return err
-			}
-			ready := items[:0]
-			for _, it := range items {
-				// Positively keep OPEN items only — excludes CLOSED issues and
-				// CLOSED/MERGED PRs in one check.
-				if strings.EqualFold(it.Status, column) && strings.EqualFold(it.State, "OPEN") {
-					ready = append(ready, it)
-				}
 			}
 			if jsonOut {
-				return writeJSON(os.Stdout, ready)
+				return writeJSON(os.Stdout, itemsOrEmpty(items))
 			}
-			if len(ready) == 0 {
-				fmt.Printf("Nothing in %q on %q.\n", column, proj.Title)
+			if len(items) == 0 {
+				fmt.Println("Nothing ready.")
 				return nil
 			}
-			fmt.Printf("Ready (%q) on %q:\n", column, proj.Title)
-			for _, it := range ready {
-				fmt.Printf("  #%-5d %s\n", it.Number, it.Title)
+			for _, it := range items {
+				fmt.Println(itemLine(it, false))
 			}
 			return nil
 		},
 	}
-	c.Flags().IntVar(&project, "project", 0, "project number (required)")
-	c.Flags().StringVar(&owner, "owner", "", "project owner (default: the repo owner)")
-	c.Flags().StringVar(&statusField, "status-field", defaultStatusField, "the single-select field that holds the column")
-	c.Flags().StringVar(&column, "column", defaultReadyColumn, "the actionable column")
 	c.Flags().BoolVar(&jsonOut, "json", false, "emit output as JSON")
-	_ = c.MarkFlagRequired("project")
+	return c
+}
+
+func workCreateCmd() *cobra.Command {
+	var itemType, spec string
+	var jsonOut, yes bool
+	c := &cobra.Command{
+		Use:   "create <title>",
+		Short: "Create a work item in the ready state",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			title := strings.TrimSpace(args[0])
+			if title == "" {
+				return fmt.Errorf("create: a title is required")
+			}
+			switch itemType {
+			case "", work.TypeTask, work.TypeDefect:
+			default:
+				return fmt.Errorf("create: unknown type %q (want %s or %s)", itemType, work.TypeTask, work.TypeDefect)
+			}
+			p, err := resolveWorkProvider(cmd)
+			if err != nil {
+				return err
+			}
+			if p == nil {
+				return noWorkProvider()
+			}
+			if err := confirmOutward(p, fmt.Sprintf("Create %q?", title), yes); err != nil {
+				return err
+			}
+			it, err := p.Create(cmd.Context(), work.CreateRequest{Title: title, Type: itemType, Spec: spec})
+			if err != nil {
+				return err
+			}
+			if jsonOut {
+				return writeJSON(os.Stdout, it)
+			}
+			fmt.Printf("✓ created %s\n", itemLine(it, false))
+			return nil
+		},
+	}
+	c.Flags().StringVar(&itemType, "type", work.TypeTask, "item type: task|defect")
+	c.Flags().StringVar(&spec, "spec", "", "spec id this item advances")
+	c.Flags().BoolVar(&jsonOut, "json", false, "emit the created item as JSON")
+	c.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt (github-projects)")
 	return c
 }
 
 func workClaimCmd() *cobra.Command {
-	var project int
-	var owner, statusField, column string
-	var yes bool
+	var jsonOut, yes bool
 	c := &cobra.Command{
-		Use:   "claim <issue#>",
-		Short: "Claim an issue: assign yourself and move it to the in-progress column",
+		Use:   "claim <id>",
+		Short: "Claim an item: take it and move it to in-progress",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			number, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("claim: %q is not an issue number", args[0])
-			}
-			client, repo, err := resolveGitHub(repoFlag(cmd))
+			p, err := resolveWorkProvider(cmd)
 			if err != nil {
 				return err
 			}
-			ok, err := confirmAction(os.Stdin, os.Stdout, fmt.Sprintf("Claim #%d (assign yourself, move to %q) in %s?", number, column, repo), yes)
+			if p == nil {
+				return noWorkProvider()
+			}
+			if err := confirmOutward(p, fmt.Sprintf("Claim %s (assign yourself, move to %s)?", args[0], work.StateInProgress), yes); err != nil {
+				return err
+			}
+			it, err := p.Claim(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
-			if !ok {
-				return fmt.Errorf("aborted")
+			if jsonOut {
+				return writeJSON(os.Stdout, it)
 			}
-			ctx := cmd.Context()
-			// Preflight everything that can fail WITHOUT side effects, so a bad
-			// column/project/issue can't leave the issue half-claimed.
-			proj, err := client.ResolveProject(ctx, ownerOr(owner, repo), project)
-			if err != nil {
-				return err
-			}
-			field, opt, err := resolveColumn(proj, statusField, column)
-			if err != nil {
-				return err
-			}
-			iss, err := client.GetIssue(ctx, repo, number)
-			if err != nil {
-				return err
-			}
-			login, err := client.Viewer(ctx)
-			if err != nil {
-				return err
-			}
-			// Advisory exclusivity: assignment has no native compare-and-swap, so
-			// refuse if someone else already holds it (re-claiming your own is fine).
-			if other := assignedToOther(iss, login); other != "" {
-				return fmt.Errorf("#%d is already assigned to @%s — not claiming (reassign on GitHub to override)", number, other)
-			}
-			// Mutate: assign (the claim), then add to board + move. If a post-assign
-			// step fails, say so explicitly rather than hiding the partial state.
-			if err := client.AssignIssue(ctx, repo, number, []string{login}); err != nil {
-				return err
-			}
-			if _, err := moveItem(ctx, client, proj, field, opt, iss.NodeID); err != nil {
-				return fmt.Errorf("assigned #%d to @%s but failed to move the card to %q: %w", number, login, column, err)
-			}
-			fmt.Printf("✓ claimed #%d as @%s → %q\n", number, login, column)
+			fmt.Printf("✓ claimed %s → %s\n", itemLine(it, false), it.State)
 			return nil
 		},
 	}
-	c.Flags().IntVar(&project, "project", 0, "project number (required)")
-	c.Flags().StringVar(&owner, "owner", "", "project owner (default: the repo owner)")
-	c.Flags().StringVar(&statusField, "status-field", defaultStatusField, "the single-select field that holds the column")
-	c.Flags().StringVar(&column, "column", defaultDoingColumn, "the in-progress column to move to")
-	c.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt")
-	_ = c.MarkFlagRequired("project")
+	c.Flags().BoolVar(&jsonOut, "json", false, "emit the claimed item as JSON")
+	c.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt (github-projects)")
 	return c
 }
 
 func workMoveCmd() *cobra.Command {
-	var project int
-	var owner, statusField, to string
-	var yes bool
+	var jsonOut, yes bool
 	c := &cobra.Command{
-		Use:   "move <issue#>",
-		Short: "Move an issue's card to a column",
-		Args:  cobra.ExactArgs(1),
+		Use:   "move <id> <state>",
+		Short: "Move an item to a state",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			number, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("move: %q is not an issue number", args[0])
-			}
-			if to == "" {
-				return fmt.Errorf("move: --to <column> required")
-			}
-			client, repo, err := resolveGitHub(repoFlag(cmd))
+			p, err := resolveWorkProvider(cmd)
 			if err != nil {
 				return err
 			}
-			ok, err := confirmAction(os.Stdin, os.Stdout, fmt.Sprintf("Move #%d to %q in %s?", number, to, repo), yes)
+			if p == nil {
+				return noWorkProvider()
+			}
+			if err := confirmOutward(p, fmt.Sprintf("Move %s to %q?", args[0], args[1]), yes); err != nil {
+				return err
+			}
+			it, err := p.Move(cmd.Context(), args[0], args[1])
 			if err != nil {
 				return err
-			}
-			if !ok {
-				return fmt.Errorf("aborted")
-			}
-			ctx := cmd.Context()
-			proj, err := client.ResolveProject(ctx, ownerOr(owner, repo), project)
-			if err != nil {
-				return err
-			}
-			field, opt, err := resolveColumn(proj, statusField, to)
-			if err != nil {
-				return err
-			}
-			iss, err := client.GetIssue(ctx, repo, number)
-			if err != nil {
-				return err
-			}
-			if _, err := moveItem(ctx, client, proj, field, opt, iss.NodeID); err != nil {
-				return err
-			}
-			fmt.Printf("✓ moved #%d → %q\n", number, to)
-			return nil
-		},
-	}
-	c.Flags().IntVar(&project, "project", 0, "project number (required)")
-	c.Flags().StringVar(&owner, "owner", "", "project owner (default: the repo owner)")
-	c.Flags().StringVar(&statusField, "status-field", defaultStatusField, "the single-select field that holds the column")
-	c.Flags().StringVar(&to, "to", "", "destination column (required)")
-	c.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt")
-	_ = c.MarkFlagRequired("project")
-	return c
-}
-
-func workDiscoverCmd() *cobra.Command {
-	var project, from int
-	var owner, title, body string
-	var labels []string
-	var yes, jsonOut bool
-	c := &cobra.Command{
-		Use:   "discover",
-		Short: "File a mid-task follow-up issue with discovered-from provenance",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(title) == "" {
-				return fmt.Errorf("discover: --title required")
-			}
-			if from <= 0 {
-				return fmt.Errorf("discover: --from <issue#> required (the issue this was discovered from)")
-			}
-			client, repo, err := resolveGitHub(repoFlag(cmd))
-			if err != nil {
-				return err
-			}
-			ok, err := confirmAction(os.Stdin, os.Stdout, fmt.Sprintf("File follow-up %q (discovered from #%d) in %s?", title, from, repo), yes)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return fmt.Errorf("aborted")
-			}
-			ctx := cmd.Context()
-			// The constant label makes discovered work filterable; the #N backlink is
-			// the provenance edge (GitHub cross-references it). Together they fill the
-			// one gap GitHub has no native edge for.
-			if err := client.EnsureLabel(ctx, repo, discoveredLabel, "5319e7", "Follow-up work discovered mid-task"); err != nil {
-				return err
-			}
-			full := strings.TrimRight(body, "\n")
-			if full != "" {
-				full += "\n\n"
-			}
-			full += fmt.Sprintf("Discovered while working on #%d.", from)
-			iss, err := client.CreateIssue(ctx, repo, github.CreateIssueInput{
-				Title:  title,
-				Body:   full,
-				Labels: append([]string{discoveredLabel}, labels...),
-			})
-			if err != nil {
-				return err
-			}
-			if project > 0 {
-				proj, err := client.ResolveProject(ctx, ownerOr(owner, repo), project)
-				if err == nil {
-					_, _ = client.AddItem(ctx, proj.ID, iss.NodeID) // board sync is best-effort, never fatal
-				}
 			}
 			if jsonOut {
-				return writeJSON(os.Stdout, iss)
+				return writeJSON(os.Stdout, it)
 			}
-			fmt.Printf("✓ filed #%d (discovered-from #%d) — %s\n", iss.Number, from, iss.HTMLURL)
+			fmt.Printf("✓ moved %s → %s\n", it.ID, it.State)
 			return nil
 		},
 	}
-	c.Flags().StringVar(&title, "title", "", "issue title (required)")
-	c.Flags().StringVar(&body, "body", "", "issue body (the backlink is appended)")
-	c.Flags().IntVar(&from, "from", 0, "the issue this work was discovered from (required)")
-	c.Flags().IntVar(&project, "project", 0, "also add the new issue to this project")
-	c.Flags().StringVar(&owner, "owner", "", "project owner (default: the repo owner)")
-	c.Flags().StringArrayVar(&labels, "label", nil, "extra label (repeatable)")
-	c.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt")
-	c.Flags().BoolVar(&jsonOut, "json", false, "emit the created issue as JSON")
+	c.Flags().BoolVar(&jsonOut, "json", false, "emit the moved item as JSON")
+	c.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt (github-projects)")
 	return c
 }
 
-// resolveColumn looks up the status field and the destination column option on a
-// resolved project — a pure, side-effect-free preflight so claim/move can validate
-// before mutating anything.
-func resolveColumn(proj github.Project, statusField, column string) (github.Field, github.FieldOption, error) {
-	if statusField == "" {
-		statusField = defaultStatusField
+func workListCmd() *cobra.Command {
+	var state string
+	var jsonOut bool
+	c := &cobra.Command{
+		Use:   "list",
+		Short: "List work items, optionally by state",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			p, err := resolveWorkProvider(cmd)
+			if err != nil {
+				return err
+			}
+			if p == nil {
+				return noWorkProvider()
+			}
+			items, err := p.List(cmd.Context(), state)
+			if err != nil {
+				return err
+			}
+			if jsonOut {
+				return writeJSON(os.Stdout, itemsOrEmpty(items))
+			}
+			if len(items) == 0 {
+				fmt.Println("No items.")
+				return nil
+			}
+			for _, it := range items {
+				fmt.Println(itemLine(it, true))
+			}
+			return nil
+		},
 	}
-	field, ok := proj.Field(statusField)
-	if !ok {
-		return github.Field{}, github.FieldOption{}, fmt.Errorf("project %q has no field %q", proj.Title, statusField)
-	}
-	opt, ok := field.Option(column)
-	if !ok {
-		return github.Field{}, github.FieldOption{}, fmt.Errorf("field %q has no column %q (have: %s)", field.Name, column, optionNames(field))
-	}
-	return field, opt, nil
+	c.Flags().StringVar(&state, "state", "", "only items in this state")
+	c.Flags().BoolVar(&jsonOut, "json", false, "emit output as JSON")
+	return c
 }
 
-// moveItem ensures the issue (by content node id) is on the board (AddItem is
-// idempotent) and sets its status to the resolved column.
-func moveItem(ctx context.Context, client *github.Client, proj github.Project, field github.Field, opt github.FieldOption, nodeID string) (string, error) {
-	itemID, err := client.AddItem(ctx, proj.ID, nodeID)
+// resolveWorkProvider maps the config's work block to a provider — the only
+// place the adapter packages are wired. Provider "none" returns (nil, nil):
+// the verbs print one line and exit 0.
+func resolveWorkProvider(cmd *cobra.Command) (work.Provider, error) {
+	cfg, _, err := config.Load(".")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	if err := client.SetSingleSelect(ctx, proj.ID, itemID, field.ID, opt.ID); err != nil {
-		return "", err
-	}
-	return itemID, nil
-}
-
-// assignedToOther returns the login of an assignee that isn't the viewer (so a
-// re-claim by the same user is allowed), or "" if unassigned or only self-assigned.
-func assignedToOther(iss github.Issue, login string) string {
-	for _, a := range iss.Assignees {
-		if a.Login != login {
-			return a.Login
+	w := cfg.WorkConfig()
+	switch w.Provider {
+	case config.WorkNone:
+		return nil, nil
+	case config.WorkMarkdown:
+		return markdown.New(".", w.File), nil
+	case config.WorkBeads:
+		return beads.New()
+	case config.WorkGitHubProjects:
+		client, repo, err := resolveGitHub(repoFlag(cmd))
+		if err != nil {
+			return nil, err
 		}
+		opts := ghprojects.Options{Project: w.Project, Owner: w.Owner}
+		if v, _ := cmd.Flags().GetInt("project"); v > 0 {
+			opts.Project = v
+		}
+		if v, _ := cmd.Flags().GetString("owner"); v != "" {
+			opts.Owner = v
+		}
+		opts.StatusField, _ = cmd.Flags().GetString("status-field")
+		specs, _ := cmd.Flags().GetStringArray("column")
+		opts.Columns, err = parseColumnOverrides(specs)
+		if err != nil {
+			return nil, err
+		}
+		return ghprojects.New(client, repo, opts)
+	default:
+		return nil, fmt.Errorf("unknown work provider %q (want one of %s)", w.Provider, strings.Join(config.WorkProviders, ", "))
 	}
-	return ""
 }
 
-// ownerOr returns the explicit owner flag, or the repo owner as the default.
-func ownerOr(owner string, repo github.Repo) string {
-	if owner != "" {
-		return owner
+// parseColumnOverrides reads repeated --column state=Column pairs.
+func parseColumnOverrides(specs []string) (map[string]string, error) {
+	if len(specs) == 0 {
+		return nil, nil
 	}
-	return repo.Owner
+	m := make(map[string]string, len(specs))
+	for _, s := range specs {
+		state, col, ok := strings.Cut(s, "=")
+		if !ok || state == "" || col == "" {
+			return nil, fmt.Errorf("--column wants state=Column (e.g. ready=Todo), got %q", s)
+		}
+		m[state] = col
+	}
+	return m, nil
 }
 
-func optionNames(f github.Field) string {
-	names := make([]string, len(f.Options))
-	for i, o := range f.Options {
-		names[i] = o.Name
+// confirmOutward gates the github-projects provider's mutations behind the
+// standard prompt — they are outward and hard to undo. The local providers
+// (markdown, beads) write only committed or local state and never prompt.
+func confirmOutward(p work.Provider, prompt string, assumeYes bool) error {
+	if p.Name() != config.WorkGitHubProjects {
+		return nil
 	}
-	return strings.Join(names, ", ")
+	ok, err := confirmAction(os.Stdin, os.Stdout, prompt, assumeYes)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("aborted")
+	}
+	return nil
+}
+
+// noWorkProvider reports the "none" provider. Configured off is not an
+// error.
+func noWorkProvider() error {
+	fmt.Println("no work provider configured")
+	return nil
+}
+
+// itemLine renders one item: id, then title, then the spec pointer when
+// present; withState also shows the state (for list).
+func itemLine(it work.Item, withState bool) string {
+	var sb strings.Builder
+	sb.WriteString(it.ID)
+	if withState {
+		sb.WriteString("  [")
+		sb.WriteString(it.State)
+		sb.WriteString("]")
+	}
+	sb.WriteString("  ")
+	sb.WriteString(it.Title)
+	if it.Spec != "" {
+		sb.WriteString(" · spec: ")
+		sb.WriteString(it.Spec)
+	}
+	return sb.String()
+}
+
+// itemsOrEmpty keeps --json emitting [] rather than null for an empty list.
+func itemsOrEmpty(items []work.Item) []work.Item {
+	if items == nil {
+		return []work.Item{}
+	}
+	return items
 }

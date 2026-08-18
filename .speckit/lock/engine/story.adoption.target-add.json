@@ -1,0 +1,10 @@
+{
+  "spec_hash": "9cf665dee4a5aceed67b4d71bd76a3990462ce275ee474de103057cdd19799b8",
+  "scenarios": {
+    "scenario.adoption.target-add.multi-source": "pass",
+    "scenario.adoption.target-add.no-platform-vocabulary": "pass",
+    "scenario.adoption.target-add.registers-existing-code": "pass",
+    "scenario.adoption.target-add.rejects-unknown-format": "pass",
+    "scenario.adoption.target-add.requires-existing-dir": "pass"
+  }
+}

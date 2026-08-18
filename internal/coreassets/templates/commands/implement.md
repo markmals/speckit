@@ -6,7 +6,7 @@ description: Implement a feature or spec on a target — failing tests first, la
 
 Bring a target's code and tests into conformance with the spec, one spec ID at a time, ending each in a green `specify verify` that locks it. This is the default "how to write code" workflow.
 
-**Arguments:** `<feature-or-spec-id> <target>` — e.g. `/speckit.implement 0001-managing-items web` (whole feature) or `/speckit.implement story.item.create web` (one spec).
+**Arguments:** `<feature-or-spec-id> <target>` — e.g. `/speckit.implement 0001-managing-items app` (whole feature) or `/speckit.implement story.item.create app` (one spec).
 
 ## What to do
 

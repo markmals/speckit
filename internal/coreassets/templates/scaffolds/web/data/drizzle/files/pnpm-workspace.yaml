@@ -1,3 +1,0 @@
-# pnpm 11 blocks native build scripts by default; drizzle-kit (and the runtime)
-# pull esbuild/workerd. These are the chosen stack's own deps.
-dangerouslyAllowAllBuilds: true

@@ -37,11 +37,11 @@ Y", it's two commits.
 
 Counter-examples that are _not_ one logical change:
 
-- "Add the items list view model and also bump the Tailwind version"
+- "Add the items list view model and also bump a dependency version"
 - "Fix the duplicate-email bug and reformat the file"
 - "Implement story.item.create and story.item.edit"
 
-In each case, split. The Tailwind bump is its own commit. The reformat is either
+In each case, split. The dependency bump is its own commit. The reformat is either
 its own commit or, ideally, dropped because it has nothing to do with the bug.
 
 ## What goes in a good message
@@ -80,25 +80,25 @@ area, a custom workspace name) are declared, one per line, in
 | Scope | Use for |
 | --- | --- |
 | a **spec / feature ID** — `story.item.create`, `domain.item` | A change scoped to one spec's behavior. The scope is a **reverse pointer to that `id:`** — same discipline as `// SPEC:`. |
-| a **target** — `web`, `apple`, `android`, `go-cli`, … | Changes inside that target's tree (`apps/<target>`). |
+| a **target** — any name defined under `targets` in `.speckit/specs.json` | Changes inside that target's tree (its configured `dir`). |
 | `specs` | Cross-cutting spec files (`CONVENTIONS`, shared models). |
 | `features/<slug>` | Authoring or extending a feature folder (slug must be a real `features/` directory). |
-| a harness area — `hooks`, `skills`, `commands`, `agents`, `templates`, `rules`, `docs`, `mise`, `readme` | Changes to the project's own machinery. |
+| a harness area — `hooks`, `skills`, `commands`, `agents`, `templates`, `rules`, `docs`, `readme` | Changes to the project's own machinery. |
 | `treewide` | A genuinely repo-wide sweep with no single home. |
 
 The IDs come straight from the `id:` frontmatter in `specs/` and `features/` —
 list them with `grep -rhE '^id:' specs features`. When a change spans more than
 one area, prefer the **broadest scope that still describes it**; only fall back to
-a comma-separated list (`web, apple: …`) when no single scope fits, and to
-`treewide` for a true global sweep. A ticket number, when there is one, goes in
-parentheses after the scope: `web (PROJ-12): …`.
+a comma-separated list (`<target-a>, <target-b>: …`) when no single scope fits,
+and to `treewide` for a true global sweep. A ticket number, when there is one,
+goes in parentheses after the scope: `app (PROJ-12): …`.
 
 Examples:
 
-- `web: add items list view model with empty / loaded / error states`
+- `app: add items list view model with empty / loaded / error states`
 - `story.item.create: reject item creation when email is already present`
 - `specs: clarify duplicate-email handling in story.item.create`
-- `templates: dispatch format-on-edit to the target's fmt task`
+- `templates: dispatch format-on-edit to the target's formatter`
 
 Reverts, merges, and other mechanical commits don't have to follow this shape —
 format them however is clearest.

@@ -1,0 +1,9 @@
+{
+  "spec_hash": "7ef2314f7cef141a1f195e342b368a219863a3f46a66e0c6bbe82e7379addd2b",
+  "scenarios": {
+    "scenario.work-item.canonical-states": "pass",
+    "scenario.work-item.defect-is-a-type": "pass",
+    "scenario.work-item.never-engine-input": "pass",
+    "scenario.work-item.spec-pointer": "pass"
+  }
+}

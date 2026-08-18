@@ -69,6 +69,7 @@ func TestJoinFailing(t *testing.T) {
 }
 
 // SPEC: story.engine.verify (scenario.engine.verify.unjoinable-scenario-fails)
+// [scenario.engine.verify.unjoinable-scenario-fails]
 func TestJoinUnjoinable(t *testing.T) {
 	v := Join(
 		decl("scenario.a", "scenario.b"),
@@ -81,9 +82,13 @@ func TestJoinUnjoinable(t *testing.T) {
 	if len(v.Unjoinable) != 1 || v.Unjoinable[0] != "scenario.b" {
 		t.Errorf("unjoinable: %v", v.Unjoinable)
 	}
+	if contains(v.Passed, "scenario.b") {
+		t.Errorf("an unjoinable scenario must not be reported as passing: %v", v.Passed)
+	}
 }
 
 // SPEC: story.engine.verify (scenario.engine.verify.dangling-test-ref)
+// [scenario.engine.verify.dangling-test-ref]
 func TestJoinDangling(t *testing.T) {
 	v := Join(
 		decl("scenario.a"),
@@ -102,6 +107,7 @@ func TestJoinDangling(t *testing.T) {
 }
 
 // SPEC: story.engine.verify (scenario.engine.verify.unbound-test)
+// [scenario.engine.verify.unbound-test]
 func TestJoinUnbound(t *testing.T) {
 	v := Join(
 		decl("scenario.a"),

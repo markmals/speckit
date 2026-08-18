@@ -4,9 +4,9 @@ description: Produce a per-target technical plan for a feature — how this targ
 
 # /speckit.plan — Technical plan for a target
 
-The feature folder says **what** must hold, target-agnostically. A plan says **how one target realizes it** — the stack, the per-target design decisions, the test setup. One feature, N plans (one per target); the spec stays the single source of truth.
+The feature folder says **what** must hold, target-agnostically. A plan says **how one target realizes it** — the technology choices, the per-target design decisions, the test setup. One feature, N plans (one per target); the spec stays the single source of truth.
 
-**Arguments:** `<feature> <target>` — e.g. `/speckit.plan 0001-managing-items web`.
+**Arguments:** `<feature> <target>` — e.g. `/speckit.plan 0001-managing-items app`.
 
 ## Prerequisites
 

@@ -1,0 +1,13 @@
+{
+  "spec_hash": "2e575aac172af0aed5b019bd08a168ec6178d635b2964458945c149ffa09b1ef",
+  "scenarios": {
+    "scenario.work.providers.beads-maps-native": "pass",
+    "scenario.work.providers.beads-requires-bd": "pass",
+    "scenario.work.providers.engine-never-requires-a-provider": "pass",
+    "scenario.work.providers.github-projects-board": "pass",
+    "scenario.work.providers.import-firewall": "pass",
+    "scenario.work.providers.markdown-is-default": "pass",
+    "scenario.work.providers.none-is-quiet": "pass",
+    "scenario.work.providers.unknown-provider-rejected": "pass"
+  }
+}

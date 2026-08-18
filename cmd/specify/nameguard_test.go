@@ -2,32 +2,36 @@ package main
 
 import (
 	"os"
-	"strings"
 	"testing"
 )
 
-// TestTargetAddRejectsNonIdentifierName: a stack whose manifest sets nameRule
-// "identifier" (the swift stacks, apple) must reject a name that pascal-cases to a
-// non-identifier (a leading digit) at `target add` — BEFORE rendering any files, so
-// the user never gets a half-scaffolded package that won't compile.
-func TestTargetAddRejectsNonIdentifierName(t *testing.T) {
-	// Hermetic: target add operates on "." — if the guard ever regressed, the render
-	// would land in this temp dir, not the repo. (The guard fires before any write.)
+// validTargetName gates `target add`: the name becomes a config key and a path
+// fragment, so anything outside [A-Za-z0-9][A-Za-z0-9._-]* is rejected before
+// the config is touched.
+func TestValidTargetName(t *testing.T) {
+	for _, name := range []string{"web", "ios", "go-service", "a.b_c-d", "3d-tool", "X1"} {
+		if !validTargetName(name) {
+			t.Errorf("validTargetName(%q) = false, want true", name)
+		}
+	}
+	for _, name := range []string{"", "../escape", "-lead", ".lead", "_lead", "has space", "semi;colon", "star*", "new\nline"} {
+		if validTargetName(name) {
+			t.Errorf("validTargetName(%q) = true, want false", name)
+		}
+	}
+}
+
+func TestTargetAddRejectsUnsafeName(t *testing.T) {
 	t.Chdir(t.TempDir())
 
 	cmd := rootCmd()
-	cmd.SetArgs([]string{"target", "add", "3d-tool", "--stack", "swift-package", "--no-install"})
+	cmd.SetArgs([]string{"target", "add", "../escape", "--dir", ".", "--format", "junit", "--report", "junit.xml", "--source", "src"})
 	cmd.SilenceErrors = true
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatal("target add must reject a digit-leading name for an identifier-rule stack")
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("target add must reject an unsafe name")
 	}
-	if !strings.Contains(err.Error(), "identifier") {
-		t.Errorf("error should explain the identifier constraint, got: %v", err)
-	}
-	// The guard fires before placement/render, so nothing is written.
-	if _, statErr := os.Stat("packages"); !os.IsNotExist(statErr) {
-		t.Error("target add must not render any files when the name guard fails")
+	if _, err := os.Stat(".speckit"); !os.IsNotExist(err) {
+		t.Error("target add must not write config when the name guard fails")
 	}
 }

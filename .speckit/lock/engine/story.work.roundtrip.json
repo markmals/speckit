@@ -1,0 +1,11 @@
+{
+  "spec_hash": "205e389744f713b2cd0078842e1965d6e2879405321d18f452c78300a27abd0e",
+  "scenarios": {
+    "scenario.work.roundtrip.claim-moves-to-in-progress": "pass",
+    "scenario.work.roundtrip.create-lands-ready": "pass",
+    "scenario.work.roundtrip.defect-type": "pass",
+    "scenario.work.roundtrip.list-all": "pass",
+    "scenario.work.roundtrip.move-to-state": "pass",
+    "scenario.work.roundtrip.spec-pointer": "pass"
+  }
+}

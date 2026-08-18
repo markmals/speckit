@@ -82,11 +82,11 @@ Iterate until approved. Only then commit.
 
 ### 9. Commit
 
-After approval, commit the spec content under the scoped-commits convention (`specify gate scope` enforces it). Prefix `spec:`. One commit for a small scaffold (`spec: scaffold features/<NNNN>-<slug>`), or split by artifact kind for a large one — each commit leaving the folder internally consistent. Never bundle implementation code here.
+After approval, commit the spec content under the scoped-commits convention (`specify gate scope` enforces it). Prefix `spec:`. One commit for a small folder (`spec: author features/<NNNN>-<slug>`), or split by artifact kind for a large one — each commit leaving the folder internally consistent. Never bundle implementation code here.
 
 ## Key principles
 
-One question at a time · multiple-choice when possible · **YAGNI ruthlessly** (no scenarios/fields/errors the capability doesn't need) · **mark, don't guess** · web is the reference target when behavior is unclear across targets.
+One question at a time · multiple-choice when possible · **YAGNI ruthlessly** (no scenarios/fields/errors the capability doesn't need) · **mark, don't guess** · when behavior is unclear across targets, consult the reference target (`reference_target` in `.speckit/specs.json`); when it's unset, no target is privileged — ask.
 
 ## Red flags — stop and re-scope
 

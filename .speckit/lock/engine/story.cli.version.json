@@ -1,0 +1,9 @@
+{
+  "spec_hash": "176842786b8c42b8c6ab1eff67b85104f5c12bc10330616d768ba944745a690b",
+  "scenarios": {
+    "scenario.cli.version.build-injected": "pass",
+    "scenario.cli.version.dev": "pass",
+    "scenario.cli.version.json": "pass",
+    "scenario.cli.version.plain": "pass"
+  }
+}

@@ -5,10 +5,6 @@
 *.tmp
 .vscode/
 .idea/
-# …but DO track the web scaffold's .vscode/ template — it's an embedded asset that
-# ships to generated apps, not this repo's local editor config.
-!/internal/coreassets/templates/scaffolds/web/files/.vscode/
-!/internal/coreassets/templates/scaffolds/web/files/.vscode/**
 
 # Environment (real values live in local .env files)
 .env
@@ -19,8 +15,12 @@
 /specify
 /dist/
 
-# SpecKit runtime state — generated, engine-owned (L4)
-.speckit/
+# SpecKit state. specs.json (the target config) and lock/ (the D7 acknowledgment
+# lock) are committed truth — drift detection is vacuous if a fresh clone has no
+# lock. Everything else under .speckit/ is a local run artifact.
+.speckit/*
+!.speckit/specs.json
+!.speckit/lock/
 
 # Legacy local Python virtualenv
 .venv/
@@ -37,5 +37,5 @@ mise.local.toml
 # dir embeds a gitlink with no .gitmodules and breaks CI checkout cleanup)
 .claude/worktrees/
 
-# CI checks out the mac-dev-skills source here for the apple-pack drift gate
+# Local build/verify scratch
 .cache/

@@ -2,9 +2,10 @@ package reports
 
 import "encoding/xml"
 
-// ParseJUnit parses junit-family XML (Vitest for web; Gradle for android) into
-// normalized results. A <testcase> with a <failure> or <error> child failed; a
-// <skipped> child is treated as not-passing.
+// ParseJUnit parses junit-family XML — the interchange format Vitest, Gradle,
+// pytest, and most other runners can emit — into normalized results. A
+// <testcase> with a <failure> or <error> child failed; a <skipped> child is
+// treated as not-passing.
 func ParseJUnit(data []byte) ([]Result, error) {
 	var doc struct {
 		Cases []struct {

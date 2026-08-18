@@ -19,6 +19,10 @@ var updateGoldens = flag.Bool("update", false, "rewrite the golden init manifest
 //	go test ./internal/project -run TestInitGoldenTrees -update
 //
 // SPEC: story.init.projection
+//
+// [scenario.init.basic.per-agent-projection] the same project content projected
+// for claude, codex, and copilot produces each agent family's expected tree,
+// pinned by the per-agent golden fixture.
 func TestInitGoldenTrees(t *testing.T) {
 	for _, agent := range []string{"claude", "codex", "copilot", "generic"} {
 		t.Run(agent, func(t *testing.T) {

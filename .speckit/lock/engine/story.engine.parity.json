@@ -1,0 +1,11 @@
+{
+  "spec_hash": "1f3ad72ab20f65527a0d8d30bf0e3f0c1e2dae39c582842ef16ff544129d9c12",
+  "scenarios": {
+    "scenario.engine.parity.conforming": "pass",
+    "scenario.engine.parity.declared-deviation": "pass",
+    "scenario.engine.parity.drifted": "pass",
+    "scenario.engine.parity.independent-axes": "pass",
+    "scenario.engine.parity.missing": "pass",
+    "scenario.engine.parity.suspect-lying-marker": "pass"
+  }
+}

@@ -28,16 +28,6 @@ func resolveGitHub(repoOverride string) (*github.Client, github.Repo, error) {
 	return c, repo, nil
 }
 
-// resolveGitHubRepo resolves just the owner/name string, for commands that
-// delegate auth to gh itself (e.g. `gh secret set`) and so need no in-process token.
-func resolveGitHubRepo(repoOverride string) (string, error) {
-	repo, err := resolveRepo(repoOverride)
-	if err != nil {
-		return "", err
-	}
-	return repo.String(), nil
-}
-
 // resolveRepo applies the precedence: an explicit --repo override, else GH_REPO /
 // gh's context (via github.CurrentRepo).
 func resolveRepo(override string) (github.Repo, error) {
@@ -58,10 +48,10 @@ func addRepoFlag(fs *pflag.FlagSet) {
 	fs.String("repo", "", "target repo as OWNER/REPO (default: $GH_REPO or gh's resolved repo)")
 }
 
-// confirmAction gates an outward, hard-to-undo action (create issue, move a card,
-// provision a ruleset). assumeYes (the --yes flag) short-circuits to true; a
+// confirmAction gates an outward, hard-to-undo action (create an issue, move a
+// board item). assumeYes (the --yes flag) short-circuits to true; a
 // non-interactive stdin with no --yes fails safe (returns false + error) rather
-// than hanging or proceeding silently — mirrors the reconcile/taskstoissues guard.
+// than hanging or proceeding silently.
 func confirmAction(r io.Reader, w io.Writer, prompt string, assumeYes bool) (bool, error) {
 	if assumeYes {
 		return true, nil

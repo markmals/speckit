@@ -47,7 +47,7 @@ If you're thinking "skip TDD just this once" — stop. That's rationalization.
   - **MSTest:** `[TestProperty("scenario", "items.list.empty")]`.
   - **Vitest / Rust / Go:** a `// [scenario.items.list.empty]` comment directly above the test.
 - Test real code; mock only what you can't control (network, time, randomness).
-- **Example or invariant?** A `domain.<entity>` spec's **Invariants** section that says "always / never / for all" earns a **property-based test**, not just hand-picked examples — `adversarial-review` hunts exactly the inputs your examples skipped. Per-target runners: fast-check (web), SwiftCheck / `@Test(arguments:)` (Apple), kotest-property (Android), FsCheck (C#), proptest (Rust). Keep the example tests too; the property is the net underneath them.
+- **Example or invariant?** A `domain.<entity>` spec's **Invariants** section that says "always / never / for all" earns a **property-based test**, not just hand-picked examples — `adversarial-review` hunts exactly the inputs your examples skipped. Per-language runners: fast-check (JS/TS), SwiftCheck / `@Test(arguments:)` (Swift), kotest-property (Kotlin), FsCheck (C#), proptest (Rust). Keep the example tests too; the property is the net underneath them.
 
 ### Verify RED — watch it fail
 

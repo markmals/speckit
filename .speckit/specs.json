@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "agent": "claude",
+  "reference_target": "engine",
+  "paths": {
+    "specs": "specs",
+    "features": "features"
+  },
+  "targets": {
+    "engine": {
+      "dir": ".",
+      "command": "go test -json ./... > .speckit/report.gotest.json",
+      "format": "gotest",
+      "report": ".speckit/report.gotest.json",
+      "source": [
+        "internal",
+        "cmd"
+      ],
+      "bindings": "scoped"
+    }
+  },
+  "work": {
+    "provider": "markdown",
+    "file": "WORK.md"
+  }
+}

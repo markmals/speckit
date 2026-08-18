@@ -12,9 +12,9 @@ project        # internal/project — init + per-agent projection
 engine         # internal/engine — scan/verify/drift/cover/parity/gate/lock/ledger
 specmodel      # internal/specmodel — the spec model parser
 coreassets     # internal/coreassets — embedded prompts/templates
-config         # internal/config — .speckit/specs.json (targets, deploy manifest)
-scaffold       # internal/scaffold — stack scaffold + .github/deploy renderer
-github         # internal/github — REST+GraphQL client (Issues/Projects/secrets/rulesets)
+config         # internal/config — .speckit/specs.json (targets, reference target, work)
+work           # internal/work — the work-provider interface + markdown/beads/ghprojects
+github         # internal/github — REST+GraphQL client behind the github-projects provider
 reports        # internal/reports — junit/xunit/event-stream adapters
 integrations   # internal/integrations
 extensions     # internal/extensions

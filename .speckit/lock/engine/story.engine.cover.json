@@ -1,0 +1,9 @@
+{
+  "spec_hash": "61d4ed665809ce93705db5a19dfaa2b2a0bbb43145b8608b06f27fc617e953e7",
+  "scenarios": {
+    "scenario.engine.cover.drifted": "pass",
+    "scenario.engine.cover.json": "pass",
+    "scenario.engine.cover.per-target": "pass",
+    "scenario.engine.cover.reads-lock": "pass"
+  }
+}

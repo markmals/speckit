@@ -1,0 +1,9 @@
+{
+  "spec_hash": "4030a02432a39fd2ed583b644f4a26304f011048ba5869eef578f82f7c7c5081",
+  "scenarios": {
+    "scenario.engine.drift.edited-spec-red": "pass",
+    "scenario.engine.drift.ignores-mtime": "pass",
+    "scenario.engine.drift.never-verified-missing": "pass",
+    "scenario.engine.drift.reverify-clears": "pass"
+  }
+}

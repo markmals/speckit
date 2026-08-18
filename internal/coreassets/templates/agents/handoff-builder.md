@@ -29,8 +29,8 @@ You are the **handoff-builder**. You produce or update `HANDOFF.md` at the repo 
 ## What's verified
 | Target | specify verify | drift |
 | --- | --- | --- |
-| web | ✅ | clean |
-| ios | 🔴 2 failing | — |
+| <target> | ✅ | clean |
+| <target> | 🔴 2 failing | — |
 (one-line note on any 🔴/⚠️ row)
 
 ## What's gated

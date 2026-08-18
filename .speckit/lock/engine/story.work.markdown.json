@@ -1,0 +1,12 @@
+{
+  "spec_hash": "3826114bc0674295dd28981d95ad13737932cd5beacffa0e582ef2b1fd6c9c1c",
+  "scenarios": {
+    "scenario.work.markdown.done-is-checked": "pass",
+    "scenario.work.markdown.inline-spec-pointer": "pass",
+    "scenario.work.markdown.missing-file-is-empty": "pass",
+    "scenario.work.markdown.offline": "pass",
+    "scenario.work.markdown.roundtrips": "pass",
+    "scenario.work.markdown.sections-are-states": "pass",
+    "scenario.work.markdown.stable-short-ids": "pass"
+  }
+}

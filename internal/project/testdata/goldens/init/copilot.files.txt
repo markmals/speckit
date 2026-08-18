@@ -6,7 +6,7 @@
 .github/agents/speckit.plan.agent.md
 .github/agents/speckit.specify.agent.md
 .github/agents/speckit.tasks.agent.md
-.github/agents/speckit.taskstoissues.agent.md
+.github/agents/speckit.taskstowork.agent.md
 .github/copilot-instructions.md
 .github/memory/MEMORY.md
 .github/prompts/speckit.analyze.prompt.md
@@ -17,7 +17,7 @@
 .github/prompts/speckit.plan.prompt.md
 .github/prompts/speckit.specify.prompt.md
 .github/prompts/speckit.tasks.prompt.md
-.github/prompts/speckit.taskstoissues.prompt.md
+.github/prompts/speckit.taskstowork.prompt.md
 .github/rules/code-quality.md
 .github/rules/commit-discipline.md
 .github/rules/enforcement-hierarchy.md

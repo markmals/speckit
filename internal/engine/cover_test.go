@@ -2,7 +2,12 @@ package engine
 
 import "testing"
 
-// SPEC: story.engine.cover (scenario.engine.cover.per-target, .reads-lock, .drifted)
+// One Cover call over a spec locked fresh on web, locked stale on apple, and
+// never locked on linux must list every target that has lock state with its
+// own state — and the stale-hash target must be drifted, not green.
+//
+// [scenario.engine.cover.per-target]
+// [scenario.engine.cover.drifted]
 func TestCover(t *testing.T) {
 	root := t.TempDir()
 	writeSpecFile(t, root, "specs/models/item.md", itemSpec)
