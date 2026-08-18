@@ -7,6 +7,36 @@ in [Completed](#completed) at the bottom**. Status: ✅ done · 🔄 in progress
 
 ---
 
+## 2026-08-18 · ✅ Released v0.2.0
+
+`v0.2.0` published: goreleaser archives for darwin/linux/windows × amd64/arm64,
+`releases/latest` pointing at it, all six asset URLs the mise plugin builds
+resolving, and the tagged binary reporting `0.2.0` from the injected ldflags.
+Verified end-to-end against a scratch project with the *released* binary:
+`init` → `target add` → `scan` → `verify` green + lock, plus a `work` round trip
+on the markdown provider.
+
+Channels: **mise** (plugin `Available` hook lists the release; `PreInstall`
+downloads the archive) and **manual/`go install`**. **Homebrew was deliberately
+left alone** — `markmals/homebrew-tap` still has no `Formula/specify.rb` and no
+`update-specify.yml`, so the one-time checklist in
+[packaging/homebrew/README.md](packaging/homebrew/README.md) has never been run
+and `brew install markmals/tap/specify` does not work. `release.yml`'s
+`bump-tap` job fires its `repository_dispatch` into a repo with no listener, so
+it succeeds and does nothing. Either run the checklist or delete the wiring.
+
+- ⬜ **`go install` builds report `0.0.0-dev`.** goreleaser injects
+  `-X main.version`, but `go install …@v0.2.0` does not, so a binary installed
+  that way reports `0.0.0-dev` while running v0.2.0 code. This is the path
+  `gate/action.yml` uses in CI (`go install …@<specify_version>`), so gate users
+  cannot tell which version they are on from `specify version`. Fix by falling
+  back to `runtime/debug.ReadBuildInfo().Main.Version` when the ldflags value is
+  the dev default — that is populated for `go install pkg@version`.
+  `story.cli.version` already describes both halves honestly
+  (`build-injected` + `dev`), so this is a gap in the binary, not in the spec.
+
+---
+
 ## 2026-08-17 · ✅ Stack-agnostic refactor
 
 SpecKit dropped the project-generator half and became a stack-agnostic spec
